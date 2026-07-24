@@ -1,0 +1,54 @@
+name: SlackGPT delivery
+
+on:
+  workflow_run:
+    workflows: ["Cove quality checks", "Quality"]
+    types: [completed]
+
+permissions:
+  contents: read
+
+jobs:
+  report-result:
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      startsWith(github.event.workflow_run.head_branch, 'slackgpt/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Find the SlackGPT pull request
+        id: pull
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          pull_url="$(gh pr list \
+            --repo "$GITHUB_REPOSITORY" \
+            --head "$HEAD_BRANCH" \
+            --state open \
+            --json url \
+            --jq '.[0].url')"
+          test -n "$pull_url"
+          echo "url=$pull_url" >> "$GITHUB_OUTPUT"
+
+      - name: Continue delivery or report failure
+        env:
+          CALLBACK_SECRET: ${{ secrets.SLACKGPT_DELIVERY_CALLBACK_SECRET }}
+          CALLBACK_URL: https://slackgpt-room.matthew56258.chatgpt.site/api/github/delivery
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+          PULL_URL: ${{ steps.pull.outputs.url }}
+          WORKFLOW_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+        run: |
+          if [ "$WORKFLOW_CONCLUSION" = "success" ]; then
+            conclusion="check_completed"
+          else
+            conclusion="failed"
+          fi
+          jq -n \
+            --arg branch "$BRANCH" \
+            --arg pull_url "$PULL_URL" \
+            --arg conclusion "$conclusion" \
+            '{branch: $branch, pull_url: $pull_url, conclusion: $conclusion}' |
+          curl --fail-with-body --retry 3 \
+            -H "Content-Type: application/json" \
+            -H "X-SlackGPT-Delivery-Secret: $CALLBACK_SECRET" \
+            --data-binary @- "$CALLBACK_URL"
