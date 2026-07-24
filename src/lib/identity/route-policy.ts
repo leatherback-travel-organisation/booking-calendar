@@ -14,6 +14,7 @@ export function isPublicIdentityRoute(pathname: string) {
     pathname.startsWith("/people/apply/") ||
     pathname === "/api/health" ||
     pathname === "/api/cove/access" ||
+    pathname === "/api/cove/verify-handoff" ||
     pathname === "/api/delegate-handoff" ||
     pathname.startsWith("/api/app-icons/")
   );

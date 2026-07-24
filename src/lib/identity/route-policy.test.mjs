@@ -8,6 +8,7 @@ test("Cove sign-in, health, token-authenticated access, and opaque icon routes r
   assert.equal(isPublicIdentityRoute("/api/health"), true);
   assert.equal(isPublicIdentityRoute("/api/cove/access"), true);
   assert.equal(isPublicIdentityRoute("/api/delegate-handoff"), true);
+  assert.equal(isPublicIdentityRoute("/api/cove/verify-handoff"), true);
   assert.equal(isPublicIdentityRoute("/api/app-icons/4f96c764-d6f7-4f7f-9d76-99ec9cc89e31"), true);
   assert.equal(isPublicIdentityRoute("/patch-quiz"), true);
   assert.equal(isPublicIdentityRoute("/stitch-wednesday"), true);
@@ -21,5 +22,6 @@ test("application pages and unrelated APIs remain protected by Clerk middleware"
   assert.equal(isPublicIdentityRoute("/api/money/submit"), false);
   assert.equal(isPublicIdentityRoute("/api/cove/access/extra"), false);
   assert.equal(isPublicIdentityRoute("/api/delegate-handoff/extra"), false);
+  assert.equal(isPublicIdentityRoute("/api/cove/verify-handoff/extra"), false);
   assert.equal(isPublicIdentityRoute("/api/app-icons"), false);
 });

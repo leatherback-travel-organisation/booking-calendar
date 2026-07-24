@@ -1,4 +1,3 @@
-import { createHmac, randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { permissionNamespace } from "@/lib/access/cove-service-contract";
 import {
@@ -6,13 +5,10 @@ import {
   requireApplicationPermission,
   requireCoveUser,
 } from "@/lib/access/server";
+import { createCoveHandoffTicket } from "@/lib/cove-handoff/protocol";
 import { requireVerifiedIdentity } from "@/lib/identity/server";
 
 export const dynamic = "force-dynamic";
-
-function signTicket(payload: string, secret: string) {
-  return createHmac("sha256", secret).update(payload).digest("base64url");
-}
 
 export async function GET(request: NextRequest) {
   const secret = process.env.COVE_HANDOFF_SECRET;
@@ -46,16 +42,12 @@ export async function GET(request: NextRequest) {
     );
     if (!application) throw new Error("The requested application is not active.");
 
-    const payload = Buffer.from(JSON.stringify({
-      v: 1,
+    const ticket = createCoveHandoffTicket({
       applicationSlug,
       userId: user.id,
       email: user.email,
       population: user.population,
-      exp: Math.floor(Date.now() / 1000) + 60,
-      nonce: randomUUID(),
-    })).toString("base64url");
-    const ticket = `${payload}.${signTicket(payload, secret)}`;
+    }, secret);
     const destination = new URL(application.launchUrl);
     destination.searchParams.set("cove_ticket", ticket);
 
