@@ -1,0 +1,1 @@
+import type {Metadata} from "next"; import {BotSwarm} from "@/components/initiatives/botswarm"; export const metadata:Metadata={title:"BotSwarm · Cove",description:"Focused automations for Leatherback Travel."}; export default function Page(){return <BotSwarm/>}

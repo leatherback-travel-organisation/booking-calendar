@@ -1,0 +1,1 @@
+import type {Metadata} from "next";import {TrtlActivity} from "@/components/initiatives/trtl-activity";export const metadata:Metadata={title:"Trtl Activity",description:"A unified activity timeline for trips, guests and bookings."};export default function Page(){return <TrtlActivity/>}

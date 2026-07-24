@@ -1,0 +1,111 @@
+import type { DataOrigin } from "@/lib/airtable/model";
+
+export const recruitmentStatuses = [
+  "Unreviewed",
+  "Shortlist",
+  "Interview",
+  "Challenge",
+  "2nd Interview",
+  "Final Round",
+  "Hire",
+  "Personal Rejection",
+  "General Rejection",
+  "Closed",
+  "Next opening",
+  "Other Role",
+] as const;
+
+export type RecruitmentStatus = (typeof recruitmentStatuses)[number];
+export type RolePublishingStatus = "draft" | "ready" | "live" | "paused" | "closed";
+
+export type RecruitmentAttachment = {
+  id: string;
+  filename: string;
+  url: string;
+  type?: string;
+  previewUrl?: string;
+};
+
+export type RecruitmentCandidate = {
+  id: string;
+  name: string;
+  email?: string;
+  roles: string[];
+  status: RecruitmentStatus;
+  location?: string;
+  schedule: string[];
+  assignee?: string;
+  interviewer?: string;
+  notes?: string;
+  firstInterviewNotes?: string;
+  secondInterviewNotes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  attachments: RecruitmentAttachment[];
+  comments: RecruitmentComment[];
+};
+
+export type RecruitmentComment = {
+  id: string;
+  body: string;
+  authorName: string;
+  authorInitials: string;
+  createdAt: string;
+};
+
+export type RecruitmentRole = {
+  title: string;
+  status: RolePublishingStatus;
+  hiringManager: string;
+  location: string;
+  employmentType: string;
+  adCopy: string;
+  adUrl?: string;
+  advertisingChannels: string[];
+  publishingNotes: string;
+  updatedAt?: string;
+  activeCandidates: number;
+};
+
+export type RecruitmentWorkspace = {
+  candidates: RecruitmentCandidate[];
+  roles: RecruitmentRole[];
+  origin: DataOrigin;
+  integrityIssues: number;
+  writesEnabled: boolean;
+  truncated: boolean;
+};
+
+export const knownRecruitmentRoles = [
+  "Inbound Service and Bookings Officer",
+  "Trip Design Writer",
+  "Social Media Assistant",
+  "Senior Customer Support Specialist",
+  "Trip Design Assistant",
+  "Senior Marketer",
+  "Marketing Assistant",
+  "Trip Design Intern",
+  "Marketing Intern",
+  "Trip Ops",
+  "Operations Assistant",
+  "Booking Manager LATAM",
+  "Marketing VA",
+  "Head of Finance",
+  "Bookkeeping Coordinator",
+  "Senior Recruitment Manager",
+  "Senior Trip Designer",
+] as const;
+
+export function roleReadiness(role: RecruitmentRole) {
+  const checks = [
+    Boolean(role.hiringManager && role.location && role.employmentType),
+    Boolean(role.adCopy.trim()),
+    role.advertisingChannels.length > 0,
+    Boolean(role.adUrl),
+  ];
+  return {
+    checks,
+    complete: checks.filter(Boolean).length,
+    percentage: Math.round((checks.filter(Boolean).length / checks.length) * 100),
+  };
+}

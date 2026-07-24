@@ -1,0 +1,64 @@
+{
+  "name": "@leatherback/cove-auth",
+  "version": "1.1.0",
+  "description": "Leatherback Cove SSO and canonical application-access helpers for Next.js applications.",
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "import": "./src/index.js"
+    },
+    "./provider": {
+      "types": "./src/provider.d.ts",
+      "import": "./src/provider.js"
+    },
+    "./proxy": {
+      "types": "./src/proxy.d.ts",
+      "import": "./src/proxy.js"
+    },
+    "./server": {
+      "types": "./src/server.d.ts",
+      "import": "./src/server.js"
+    },
+    "./components": {
+      "types": "./src/components.d.ts",
+      "import": "./src/components.js"
+    },
+    "./health": {
+      "types": "./src/health.d.ts",
+      "import": "./src/health.js"
+    },
+    "./template": {
+      "types": "./src/template.d.ts",
+      "import": "./src/template.js"
+    },
+    "./vendored": {
+      "types": "./src/vendored.d.ts",
+      "import": "./src/vendored.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "templates",
+    "README.md",
+    ".env.example"
+  ],
+  "scripts": {
+    "sync:vendored": "node scripts/sync-vendored.mjs",
+    "test": "node --test test/*.test.mjs",
+    "pack:check": "npm pack --dry-run"
+  },
+  "peerDependencies": {
+    "@clerk/nextjs": "^7.0.0",
+    "next": ">=15.5.9 <17",
+    "react": ">=19.1.4 <20",
+    "react-dom": ">=19.1.4 <20"
+  },
+  "license": "UNLICENSED",
+  "private": true
+}

@@ -1,0 +1,10 @@
+node_modules
+.next
+.vercel
+.env
+.env.*
+*.tsbuildinfo
+.DS_Store
+.codex-tmp/
+.env*
+!.env.example

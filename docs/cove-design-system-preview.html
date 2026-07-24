@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cove design system specimen</title>
+    <link rel="stylesheet" href="./cove-design-system.css" />
+    <style>
+      html, body { margin: 0; min-height: 100%; }
+      .specimen-label { margin: 0 0 10px; color: var(--cove-slate-500); font-size: 9px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+      .specimen-stack { display: grid; gap: 14px; }
+      .specimen-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+      .specimen-form { max-width: 860px; }
+      .specimen-nav-icon { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+      .specimen-card-top { display: flex; align-items: center; gap: 12px; }
+      .specimen-card-copy { min-width: 0; }
+      .specimen-card-copy .cove-meta-label { margin-bottom: 4px; }
+      .specimen-card-copy p { margin-top: 3px; }
+      .specimen-panel-section + .specimen-panel-section { margin-top: 26px; padding-top: 24px; border-top: 1px solid var(--cove-line-soft); }
+      @media (max-width: 520px) { .specimen-row .cove-button { width: 100%; } }
+    </style>
+  </head>
+  <body>
+    <div class="cove-app">
+      <a class="cove-skip-link" href="#main">Skip to main content</a>
+
+      <header class="cove-topnav">
+        <a class="cove-logo" href="#" aria-label="Cove home">
+          <img class="cove-logo-image" src="../public/images/cove-logo.png" alt="" />
+        </a>
+
+        <nav class="cove-primary-nav" aria-label="Primary navigation">
+          <a class="cove-nav-link" href="#">
+            <svg class="specimen-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="m15.3 8.7-2.1 4.5-4.5 2.1 2.1-4.5 4.5-2.1Z"/></svg>
+            <span>Home</span>
+          </a>
+          <a class="cove-nav-link is-active" href="#" aria-current="page">
+            <svg class="specimen-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.8 18.5c.6-3.1 2.3-4.7 5.2-4.7s4.6 1.6 5.2 4.7M15 6.5a3 3 0 0 1 0 5.8M15.4 14.2c2.6.3 4.1 1.7 4.7 4.3"/></svg>
+            <span>People</span>
+          </a>
+          <a class="cove-nav-link" href="#">
+            <svg class="specimen-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 5.5h7.2L20 13.8 13.8 20 5.5 11.7V5.5h-1Z"/><circle cx="9" cy="9.5" r="1.25"/></svg>
+            <span>Brands</span>
+          </a>
+          <a class="cove-nav-link" href="#">
+            <svg class="specimen-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="7" width="16" height="12" rx="2"/><path d="M9 7V5h6v2M4 12h16"/></svg>
+            <span>Apps</span>
+          </a>
+        </nav>
+
+        <div class="cove-profile-area">
+          <span class="cove-profile-avatar" aria-hidden="true">CP</span>
+          <span class="cove-profile-copy"><strong>Cove Preview</strong><small>Leatherback employee</small></span>
+          <a class="cove-profile-admin" href="#">Admin</a>
+        </div>
+      </header>
+
+      <main class="cove-main" id="main">
+        <div class="cove-page-stack">
+          <header class="cove-workspace-header">
+            <div class="cove-workspace-copy">
+              <span class="cove-kicker">Workspace</span>
+              <h1>Cove design language</h1>
+              <p>The shared visual foundation for every first-party employee service.</p>
+            </div>
+            <div class="cove-workspace-stat"><strong>01</strong><span>coherent system</span></div>
+          </header>
+
+          <section class="cove-panel">
+            <header class="cove-panel-heading">
+              <div><span class="cove-source-label">Foundations</span><h2>Actions and status</h2></div>
+              <p>Navy carries information. Teal identifies the next useful action.</p>
+            </header>
+
+            <div class="specimen-panel-section">
+              <p class="specimen-label">Buttons</p>
+              <div class="specimen-row">
+                <button class="cove-button cove-button--primary">Primary action</button>
+                <button class="cove-button cove-button--secondary">Secondary</button>
+                <button class="cove-button cove-button--quiet">Quiet action</button>
+                <button class="cove-button cove-button--danger">Destructive</button>
+                <button class="cove-button cove-button--primary" disabled>Disabled</button>
+              </div>
+            </div>
+
+            <div class="specimen-panel-section">
+              <p class="specimen-label">Statuses</p>
+              <div class="specimen-row">
+                <span class="cove-status cove-status--success">Complete</span>
+                <span class="cove-status cove-status--warning">Pending</span>
+                <span class="cove-status cove-status--danger">Needs attention</span>
+                <span class="cove-status cove-status--neutral">Draft</span>
+              </div>
+            </div>
+
+            <div class="specimen-panel-section">
+              <p class="specimen-label">Tabs and filters</p>
+              <div class="specimen-stack">
+                <div class="cove-tabs" role="tablist" aria-label="Specimen tabs">
+                  <button class="cove-tab is-active" role="tab" aria-selected="true">Overview</button>
+                  <button class="cove-tab" role="tab" aria-selected="false">Details</button>
+                  <button class="cove-tab" role="tab" aria-selected="false">History</button>
+                </div>
+                <div class="cove-filter-group" aria-label="Specimen filters">
+                  <button class="cove-filter is-active" aria-pressed="true">All</button>
+                  <button class="cove-filter" aria-pressed="false">Current</button>
+                  <button class="cove-filter" aria-pressed="false">Archived</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="cove-panel">
+            <header class="cove-panel-heading">
+              <div><span class="cove-source-label">Components</span><h2>Cards and information</h2></div>
+              <p>Compact hierarchy, quiet borders and no unnecessary decoration.</p>
+            </header>
+
+            <div class="cove-grid cove-grid--3">
+              <article class="cove-card">
+                <div class="specimen-card-top">
+                  <span class="cove-icon-tile" aria-hidden="true">
+                    <svg class="specimen-nav-icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg>
+                  </span>
+                  <div class="specimen-card-copy"><span class="cove-meta-label">Category</span><h3>Standard card</h3><p>Supporting information sits quietly below.</p></div>
+                </div>
+              </article>
+              <article class="cove-card cove-card--interactive" tabindex="0">
+                <div class="specimen-card-top">
+                  <span class="cove-icon-tile" aria-hidden="true">
+                    <svg class="specimen-nav-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M5 20c.8-4.2 3.1-6.3 7-6.3s6.2 2.1 7 6.3"/></svg>
+                  </span>
+                  <div class="specimen-card-copy"><span class="cove-meta-label">Interactive</span><h3>Clickable card</h3><p>Only interactive cards rise on hover.</p></div>
+                </div>
+              </article>
+              <article class="cove-card">
+                <div class="specimen-card-top">
+                  <span class="cove-icon-tile" aria-hidden="true">
+                    <svg class="specimen-nav-icon" viewBox="0 0 24 24"><path d="M12 3.5 19 6v5.2c0 4.1-2.3 7.2-7 9.3-4.7-2.1-7-5.2-7-9.3V6l7-2.5Z"/><path d="m9.3 12 1.7 1.7 3.9-4"/></svg>
+                  </span>
+                  <div class="specimen-card-copy"><span class="cove-meta-label">Secure</span><h3>Trusted surface</h3><p>Use red only for a genuine problem.</p></div>
+                </div>
+              </article>
+            </div>
+
+            <div class="specimen-panel-section">
+              <p class="specimen-label">Definition grid</p>
+              <dl class="cove-definition-grid">
+                <div><dt>Display name</dt><dd>Cove Preview</dd></div>
+                <div><dt>Team</dt><dd>Leatherback Travel</dd></div>
+                <div><dt>Work email</dt><dd>preview@example.test</dd></div>
+                <div><dt>Optional value</dt><dd class="is-empty">Not provided</dd></div>
+              </dl>
+            </div>
+          </section>
+
+          <section class="cove-panel">
+            <header class="cove-panel-heading">
+              <div><span class="cove-source-label">Editable content</span><h2>Form controls</h2></div>
+              <p>Persistent labels, 46px controls and teal focus treatment.</p>
+            </header>
+
+            <form class="specimen-form">
+              <div class="cove-form-grid">
+                <label class="cove-field">
+                  <span class="cove-label">First name</span>
+                  <input class="cove-input" value="Cove" />
+                  <span class="cove-help">Use the name people know you by.</span>
+                </label>
+                <label class="cove-field">
+                  <span class="cove-label">Team</span>
+                  <select class="cove-select"><option>Leatherback Travel</option><option>Operations</option></select>
+                </label>
+                <label class="cove-field is-invalid">
+                  <span class="cove-label">Email</span>
+                  <input class="cove-input" aria-invalid="true" value="not-an-email" />
+                  <span class="cove-field-error">Enter an email address in the correct format.</span>
+                </label>
+                <label class="cove-field">
+                  <span class="cove-label">Optional field <span class="cove-label-optional">Optional</span></span>
+                  <input class="cove-input" placeholder="Add a value" />
+                </label>
+                <label class="cove-field cove-field--wide">
+                  <span class="cove-label">Notes <span class="cove-label-optional">Optional</span></span>
+                  <textarea class="cove-textarea" placeholder="Add useful context"></textarea>
+                </label>
+              </div>
+              <div class="cove-form-actions">
+                <button class="cove-button cove-button--secondary" type="button">Cancel</button>
+                <button class="cove-button cove-button--primary" type="button">Save changes</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="cove-panel">
+            <header class="cove-panel-heading">
+              <div><span class="cove-source-label">Feedback</span><h2>Alerts and empty states</h2></div>
+            </header>
+            <div class="specimen-stack">
+              <div class="cove-alert">
+                <svg class="specimen-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+                <div><strong>Helpful information</strong><p>Use the calm aqua treatment for ordinary guidance.</p></div>
+                <button class="cove-button cove-button--quiet cove-alert-action">View details</button>
+              </div>
+              <div class="cove-alert cove-alert--warning">
+                <svg class="specimen-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 22 20H2L12 3Z"/><path d="M12 9v5M12 17h.01"/></svg>
+                <div><strong>Something needs review</strong><p>Warm sand communicates pending or caution without looking critical.</p></div>
+              </div>
+              <div class="cove-alert cove-alert--danger">
+                <svg class="specimen-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/></svg>
+                <div><strong>We couldn't save the change</strong><p>Red is reserved for real failure or a destructive decision.</p></div>
+              </div>
+              <div class="cove-empty">
+                <span class="cove-empty-icon" aria-hidden="true">
+                  <svg class="specimen-nav-icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg>
+                </span>
+                <strong>Nothing here yet</strong>
+                <p>Keep empty-state copy short, specific and useful.</p>
+                <button class="cove-button cove-button--primary">Primary action</button>
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

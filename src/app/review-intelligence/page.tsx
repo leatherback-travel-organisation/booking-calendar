@@ -1,0 +1,1 @@
+import type {Metadata} from "next";import {ReviewIntelligence} from "@/components/initiatives/review-intelligence";export const metadata:Metadata={title:"Review Intelligence · Leatherback",description:"Company and brand-level customer sentiment intelligence."};export default function Page(){return <ReviewIntelligence/>}
