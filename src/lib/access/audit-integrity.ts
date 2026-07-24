@@ -17,6 +17,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 const ACTION = /^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+$/;
 const METADATA_KEY = /^[a-z][a-z0-9_]{0,63}$/;
 const FORBIDDEN_METADATA_KEY = /(authorization|cookie|credential|password|secret|session|token|api_?key|raw|pii)/i;
+const LEGACY_DELEGATES_EVENT_ID = "b1e43814-2c02-4c99-b6e2-a5cad3c15d9d";
 const outcomes = new Set<AuditEvent["outcome"]>(["success", "denied", "error"]);
 const targetTypes = new Set<NonNullable<AuditEvent["targetType"]>>([
   "user",
@@ -62,11 +63,48 @@ function timestamp(value: unknown): string {
   return parsed.toISOString();
 }
 
-function metadata(value: unknown): Readonly<Record<string, string | number | boolean | null>> {
+function redactKnownLegacyMetadata(
+  value: Readonly<Record<string, unknown>>,
+  action: string,
+  eventId: string,
+): Readonly<Record<string, unknown>> {
+  if (
+    eventId !== LEGACY_DELEGATES_EVENT_ID ||
+    action !== "systems.asset_updated" ||
+    !Object.hasOwn(value, "delegates")
+  ) {
+    return value;
+  }
+
+  const delegates = value.delegates;
+  if (
+    !Array.isArray(delegates) ||
+    delegates.length > 50 ||
+    !delegates.every((delegate) => typeof delegate === "string") ||
+    Object.hasOwn(value, "delegate_count")
+  ) {
+    throw new Error("Audit event legacy delegates metadata is invalid.");
+  }
+
+  const safeMetadata = Object.fromEntries(
+    Object.entries(value).filter(([key]) => key !== "delegates"),
+  );
+  return { ...safeMetadata, delegate_count: delegates.length };
+}
+
+function metadata(
+  value: unknown,
+  action: string,
+  eventId: string,
+): Readonly<Record<string, string | number | boolean | null>> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new Error("Audit event metadata is not an object.");
   }
-  const entries = Object.entries(value);
+  const entries = Object.entries(redactKnownLegacyMetadata(
+    value as Readonly<Record<string, unknown>>,
+    action,
+    eventId,
+  ));
   if (entries.length > 12) throw new Error("Audit event metadata contains too many fields.");
 
   return Object.fromEntries(entries.map(([key, item]) => {
@@ -82,6 +120,7 @@ function metadata(value: unknown): Readonly<Record<string, string | number | boo
 
 export function parseAuditRows(rows: readonly AuditRow[]): readonly AuditFeedEvent[] {
   const events = rows.map((row): AuditFeedEvent => {
+    const eventId = id(row.id, "id");
     const action = text(row.action, "action", 120);
     const outcome = text(row.outcome, "outcome", 16);
     if (!ACTION.test(action)) throw new Error("Audit event action is invalid.");
@@ -108,7 +147,7 @@ export function parseAuditRows(rows: readonly AuditRow[]): readonly AuditFeedEve
     }
 
     return {
-      id: id(row.id, "id"),
+      id: eventId,
       occurredAt: timestamp(row.occurred_at),
       action,
       outcome: outcome as AuditEvent["outcome"],
@@ -120,7 +159,7 @@ export function parseAuditRows(rows: readonly AuditRow[]): readonly AuditFeedEve
       targetType: targetType as AuditEvent["targetType"] | undefined,
       targetId,
       requestId: optionalText(row.request_id, "request_id", 200),
-      metadata: metadata(row.metadata),
+      metadata: metadata(row.metadata, action, eventId),
     };
   });
 

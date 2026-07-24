@@ -64,6 +64,31 @@ test("audit feed rejects secret-shaped or nested metadata", () => {
   assert.throws(() => parseAuditRows([nested]), /metadata field payload is invalid/);
 });
 
+test("audit feed safely summarizes the known legacy delegate list without accepting arbitrary arrays", () => {
+  const historicalAssetUpdate = row();
+  historicalAssetUpdate.id = "b1e43814-2c02-4c99-b6e2-a5cad3c15d9d";
+  historicalAssetUpdate.action = "systems.asset_updated";
+  historicalAssetUpdate.metadata = {
+    source: "system-reconciliation",
+    delegates: ["first historical delegate", "second historical delegate"],
+  };
+  assert.deepEqual(parseAuditRows([historicalAssetUpdate])[0].metadata, {
+    source: "system-reconciliation",
+    delegate_count: 2,
+  });
+
+  const differentAssetUpdate = row();
+  differentAssetUpdate.action = "systems.asset_updated";
+  differentAssetUpdate.metadata = { delegates: ["one", "two"] };
+  assert.throws(() => parseAuditRows([differentAssetUpdate]), /metadata field delegates is invalid/);
+
+  const structuredDelegate = row();
+  structuredDelegate.id = historicalAssetUpdate.id;
+  structuredDelegate.action = "systems.asset_updated";
+  structuredDelegate.metadata = { delegates: [{ name: "nested" }] };
+  assert.throws(() => parseAuditRows([structuredDelegate]), /legacy delegates metadata is invalid/);
+});
+
 test("audit feed rejects incomplete targets and unsafe text", () => {
   const incomplete = row();
   incomplete.target_id = null;
