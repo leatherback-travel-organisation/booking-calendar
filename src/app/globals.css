@@ -2257,10 +2257,6 @@ h1 {
   font-family: var(--font-sans);
 }
 
-.cove-home-shell {
-  background: #ffd9e7;
-}
-
 .cove-topnav {
   width: min(1480px, calc(100% - 48px));
   height: 92px;
