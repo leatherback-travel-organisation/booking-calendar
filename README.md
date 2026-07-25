@@ -44,6 +44,10 @@ Run `npm run db:migrate` after linking the Vercel environment. Run `npm run chec
 
 The systems-only SuperPanel reads GitHub server-side with request caching disabled, so a fresh organisation inventory is requested on every page load or manual refresh. Configure `COVE_GITHUB_ORG=leatherback-travel-organisation` and the Cove GitHub App installation credentials. A dedicated fine-grained `COVE_GITHUB_READ_TOKEN` restricted to read-only repository metadata and checks remains supported as a fallback. Credentials and short-lived installation tokens are never sent to the browser. Vercel deployment telemetry remains a separate, explicitly unconfigured provider until its project mapping and credential policy are approved.
 
+## SlackGPT delivery
+
+Ordinary requests from the bound project Slack channel are checked and published automatically through SlackGPT delivery.
+
 ## Production deployment
 
 Run `npm run deploy:production` from this directory. It always targets the
