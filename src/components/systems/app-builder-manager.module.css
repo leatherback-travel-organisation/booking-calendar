@@ -1,0 +1,141 @@
+.wrap {
+  display: grid;
+  gap: 1.5rem;
+  max-width: 64rem;
+}
+
+.header h1 {
+  font-size: 1.5rem;
+  margin: 0 0 0.5rem;
+}
+
+.header p {
+  margin: 0;
+  color: var(--cove-text-muted, #5b6069);
+  max-width: 46rem;
+}
+
+.form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: end;
+}
+
+.field {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+}
+
+.field input,
+.field select {
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--cove-border, #d4d7dd);
+  border-radius: 0.5rem;
+  min-width: 16rem;
+  font: inherit;
+}
+
+.field select {
+  min-width: 8rem;
+}
+
+.form button {
+  padding: 0.55rem 1.1rem;
+  border-radius: 0.5rem;
+  border: none;
+  background: var(--cove-accent, #14532d);
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.form button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.freshCode {
+  display: grid;
+  gap: 0.25rem;
+  padding: 1rem 1.25rem;
+  border: 1px dashed var(--cove-accent, #14532d);
+  border-radius: 0.75rem;
+  background: var(--cove-surface, #f4f7f4);
+}
+
+.freshCode strong {
+  font-size: 1.4rem;
+  letter-spacing: 0.08em;
+  font-family: ui-monospace, monospace;
+}
+
+.message {
+  margin: 0;
+  color: var(--cove-text-muted, #5b6069);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.caption {
+  text-align: left;
+  color: var(--cove-text-muted, #5b6069);
+  padding-bottom: 0.5rem;
+}
+
+.table th,
+.table td {
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--cove-border, #e3e5ea);
+  vertical-align: top;
+}
+
+.byline {
+  display: block;
+  color: var(--cove-text-muted, #5b6069);
+  font-size: 0.8rem;
+}
+
+.status {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  background: #e8eaee;
+}
+
+.status[data-status="active"] {
+  background: #dcefe2;
+  color: #14532d;
+}
+
+.status[data-status="redeemed"] {
+  background: #e3e8f8;
+  color: #1e3a8a;
+}
+
+.status[data-status="revoked"],
+.status[data-status="expired"] {
+  background: #f3e2e2;
+  color: #7f1d1d;
+}
+
+.revoke {
+  border: 1px solid var(--cove-border, #d4d7dd);
+  background: transparent;
+  border-radius: 0.5rem;
+  padding: 0.3rem 0.8rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.revoke:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
