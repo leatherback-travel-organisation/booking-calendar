@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition, type DragEvent, type FormEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition, type DragEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
   createRecruitmentCandidateAction,
@@ -91,8 +91,11 @@ export function RecruitmentWorkspaceView({ workspace }: { workspace: Recruitment
   const [roleMenuOpen, setRoleMenuOpen] = useState(false);
   const [columnLimits, setColumnLimits] = useState<Record<string, number>>({});
   const [quickCandidate, setQuickCandidate] = useState<RecruitmentCandidate | null>(null);
+  const [quickPanelPosition, setQuickPanelPosition] = useState({ top: 8, left: 8 });
   const rolePickerRef = useRef<HTMLDivElement>(null);
   const boardRef = useRef<HTMLDivElement>(null);
+  const quickPanelRef = useRef<HTMLElement>(null);
+  const quickPanelCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     function closeRoleMenu(event: MouseEvent) {
@@ -101,6 +104,17 @@ export function RecruitmentWorkspaceView({ workspace }: { workspace: Recruitment
     document.addEventListener("mousedown", closeRoleMenu);
     return () => document.removeEventListener("mousedown", closeRoleMenu);
   }, []);
+
+  useEffect(() => () => {
+    if (quickPanelCloseTimer.current) clearTimeout(quickPanelCloseTimer.current);
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!quickCandidate || !quickPanelRef.current) return;
+    const panel = quickPanelRef.current.getBoundingClientRect();
+    const top = Math.max(8, Math.min(quickPanelPosition.top, window.innerHeight - panel.height - 8));
+    if (top !== quickPanelPosition.top) setQuickPanelPosition((position) => ({ ...position, top }));
+  }, [quickCandidate, quickPanelPosition.top]);
 
   const candidates = candidateState.source === workspace.candidates ? candidateState.value : workspace.candidates;
 
@@ -141,6 +155,7 @@ export function RecruitmentWorkspaceView({ workspace }: { workspace: Recruitment
     const previousStatus = candidate.status;
     updateLocalCandidates((current) => current.map((item) => item.id === candidate.id ? { ...item, status } : item));
     setSelectedCandidate((current) => current?.id === candidate.id ? { ...current, status } : current);
+    setQuickCandidate((current) => current?.id === candidate.id ? { ...current, status } : current);
     setSavingCandidateIds((current) => new Set(current).add(candidate.id));
     startTransition(async () => {
       const result = await updateRecruitmentCandidateAction({ id: candidate.id, status, notes: candidate.notes ?? "" });
@@ -152,6 +167,7 @@ export function RecruitmentWorkspaceView({ workspace }: { workspace: Recruitment
       if (!result.ok) {
         updateLocalCandidates((current) => current.map((item) => item.id === candidate.id ? { ...item, status: previousStatus } : item));
         setSelectedCandidate((current) => current?.id === candidate.id ? { ...current, status: previousStatus } : current);
+        setQuickCandidate((current) => current?.id === candidate.id ? { ...current, status: previousStatus } : current);
       }
       finish(result, undefined, false);
     });
@@ -170,6 +186,26 @@ export function RecruitmentWorkspaceView({ workspace }: { workspace: Recruitment
     const board = boardRef.current;
     if (!board) return;
     board.scrollBy({ left: direction * Math.max(320, board.clientWidth * .8), behavior: "smooth" });
+  }
+
+  function showQuickPanel(candidate: RecruitmentCandidate, card: HTMLElement) {
+    if (quickPanelCloseTimer.current) clearTimeout(quickPanelCloseTimer.current);
+    const rect = card.getBoundingClientRect();
+    const panelWidth = Math.min(360, window.innerWidth - 16);
+    const left = rect.right + 8 + panelWidth <= window.innerWidth
+      ? rect.right + 8
+      : Math.max(8, rect.left - panelWidth - 8);
+    setQuickPanelPosition({ top: Math.max(8, rect.top), left });
+    setQuickCandidate(candidate);
+  }
+
+  function keepQuickPanelOpen() {
+    if (quickPanelCloseTimer.current) clearTimeout(quickPanelCloseTimer.current);
+  }
+
+  function scheduleQuickPanelClose() {
+    if (quickPanelCloseTimer.current) clearTimeout(quickPanelCloseTimer.current);
+    quickPanelCloseTimer.current = setTimeout(() => setQuickCandidate(null), 140);
   }
 
   function submitCandidateUpdate(event: FormEvent<HTMLFormElement>) {
@@ -315,7 +351,7 @@ export function RecruitmentWorkspaceView({ workspace }: { workspace: Recruitment
                   {displayedCandidates.map((candidate) => {
                     const résumé = candidate.attachments.find((attachment) => attachment.previewUrl) ?? candidate.attachments[0];
                     const saving = savingCandidateIds.has(candidate.id);
-                    return <article key={candidate.id} className={`${styles.candidateCard} ${cardDensity === "compact" ? styles.compactCard : styles.resumeCard} ${dragging === candidate.id ? styles.dragging : ""} ${saving ? styles.saving : ""}`} aria-busy={saving} onMouseEnter={() => setQuickCandidate(candidate)}>
+                    return <article key={candidate.id} className={`${styles.candidateCard} ${cardDensity === "compact" ? styles.compactCard : styles.resumeCard} ${dragging === candidate.id ? styles.dragging : ""} ${saving ? styles.saving : ""}`} aria-busy={saving} onMouseEnter={(event) => showQuickPanel(candidate, event.currentTarget)} onMouseLeave={scheduleQuickPanelClose}>
                       <button type="button" className={styles.cardButton} draggable={workspace.writesEnabled && !saving} onDragStart={(event) => { setDragging(candidate.id); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/recruitment-candidate", candidate.id); }} onDragEnd={() => { setDragging(null); setDragOverColumn(null); }} onClick={() => { setSelectedCandidate(candidate); setEditingInterviewNotes(false); }} title={workspace.writesEnabled ? "Drag to another phase or click to open" : "Open candidate"}>
                         <span className={styles.dragCue} aria-hidden="true"><i/><i/><i/><i/><i/><i/></span>
                         {cardDensity === "resume" && résumé && <span className={`${styles.documentPreview} ${résumé.previewUrl ? styles.documentPreviewImage : ""}`} style={résumé.previewUrl ? { backgroundImage: `url(${résumé.previewUrl})` } : undefined} aria-hidden="true"><span><Icon name="file"/><i/><i/><i/><i/></span><small>{résumé.filename}</small></span>}
@@ -385,10 +421,19 @@ export function RecruitmentWorkspaceView({ workspace }: { workspace: Recruitment
         </section>
       )}
 
-      {quickCandidate && !selectedCandidate && view === "pipeline" && <aside className={styles.quickPanel} aria-label={`Quick review for ${quickCandidate.name}`}>
+      {quickCandidate && !selectedCandidate && view === "pipeline" && <aside ref={quickPanelRef} className={styles.quickPanel} style={quickPanelPosition} aria-label={`Quick review for ${quickCandidate.name}`} onMouseEnter={keepQuickPanelOpen} onMouseLeave={scheduleQuickPanelClose}>
         <header><div><span>Quick review</span><h2>{quickCandidate.name}</h2><p>{quickCandidate.roles.join(" · ") || "Role not assigned"}</p></div><button type="button" onClick={() => setQuickCandidate(null)} aria-label="Close quick review"><Icon name="close"/></button></header>
-        <dl><div><dt>Stage</dt><dd>{quickCandidate.status}</dd></div><div><dt>Location</dt><dd>{quickCandidate.location || "Not added"}</dd></div><div><dt>Files</dt><dd>{quickCandidate.attachments.length || "None"}</dd></div></dl>
-        <div className={styles.quickActions}><button type="button" className={styles.primaryButton} onClick={() => { setSelectedCandidate(quickCandidate); setEditingInterviewNotes(false); }}>Open full record</button><button type="button" className={styles.secondaryButton} disabled={!workspace.writesEnabled} onClick={() => toggleHighPotential(quickCandidate)}><Icon name="pin"/>{quickCandidate.tags?.includes("High Potential") ? "Remove High Potential" : "Tag High Potential"}</button>{quickCandidate.email && <><a className={styles.secondaryButton} href={`mailto:${quickCandidate.email}`}><Icon name="mail"/>Write one-off email</a><button type="button" className={styles.secondaryButton} onClick={() => copyEmail(quickCandidate.email)}><Icon name="copy"/>Copy email</button></>}</div>
+        <div className={styles.quickActions}>
+          <button type="button" className={styles.secondaryButton} disabled={!workspace.writesEnabled} onClick={() => toggleHighPotential(quickCandidate)}><Icon name="pin"/>{quickCandidate.tags?.includes("High Potential") ? "Remove High Potential" : "Tag High Potential"}</button>
+          <label className={styles.quickMove}><span>Move</span><select aria-label="Move candidate to stage" value={quickCandidate.status} disabled={!workspace.writesEnabled || savingCandidateIds.has(quickCandidate.id)} onChange={(event) => moveCandidate(quickCandidate, event.target.value as RecruitmentStatus)}>{recruitmentStatuses.map((status) => <option key={status}>{status}</option>)}</select></label>
+          {quickCandidate.email && <a className={styles.primaryButton} href={`mailto:${quickCandidate.email}`}><Icon name="mail"/>Message</a>}
+        </div>
+        <section className={styles.quickSection}><h3>Résumé</h3>{quickCandidate.attachments[0] ? <a className={styles.quickFile} href={quickCandidate.attachments[0].url} target="_blank" rel="noreferrer"><Icon name="file"/><span>{quickCandidate.attachments[0].filename}</span><Icon name="arrow"/></a> : <p>No résumé attached.</p>}</section>
+        <section className={styles.quickSection}><h3>Notes</h3><p>{quickCandidate.notes || "No candidate notes yet."}</p></section>
+        <section className={styles.quickSection}><h3>Emails</h3>{quickCandidate.email ? <div className={styles.quickEmail}><a href={`mailto:${quickCandidate.email}`}>{quickCandidate.email}</a><button type="button" onClick={() => copyEmail(quickCandidate.email)} aria-label="Copy email"><Icon name="copy"/></button></div> : <p>No email address added.</p>}</section>
+        <section className={styles.quickSection}><h3>Interview history</h3>{quickCandidate.firstInterviewNotes || quickCandidate.secondInterviewNotes ? <div className={styles.quickHistory}>{quickCandidate.firstInterviewNotes && <div><strong>First interview</strong><p>{quickCandidate.firstInterviewNotes}</p></div>}{quickCandidate.secondInterviewNotes && <div><strong>Second interview</strong><p>{quickCandidate.secondInterviewNotes}</p></div>}</div> : <p>No interview history yet.</p>}</section>
+        <section className={styles.quickSection}><h3>Attachments</h3>{quickCandidate.attachments.length ? <div className={styles.quickFiles}>{quickCandidate.attachments.map((file) => <a key={file.id} href={file.url} target="_blank" rel="noreferrer"><Icon name="file"/><span>{file.filename}</span></a>)}</div> : <p>No attachments.</p>}</section>
+        <button type="button" className={styles.quickOpen} onClick={() => { setSelectedCandidate(quickCandidate); setEditingInterviewNotes(false); }}>Open full record <Icon name="arrow"/></button>
       </aside>}
 
       {notice && <div className={`${styles.toast} ${notice.ok ? styles.toastOk : styles.toastError}`} role="status"><span>{notice.message}</span><button type="button" onClick={() => setNotice(null)} aria-label="Dismiss"><Icon name="close"/></button></div>}
