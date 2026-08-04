@@ -1,3 +1,7 @@
+:global(.cove-recruitment-shell) {
+  background: #eee6fa;
+}
+
 .workspace {
   --navy: #071b49;
   --ink: #102a4f;
