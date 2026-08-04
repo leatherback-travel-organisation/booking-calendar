@@ -28,11 +28,9 @@
 .navGlyph.reimbursement, .recordGlyph.reimbursement, .detailGlyph.reimbursement { color: #bd4b55; background: #fbe9ea; }
 .navGlyph.travel_credit, .recordGlyph.travel_credit, .detailGlyph.travel_credit { color: #5740c5; background: #eeeafb; }
 
-.notice, .integrityWarning { min-height: 40px; padding: 9px 12px; border-radius: 9px; font-size: 12px; line-height: 1.4; }
-.notice { border: 1px solid #bce1dd; color: #195f5a; background: #f1fbf9; display: flex; align-items: center; gap: 9px; }
+.notice { min-height: 40px; padding: 9px 12px; border: 1px solid #bce1dd; border-radius: 9px; color: #195f5a; background: #f1fbf9; display: flex; align-items: center; gap: 9px; font-size: 12px; line-height: 1.4; }
 .notice > span { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 0 3px rgba(0,138,132,.1); }
 .notice button { margin-left: auto; border: 0; color: #718096; background: transparent; cursor: pointer; font-size: 18px; }
-.integrityWarning { border: 1px solid #efd5a8; color: #785a24; background: #fff9ef; }
 
 .actionPanel { min-height: 184px; padding: 20px 22px; border: 1px solid #c9dddb; border-radius: 13px; background: linear-gradient(140deg, #f2fbf9, #fff 48%); box-shadow: 0 7px 22px rgba(18,67,72,.045); display: grid; grid-template-columns: minmax(215px, .5fr) minmax(400px, 1.5fr); align-items: center; gap: 26px; animation: reveal .2s ease both; }
 .actionIntro h2, .tripFormIntro h2 { margin: 0 0 6px; color: var(--navy); font-size: 22px; letter-spacing: -.035em; }
