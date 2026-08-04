@@ -223,25 +223,29 @@ async function readCandidatePageFromAirtable(baseId: string, tableId: string, of
   throw new Error("Recruitment source retry loop ended unexpectedly.");
 }
 
-const readCandidatePage = unstable_cache(
-  readCandidatePageFromAirtable,
-  ["recruitment-candidate-page-v1"],
+async function readAllHiringCandidates() {
+  const config = settings();
+  if (!config.token) return null;
+
+  const records = await collectAllRecruitmentRecords((offset) =>
+    readCandidatePageFromAirtable(config.baseId, config.tableId, offset ?? ""),
+  );
+
+  return { records, truncated: false };
+}
+
+// Airtable pagination offsets are temporary cursors. Caching each page kept
+// those cursors after Airtable had invalidated them, causing later reads to
+// fail with 422. Cache only the completed snapshot so every refresh walks a
+// fresh cursor chain from page one.
+const readHiringCandidates = unstable_cache(
+  readAllHiringCandidates,
+  ["recruitment-candidate-snapshot-v2"],
   {
     revalidate: RECRUITMENT_CANDIDATES_CACHE_SECONDS,
     tags: [RECRUITMENT_CANDIDATES_CACHE_TAG],
   },
 );
-
-async function readHiringCandidates() {
-  const config = settings();
-  if (!config.token) return null;
-
-  const records = await collectAllRecruitmentRecords((offset) =>
-    readCandidatePage(config.baseId, config.tableId, offset ?? ""),
-  );
-
-  return { records, truncated: false };
-}
 
 async function readRoleConfigurations(): Promise<RecruitmentRole[]> {
   if (!databaseConfigured()) return [];
