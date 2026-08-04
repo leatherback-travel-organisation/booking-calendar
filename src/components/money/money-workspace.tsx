@@ -211,14 +211,12 @@ function TravelRequestForm({ onCreated }: { onCreated: (record: MoneyRecord, per
 export function MoneyWorkspace({
   initialRecords,
   origin,
-  integrityIssues,
   displayName,
   canManage,
   initialView,
 }: {
   initialRecords: MoneyRecord[];
   origin: DataOrigin;
-  integrityIssues: number;
   displayName: string;
   canManage: boolean;
   initialView?: string;
@@ -269,7 +267,6 @@ export function MoneyWorkspace({
       </nav>
 
       {notice && <div className={styles.notice} role="status"><span />{notice}<button type="button" onClick={() => setNotice(null)} aria-label="Dismiss message">×</button></div>}
-      {integrityIssues > 0 && <div className={styles.integrityWarning} role="status">Cove omitted {integrityIssues} source {integrityIssues === 1 ? "record" : "records"} because the source data could not be verified.</div>}
 
       {activeKind === "travel_credit" ? (
         <section className={styles.travelWorkspace} aria-label="Travel credits">

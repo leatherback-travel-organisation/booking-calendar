@@ -26,7 +26,6 @@ export default async function MoneyPage({ searchParams }: { searchParams: Promis
       <MoneyWorkspace
         initialRecords={collection.items}
         origin={collection.origin}
-        integrityIssues={collection.integrityIssues}
         displayName={identity.displayName}
         canManage={canManage}
         initialView={params.view ?? params.new}
