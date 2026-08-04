@@ -1,5 +1,5 @@
 :global(.cove-recruitment-shell) {
-  background: #000;
+  background: #f5f8f8;
 }
 
 .workspace {
@@ -15,6 +15,45 @@
   gap: 8px;
   color: var(--ink);
   overflow: clip;
+}
+
+.deeGraphic {
+  min-height: 154px;
+  padding: 18px clamp(22px, 5vw, 72px);
+  border-radius: 18px;
+  color: #fff;
+  background:
+    radial-gradient(circle at 11% 18%, rgba(255, 199, 98, .8) 0 7px, transparent 8px),
+    radial-gradient(circle at 89% 76%, rgba(103, 222, 214, .7) 0 9px, transparent 10px),
+    linear-gradient(112deg, #071b49 0%, #084866 56%, #008a84 100%);
+  box-shadow: 0 12px 28px rgba(7, 51, 73, .16);
+  display: grid;
+  place-items: center;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  animation: arrive .45s cubic-bezier(.2,.75,.2,1) both;
+}
+
+.deeGraphic::before,
+.deeGraphic::after {
+  content: "♥";
+  position: absolute;
+  z-index: -1;
+  color: rgba(255, 199, 98, .18);
+  font-size: 150px;
+  line-height: 1;
+  transform: rotate(-12deg);
+}
+.deeGraphic::before { left: 5%; bottom: -58px; }
+.deeGraphic::after { right: 4%; top: -54px; color: rgba(103, 222, 214, .17); transform: rotate(14deg); }
+.deeGraphic span {
+  font-size: clamp(48px, 8vw, 108px);
+  font-weight: 500;
+  letter-spacing: -.07em;
+  line-height: .85;
+  text-align: center;
+  text-shadow: 0 6px 20px rgba(1, 20, 44, .2);
 }
 
 .hero {

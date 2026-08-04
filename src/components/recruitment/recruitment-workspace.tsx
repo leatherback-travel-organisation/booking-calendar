@@ -268,6 +268,9 @@ export function RecruitmentWorkspaceView({ workspace }: { workspace: Recruitment
 
   return (
     <div className={styles.workspace}>
+      <section className={styles.deeGraphic} aria-label="We love Dee">
+        <span aria-hidden="true">WE LOVE DEE</span>
+      </section>
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
           <span>People &amp; Operations · Internal</span>
