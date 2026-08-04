@@ -165,6 +165,41 @@ async function githubTextFile(root: string, path: string, token: string): Promis
   return Buffer.from(payload.content.replaceAll("\n", ""), "base64").toString("utf8");
 }
 
+export async function listGitHubRepositoryTextFiles(repositoryPath: string) {
+  const repository = repositoryParts(repositoryPath);
+  const token = await githubInstallationToken(repository);
+  const root = `/repos/${encodeURIComponent(repository.owner)}/${encodeURIComponent(repository.name)}`;
+  const metadata = await githubRequest<{ default_branch?: unknown }>(root, token);
+  if (typeof metadata.default_branch !== "string" || !metadata.default_branch) {
+    throw new ProviderOperationError("github", "GitHub did not return the repository's default branch.");
+  }
+  const tree = await githubRequest<{ tree?: unknown; truncated?: unknown }>(
+    `${root}/git/trees/${encodeURIComponent(metadata.default_branch)}?recursive=1`, token,
+  );
+  if (!Array.isArray(tree.tree) || tree.truncated === true) {
+    throw new ProviderOperationError("github", "The repository is too large to map safely in one App Builder request.");
+  }
+  return tree.tree
+    .filter((item): item is { path: string; type: string; size?: number } => {
+      if (!item || typeof item !== "object") return false;
+      const row = item as Record<string, unknown>;
+      return row.type === "blob" && typeof row.path === "string" && typeof row.size === "number" && row.size <= 300_000;
+    })
+    .map((item) => ({ path: item.path, size: item.size ?? 0 }))
+    .filter((item) => !/(^|\/)(node_modules|\.next|dist|coverage)\//.test(item.path))
+    .slice(0, 4_000);
+}
+
+export async function readGitHubRepositoryTextFile(repositoryPath: string, path: string) {
+  const repository = repositoryParts(repositoryPath);
+  const token = await githubInstallationToken(repository);
+  const root = `/repos/${encodeURIComponent(repository.owner)}/${encodeURIComponent(repository.name)}`;
+  const content = await githubTextFile(root, path, token);
+  if (content === null) throw new ProviderOperationError("github", `${path} does not exist in the bound repository.`);
+  if (Buffer.byteLength(content, "utf8") > 300_000) throw new ProviderOperationError("github", `${path} is too large for App Builder.`);
+  return content;
+}
+
 export type GitHubNextApplicationSource = {
   readonly packageJson: string;
   readonly packageLockJson: string | null;
@@ -302,13 +337,14 @@ export type PullRequestChecks = {
   readonly failing: number;
   readonly pending: number;
   readonly headSha: string;
+  readonly mergeCommitSha?: string;
 };
 
 export async function getPullRequestChecks(repositoryPath: string, pullNumber: number): Promise<PullRequestChecks> {
   const repository = repositoryParts(repositoryPath);
   const token = await githubInstallationToken(repository);
   const root = `/repos/${encodeURIComponent(repository.owner)}/${encodeURIComponent(repository.name)}`;
-  const pull = await githubRequest<{ state?: unknown; merged?: unknown; head?: { sha?: unknown } }>(`${root}/pulls/${pullNumber}`, token);
+  const pull = await githubRequest<{ state?: unknown; merged?: unknown; merge_commit_sha?: unknown; head?: { sha?: unknown } }>(`${root}/pulls/${pullNumber}`, token);
   if ((pull.state !== "open" && pull.state !== "closed") || typeof pull.merged !== "boolean" || typeof pull.head?.sha !== "string") {
     throw new ProviderOperationError("github", "GitHub returned an invalid pull request status.");
   }
@@ -318,7 +354,10 @@ export async function getPullRequestChecks(repositoryPath: string, pullNumber: n
   const pending = conclusions.filter((check) => check.status !== "completed").length;
   const passing = conclusions.filter((check) => check.status === "completed" && ["success", "neutral", "skipped"].includes(String(check.conclusion))).length;
   const failing = conclusions.length - pending - passing;
-  return { state: pull.state, merged: pull.merged, total: conclusions.length, passing, failing, pending, headSha: pull.head.sha };
+  const mergeCommitSha = typeof pull.merge_commit_sha === "string" && /^[0-9a-f]{40,64}$/.test(pull.merge_commit_sha)
+    ? pull.merge_commit_sha
+    : undefined;
+  return { state: pull.state, merged: pull.merged, total: conclusions.length, passing, failing, pending, headSha: pull.head.sha, mergeCommitSha };
 }
 
 export async function approveAndMergePullRequest(input: {
@@ -329,19 +368,24 @@ export async function approveAndMergePullRequest(input: {
   const repository = repositoryParts(input.repositoryPath);
   const token = await githubInstallationToken(repository);
   const root = `/repos/${encodeURIComponent(repository.owner)}/${encodeURIComponent(repository.name)}`;
-  const pull = await githubRequest<{ node_id?: unknown }>(`${root}/pulls/${input.pullNumber}`, token);
+  const pull = await githubRequest<{ node_id?: unknown; draft?: unknown; merged?: unknown; merge_commit_sha?: unknown }>(`${root}/pulls/${input.pullNumber}`, token);
   if (typeof pull.node_id !== "string" || !pull.node_id) {
     throw new ProviderOperationError("github", "GitHub did not return the pull request approval identifier.");
   }
-  const ready = await githubRequest<{ data?: unknown; errors?: unknown }>("/graphql", token, {
-    method: "POST",
-    body: JSON.stringify({
-      query: "mutation MarkReady($id: ID!) { markPullRequestReadyForReview(input: {pullRequestId: $id}) { pullRequest { id } } }",
-      variables: { id: pull.node_id },
-    }),
-  });
-  if (Array.isArray(ready.errors) && ready.errors.length > 0) {
-    throw new ProviderOperationError("github", "GitHub could not move the approved pull request out of draft.");
+  if (pull.merged === true && typeof pull.merge_commit_sha === "string" && /^[0-9a-f]{40,64}$/.test(pull.merge_commit_sha)) {
+    return { commitSha: pull.merge_commit_sha };
+  }
+  if (pull.draft === true) {
+    const ready = await githubRequest<{ data?: unknown; errors?: unknown }>("/graphql", token, {
+      method: "POST",
+      body: JSON.stringify({
+        query: "mutation MarkReady($id: ID!) { markPullRequestReadyForReview(input: {pullRequestId: $id}) { pullRequest { id } } }",
+        variables: { id: pull.node_id },
+      }),
+    });
+    if (Array.isArray(ready.errors) && ready.errors.length > 0) {
+      throw new ProviderOperationError("github", "GitHub could not move the approved pull request out of draft.");
+    }
   }
   const merged = await githubRequest<{ merged?: unknown; message?: unknown; sha?: unknown }>(`${root}/pulls/${input.pullNumber}/merge`, token, {
     method: "PUT",
@@ -352,6 +396,100 @@ export async function approveAndMergePullRequest(input: {
     throw new ProviderOperationError("github", "GitHub merged the pull request without returning the deployed commit identifier.");
   }
   return { commitSha: merged.sha };
+}
+
+export async function prepareGitHubRevertPullRequest(input: {
+  readonly repositoryPath: string;
+  readonly originalPullNumber: number;
+  readonly branch: string;
+  readonly title: string;
+  readonly body: string;
+}): Promise<PreparedPullRequest> {
+  const repository = repositoryParts(input.repositoryPath);
+  const token = await githubInstallationToken(repository);
+  const root = `/repos/${encodeURIComponent(repository.owner)}/${encodeURIComponent(repository.name)}`;
+  const original = await githubRequest<{
+    base?: { ref?: unknown; sha?: unknown };
+    head?: { sha?: unknown };
+    merged?: unknown;
+  }>(`${root}/pulls/${input.originalPullNumber}`, token);
+  if (original.merged !== true || typeof original.base?.ref !== "string" || typeof original.base?.sha !== "string" || typeof original.head?.sha !== "string") {
+    throw new ProviderOperationError("github", "GitHub did not return the original change baseline.");
+  }
+  const baseSha = original.base.sha;
+  const headSha = original.head.sha;
+  const files = await githubRequest<Array<{ filename?: unknown }>>(
+    `${root}/pulls/${input.originalPullNumber}/files?per_page=100`, token,
+  );
+  const paths = files.map((file) => typeof file.filename === "string" ? file.filename : "").filter(Boolean);
+  if (!paths.length || paths.length >= 100) {
+    throw new ProviderOperationError("github", "The original change is too broad to reverse automatically.");
+  }
+
+  const currentRef = await githubRequest<{ object?: { sha?: unknown } }>(
+    `${root}/git/ref/heads/${encodeURIComponent(original.base.ref)}`, token,
+  );
+  const currentSha = currentRef.object?.sha;
+  if (typeof currentSha !== "string") throw new ProviderOperationError("github", "GitHub did not return the current production branch.");
+  const currentCommit = await githubRequest<{ tree?: { sha?: unknown } }>(`${root}/git/commits/${encodeURIComponent(currentSha)}`, token);
+  if (typeof currentCommit.tree?.sha !== "string") throw new ProviderOperationError("github", "GitHub did not return the current production tree.");
+
+  async function contentSha(path: string, ref: string) {
+    const encodedPath = path.split("/").map(encodeURIComponent).join("/");
+    const response = await fetch(`${GITHUB_API}${root}/contents/${encodedPath}?ref=${encodeURIComponent(ref)}`, {
+      headers: { Accept: "application/vnd.github+json", Authorization: `Bearer ${token}`, "X-GitHub-Api-Version": GITHUB_API_VERSION },
+      cache: "no-store",
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (response.status === 404) return null;
+    const payload = await response.json().catch(() => null) as { sha?: unknown } | null;
+    if (!response.ok || typeof payload?.sha !== "string") {
+      throw new ProviderOperationError("github", `GitHub could not inspect ${path} for a safe reversal.`);
+    }
+    return payload.sha;
+  }
+
+  const treeEntries = await Promise.all(paths.map(async (path) => {
+    const [expectedCurrentSha, currentContentSha, previousSha] = await Promise.all([
+      contentSha(path, headSha),
+      contentSha(path, currentSha),
+      contentSha(path, baseSha),
+    ]);
+    if (expectedCurrentSha !== currentContentSha) {
+      throw new ProviderOperationError("github", `${path} changed again after this update, so Cove stopped the automatic reversal safely.`);
+    }
+    return { path, mode: "100644", type: "blob", sha: previousSha };
+  }));
+
+  const tree = await githubRequest<{ sha?: unknown }>(`${root}/git/trees`, token, {
+    method: "POST",
+    body: JSON.stringify({ base_tree: currentCommit.tree.sha, tree: treeEntries }),
+  });
+  if (typeof tree.sha !== "string") throw new ProviderOperationError("github", "GitHub did not prepare the reversal tree.");
+  const commit = await githubRequest<{ sha?: unknown }>(`${root}/git/commits`, token, {
+    method: "POST",
+    body: JSON.stringify({ message: input.title, tree: tree.sha, parents: [currentSha] }),
+  });
+  if (typeof commit.sha !== "string") throw new ProviderOperationError("github", "GitHub did not create the reversal commit.");
+  await githubRequest(`${root}/git/refs`, token, {
+    method: "POST",
+    body: JSON.stringify({ ref: `refs/heads/${input.branch}`, sha: commit.sha }),
+  });
+  const pull = await githubRequest<{ number?: unknown; node_id?: unknown; html_url?: unknown }>(`${root}/pulls`, token, {
+    method: "POST",
+    body: JSON.stringify({ title: input.title, head: input.branch, base: original.base.ref, body: input.body, draft: true }),
+  });
+  if (typeof pull.number !== "number" || typeof pull.node_id !== "string" || typeof pull.html_url !== "string") {
+    throw new ProviderOperationError("github", "GitHub created an incomplete reversal record.");
+  }
+  return {
+    repositoryId: pull.node_id,
+    number: pull.number,
+    url: pull.html_url,
+    branch: input.branch,
+    baseBranch: original.base.ref,
+    commitSha: commit.sha,
+  };
 }
 
 export async function registerClerkSatelliteDomain(hostname: string) {

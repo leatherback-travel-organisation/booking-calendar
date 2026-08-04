@@ -1,5 +1,6 @@
 import { clerkMiddleware } from "@clerk/nextjs/server";
 import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
+import { canonicalProductionUrl } from "@/lib/identity/canonical-origin";
 import { isPreviewIdentityEnabled } from "@/lib/identity/mode";
 import { isPublicIdentityRoute } from "@/lib/identity/route-policy";
 
@@ -14,6 +15,9 @@ const withClerk = clerkMiddleware(async (auth, request) => {
 });
 
 export async function proxy(request: NextRequest, event: NextFetchEvent) {
+  const canonicalTarget = canonicalProductionUrl(request.url);
+  if (canonicalTarget) return NextResponse.redirect(canonicalTarget, 308);
+
   if (isPreviewIdentityEnabled()) return NextResponse.next();
 
   if (!process.env.CLERK_SECRET_KEY || !process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {

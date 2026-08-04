@@ -212,6 +212,9 @@
 .lavender { --stage: #9b86d7; }
 .purple { --stage: #8c6ec9; }
 .peach { --stage: #df976e; }
+.review { --stage: #b78340; }
+.reference { --stage: #398d74; }
+.talent { --stage: #397da4; }
 
 .cardList { min-height: 0; padding: 8px 4px 2px 0; overflow-y: scroll; scrollbar-gutter: stable; scrollbar-color: #91aaa6 #e3ecea; scrollbar-width: auto; display: grid; align-content: start; gap: 7px; }
 .cardList::-webkit-scrollbar { width: 10px; }
@@ -258,6 +261,8 @@
 .cardMeta { margin-top: 8px; color: #879693; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11px; }
 .cardMeta span { display: inline-flex; align-items: center; gap: 4px; }
 .cardMeta svg { width: 12px; height: 12px; }
+.cardTags { margin-top: 7px; display: flex; flex-wrap: wrap; gap: 4px; }
+.cardTags span { padding: 3px 6px; border-radius: 999px; color: #80521d; background: #fff2d8; font-size: 11px; font-weight: 500; }
 .emptyColumn { min-height: 88px; border: 1px dashed #d7e1e2; border-radius: 10px; color: #9aa4af; display: grid; place-items: center; align-content: center; text-align: center; }
 .emptyColumn span { color: #7c8a9a; font-size: 12px; font-weight: 500; }
 .emptyColumn p { margin: 4px 0 0; font-size: 11px; }
@@ -339,6 +344,7 @@
 
 .overlay { position: fixed; z-index: 200; inset: 0; padding: 18px; background: rgba(4, 22, 45, .46); backdrop-filter: blur(8px); display: flex; justify-content: flex-end; animation: fade .18s ease both; }
 .drawer { width: min(560px, 100%); height: 100%; padding: 25px; border-radius: 22px; background: #fbfdfd; box-shadow: -18px 0 60px rgba(1,20,40,.2); overflow-y: auto; animation: drawerIn .25s cubic-bezier(.2,.75,.2,1) both; }
+.record { width: min(1240px, 100%); height: 100%; margin: auto; padding: 25px; border-radius: 22px; background: #fbfdfd; box-shadow: 0 28px 75px rgba(1,20,40,.24); overflow-y: auto; animation: modalIn .24s cubic-bezier(.2,.75,.2,1) both; }
 .modal { width: min(700px, 100%); max-height: calc(100vh - 36px); margin: auto; padding: 25px; border-radius: 22px; background: #fbfdfd; box-shadow: 0 28px 75px rgba(1,20,40,.24); overflow-y: auto; animation: modalIn .24s cubic-bezier(.2,.75,.2,1) both; }
 .roleModal { width: min(820px, 100%); }
 .modalHeader { padding-bottom: 18px; border-bottom: 1px solid #e6eded; display: flex; justify-content: space-between; gap: 20px; }
@@ -356,6 +362,8 @@
 .candidateSummary small { color: #8190a0; font-size: 11px; }
 .contactRow { padding: 14px 4px; border-bottom: 1px solid #e6eded; display: flex; justify-content: space-between; gap: 15px; color: #64758a; font-size: 12px; }
 .contactRow a { color: #007972; font-weight: 500; }
+.contactRow button { padding: 3px 6px; border: 0; border-radius: 6px; color: #08766f; background: #e7f5f2; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; font: inherit; font-size: 11px; font-weight: 500; }
+.contactRow button svg { width: 12px; height: 12px; }
 .detailList { margin: 14px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .detailList div { padding: 11px; border: 1px solid #e2e9ea; border-radius: 10px; background: white; }
 .detailList dt { color: #919ba8; font-size: 11px; font-weight: 500; text-transform: uppercase; }
@@ -436,6 +444,73 @@
 .toast button { width: 27px; height: 27px; padding: 6px; border: 0; border-radius: 7px; color: white; background: rgba(255,255,255,.12); cursor: pointer; }
 .toast svg { width: 14px; height: 14px; }
 
+.quickPanel { width: min(310px, calc(100vw - 36px)); padding: 16px; border: 1px solid #cadedd; border-radius: 14px; position: fixed; z-index: 150; top: 94px; right: 20px; color: #1b3856; background: rgba(255,255,255,.98); box-shadow: 0 18px 46px rgba(8,43,61,.18); animation: modalIn .18s ease both; }
+.quickPanel > header { display: flex; justify-content: space-between; gap: 12px; }
+.quickPanel > header span { color: #007e77; font-size: 11px; font-weight: 500; letter-spacing: .09em; text-transform: uppercase; }
+.quickPanel h2 { margin: 4px 0 2px; color: #102c51; font-size: 17px; letter-spacing: -.025em; }
+.quickPanel p { margin: 0; color: #77879a; font-size: 11px; line-height: 1.4; }
+.quickPanel > header > button { width: 28px; height: 28px; padding: 6px; border: 1px solid #dce7e7; border-radius: 7px; color: #60748a; background: white; cursor: pointer; }
+.quickPanel > header > button svg { width: 14px; height: 14px; }
+.quickPanel dl { margin: 14px 0; padding: 10px 0; border-top: 1px solid #e6eeee; border-bottom: 1px solid #e6eeee; display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; }
+.quickPanel dt { color: #8b98a5; font-size: 11px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; }
+.quickPanel dd { margin: 4px 0 0; overflow: hidden; color: #27435f; font-size: 11px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.quickActions { display: grid; gap: 7px; }
+.quickActions :is(button,a) { width: 100%; min-height: 32px; padding: 7px 9px; font-size: 11px; text-decoration: none; }
+.quickActions .secondaryButton { justify-content: flex-start; }
+.quickActions svg { width: 14px; height: 14px; }
+
+.templatesSection { width: 100%; max-width: 100%; min-width: 0; padding: 8px 2px 18px; }
+.templatesNotice { margin-bottom: 14px; padding: 12px 14px; border: 1px solid #c8e2dd; border-radius: 12px; color: #21605a; background: #eef9f6; display: flex; align-items: center; gap: 10px; }
+.templatesNotice > svg { width: 20px; height: 20px; color: #00897f; }
+.templatesNotice > div { display: grid; gap: 2px; }
+.templatesNotice strong { font-size: 12px; }
+.templatesNotice span { color: #5e7d7a; font-size: 11px; }
+.templatesGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.templateCard { min-width: 0; padding: 16px; border: 1px solid #dde8e8; border-radius: 14px; background: white; box-shadow: 0 5px 16px rgba(12,51,69,.04); display: grid; gap: 11px; }
+.templateCard > header { display: flex; justify-content: space-between; gap: 10px; }
+.templateCard > header > div { display: grid; gap: 3px; }
+.templateCard > header span { color: #008178; font-size: 11px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; }
+.templateCard h3 { margin: 0; color: #163455; font-size: 14px; }
+.templateCard > header > strong { height: 24px; padding: 0 8px; border-radius: 999px; color: #936824; background: #fff3dc; display: grid; place-items: center; font-size: 11px; white-space: nowrap; }
+.templateCard label { display: grid; gap: 5px; }
+.templateCard label > span { color: #687b8e; font-size: 11px; font-weight: 500; letter-spacing: .05em; text-transform: uppercase; }
+.templateCard input,
+.templateCard textarea { width: 100%; padding: 9px 10px; border: 1px solid #d7e2e3; border-radius: 8px; outline: 0; color: #273f5c; background: #fff; font: inherit; font-size: 12px; line-height: 1.5; }
+.templateCard textarea { resize: vertical; }
+.templateCard :is(input,textarea):focus { border-color: #83c3bd; box-shadow: 0 0 0 3px rgba(0,138,132,.08); }
+.templateCard footer { display: flex; align-items: center; justify-content: space-between; gap: 9px; }
+.templateCard footer small { color: #8a97a3; font-size: 11px; }
+.templateCard footer .secondaryButton { min-height: 32px; padding: 6px 9px; font-size: 11px; }
+
+.recordGrid { padding-top: 18px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 12px; }
+.recordCard { min-width: 0; padding: 15px; border: 1px solid #dfe8e9; border-radius: 14px; background: white; }
+.recordCard > h3,
+.recordCard .cardSectionHeader h3 { margin: 0; color: #163659; font-size: 13px; }
+.recordWide { grid-column: 1 / -1; }
+.personalCard .candidateSummary { margin-top: 12px; }
+.personalCard .contactRow { align-items: center; }
+.applicationList { margin: 13px 0 0; display: grid; gap: 9px; }
+.applicationList div { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 9px; }
+.applicationList dt { color: #8593a2; font-size: 11px; }
+.applicationList dd { margin: 0; color: #2d4865; font-size: 12px; font-weight: 500; }
+.cardCopy { margin: 12px 0 0; color: #6d7d90; font-size: 12px; line-height: 1.55; white-space: pre-wrap; }
+.cardSectionHeader { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.cardSectionHeader button { min-height: 29px; padding: 5px 8px; border: 1px solid #d5e1df; border-radius: 7px; color: #08766f; background: white; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; font: inherit; font-size: 11px; font-weight: 500; }
+.cardSectionHeader button:disabled { opacity: .45; cursor: not-allowed; }
+.cardSectionHeader svg { width: 13px; height: 13px; }
+.tagList { margin-top: 12px; min-height: 31px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.tagList span { padding: 5px 8px; border-radius: 999px; color: #80521d; background: #fff1d6; font-size: 11px; font-weight: 500; }
+.tagList p { margin: 0; color: #8896a2; font-size: 11px; }
+.record .fileSection { margin-top: 12px; }
+.record .fileSection > a:last-child { margin-bottom: 0; }
+.record .interviewNotes { margin-top: 0; }
+.record .commentThread { margin-top: 0; }
+.record .editForm { margin-top: 0; padding-top: 15px; }
+.record .emailCard { display: grid; align-content: start; }
+.messageActions { margin-top: 13px; display: flex; flex-wrap: wrap; gap: 7px; }
+.messageActions :is(a,button) { min-height: 33px; padding: 7px 9px; font-size: 11px; text-decoration: none; }
+.messageActions svg { width: 14px; height: 14px; }
+
 @keyframes arrive { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes drawerIn { from { transform: translateX(25px); opacity: .8; } to { transform: translateX(0); opacity: 1; } }
@@ -464,6 +539,9 @@
   .publishingPath > div:nth-child(-n+2) { border-bottom: 1px solid #e5ecec; }
   .sectionHeading { align-items: flex-start; flex-direction: column; gap: 7px; }
   .sectionHeading > p { text-align: left; }
+  .templatesGrid,
+  .recordGrid { grid-template-columns: 1fr; }
+  .recordWide { grid-column: auto; }
 }
 
 @media (max-width: 580px) {
@@ -487,19 +565,23 @@
   .publishingPath > div:nth-child(3) { border-bottom: 1px solid #e5ecec; }
   .overlay { padding: 0; }
   .drawer,
+  .record,
   .modal { max-height: 100vh; border-radius: 0; }
   .drawer { padding: 20px; }
+  .record { padding: 18px; }
   .formGrid { grid-template-columns: 1fr; }
   .formGrid label,
   .fullField,
   .formActions { grid-column: 1; }
   .contactRow { align-items: flex-start; flex-direction: column; }
+  .quickPanel { top: auto; right: 10px; bottom: 10px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .hero,
   .overlay,
   .drawer,
+  .record,
   .modal,
   .toast { animation: none; }
 }

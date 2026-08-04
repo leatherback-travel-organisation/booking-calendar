@@ -13,6 +13,9 @@ export const recruitmentStatuses = [
   "Closed",
   "Next opening",
   "Other Role",
+  "Review Later",
+  "Talent Pool",
+  "Reference Checks",
 ] as const;
 
 export type RecruitmentStatus = (typeof recruitmentStatuses)[number];
@@ -43,6 +46,27 @@ export type RecruitmentCandidate = {
   updatedAt?: string;
   attachments: RecruitmentAttachment[];
   comments: RecruitmentComment[];
+  tags?: string[];
+};
+
+export const recruitmentTemplateKeys = [
+  "interview",
+  "challenge",
+  "reference-checks",
+  "talent-pool",
+  "general-rejection",
+] as const;
+
+export type RecruitmentTemplateKey = (typeof recruitmentTemplateKeys)[number];
+
+export type RecruitmentEmailTemplate = {
+  key: RecruitmentTemplateKey;
+  stage: RecruitmentStatus;
+  label: string;
+  subject: string;
+  body: string;
+  enabled: boolean;
+  updatedAt?: string;
 };
 
 export type RecruitmentComment = {
@@ -74,6 +98,7 @@ export type RecruitmentWorkspace = {
   integrityIssues: number;
   writesEnabled: boolean;
   truncated: boolean;
+  emailTemplates: RecruitmentEmailTemplate[];
 };
 
 export const knownRecruitmentRoles = [

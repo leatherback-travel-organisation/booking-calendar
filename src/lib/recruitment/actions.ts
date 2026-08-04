@@ -4,8 +4,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireApplicationPermission } from "@/lib/access/server";
 import { requireEmployeeIdentity } from "@/lib/identity/server";
-import { recruitmentStatuses } from "./model";
-import { createRecruitmentCandidate, createRecruitmentComment, saveRecruitmentRole, updateRecruitmentCandidate } from "./server";
+import { recruitmentStatuses, recruitmentTemplateKeys } from "./model";
+import { createRecruitmentCandidate, createRecruitmentComment, saveRecruitmentCandidateTags, saveRecruitmentEmailTemplate, saveRecruitmentRole, updateRecruitmentCandidate } from "./server";
 
 export type RecruitmentActionResult = { ok: true; message: string } | { ok: false; message: string };
 
@@ -40,6 +40,20 @@ const roleSchema = z.object({
 const commentSchema = z.object({
   candidateId: z.string().regex(/^rec[A-Za-z0-9]+$/),
   body: z.string().trim().min(1).max(5_000),
+});
+
+const candidateTagsSchema = z.object({
+  candidateId: z.string().regex(/^rec[A-Za-z0-9]+$/),
+  tags: z.array(z.string().trim().min(1).max(80)).max(20),
+});
+
+const emailTemplateSchema = z.object({
+  key: z.enum(recruitmentTemplateKeys),
+  stage: z.enum(recruitmentStatuses),
+  label: z.string().trim().min(2).max(100),
+  subject: z.string().trim().min(2).max(240),
+  body: z.string().trim().min(20).max(12_000),
+  enabled: z.boolean(),
 });
 
 function failure(error: unknown): RecruitmentActionResult {
@@ -90,5 +104,27 @@ export async function createRecruitmentCommentAction(input: unknown): Promise<Re
     await createRecruitmentComment(parsed, access.user.id);
     revalidatePath("/recruitment");
     return { ok: true, message: "Comment added to the candidate thread." };
+  } catch (error) { return failure(error); }
+}
+
+export async function saveRecruitmentCandidateTagsAction(input: unknown): Promise<RecruitmentActionResult> {
+  try {
+    const identity = await requireEmployeeIdentity();
+    const access = await requireApplicationPermission(identity, "recruitment", "recruitment.manage_candidates");
+    const parsed = candidateTagsSchema.parse(input);
+    await saveRecruitmentCandidateTags(parsed, access.user.id);
+    revalidatePath("/recruitment");
+    return { ok: true, message: "Candidate tags saved." };
+  } catch (error) { return failure(error); }
+}
+
+export async function saveRecruitmentEmailTemplateAction(input: unknown): Promise<RecruitmentActionResult> {
+  try {
+    const identity = await requireEmployeeIdentity();
+    const access = await requireApplicationPermission(identity, "recruitment", "recruitment.manage_roles");
+    const parsed = emailTemplateSchema.parse(input);
+    await saveRecruitmentEmailTemplate(parsed, access.user.id);
+    revalidatePath("/recruitment");
+    return { ok: true, message: `${parsed.label} template saved. Email sending remains disabled.` };
   } catch (error) { return failure(error); }
 }

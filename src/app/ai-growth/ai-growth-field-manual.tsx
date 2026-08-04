@@ -24,7 +24,7 @@ const ideas: Idea[] = [
   { title: "Second Adventure recommender", focus: "Retention", effort: "2–3 weeks", impact: 9, note: "Match past guests to their most natural next trip using travel history, preferences and timing.", system: "Guest signal → shortlist → team review → personal outreach" },
   { title: "Pre-departure question miner", focus: "Retention", effort: "1 week", impact: 6, note: "Turn repeated guest questions into better emails, FAQs and trip documentation before support volume grows.", system: "Support themes → frequency → content fix → deflection" },
   { title: "Campaign learning ledger", focus: "Leverage", effort: "1 week", impact: 8, note: "Give every test a durable memory so new work begins with what the company already learned.", system: "Brief → result → decision → reusable pattern" },
-  { title: "BotSwarm operations queue", focus: "Leverage", effort: "4–6 weeks", impact: 10, note: "Let small bots watch deadlines, promises and anomalies, then send only decisions—not noise—to people.", system: "Watch → explain → propose → human approval" },
+  { title: "Automation operations queue", focus: "Leverage", effort: "4–6 weeks", impact: 10, note: "Let small bots watch deadlines, promises and anomalies, then send only decisions—not noise—to people.", system: "Watch → explain → propose → human approval" },
 ];
 
 const initiatives = [
@@ -36,7 +36,7 @@ const initiatives = [
 const roadmap = [
   { phase: "Days 1–30", title: "Build the signal layer", tasks: ["Name one accountable owner per brand", "Connect search, content, enquiry and booking baselines", "Ship SEO reporter and Campaign Learning Ledger", "Label 100 examples for safe evaluation"] },
   { phase: "Days 31–60", title: "Create repeatable machines", tasks: ["Launch content optimiser with human publishing", "Pilot Empty Seat Rescue and Second Adventure", "Build answer-page templates and fact sources", "Measure time saved, conversion lift and error rate"] },
-  { phase: "Days 61–90", title: "Scale what earned it", tasks: ["Promote winning pilots into BotSwarm", "Add Supplier Promise Watch read-only pilot", "Retire low-value reports and duplicate rituals", "Set quarterly model, privacy and brand-quality review"] },
+  { phase: "Days 61–90", title: "Scale what earned it", tasks: ["Promote winning pilots into governed automations", "Add Supplier Promise Watch read-only pilot", "Retire low-value reports and duplicate rituals", "Set quarterly model, privacy and brand-quality review"] },
 ] as const;
 
 export function AiGrowthFieldManual() {
@@ -130,3 +130,4 @@ export function AiGrowthFieldManual() {
     </main>
   );
 }
+

@@ -120,7 +120,7 @@ export async function accessibleApplicationsFor(
 }
 
 /**
- * Cove is allowlist-first. A verified Leatherback identity is necessary,
+ * Cove is allowlist-first. A verified Google identity is necessary,
  * but it is never sufficient: an active Cove user record must already exist.
  */
 export async function requireCoveUser(identity: VerifiedIdentity): Promise<User> {
@@ -159,6 +159,28 @@ export async function requireApplicationPermission(
     snapshot,
     now: new Date(),
     requiredPermission,
+  });
+  if (!decision.allowed) throw new Error("Application access is denied.");
+  return decision;
+}
+
+/**
+ * Requires an active entitlement to the application without inventing a
+ * permission name for opening it. Fine-grained actions must continue to use
+ * requireApplicationPermission at their own server boundary.
+ */
+export async function requireApplicationAccess(
+  identity: VerifiedIdentity,
+  applicationSlug: string,
+): Promise<AccessGrant> {
+  const snapshot = await getAccessSnapshot();
+  const application = snapshot.applications.find((candidate) => candidate.slug === applicationSlug);
+  if (!application) throw new Error("The requested application is not registered.");
+  const decision = evaluateEntitlement({
+    identity,
+    applicationId: application.id,
+    snapshot,
+    now: new Date(),
   });
   if (!decision.allowed) throw new Error("Application access is denied.");
   return decision;

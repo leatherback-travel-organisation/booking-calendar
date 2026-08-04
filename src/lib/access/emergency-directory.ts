@@ -9,7 +9,7 @@ export type EmergencyApplicationLink = {
  * imports: it must remain renderable when Cove, Clerk, or Postgres is down.
  */
 export const emergencyApplicationDirectory = [
-  { slug: "agentic-os", name: "Agentic OS", url: "https://cove.leatherbacktravel.com/agentic-os" },
+  { slug: "app-builder", name: "App Builder", url: "https://cove.leatherbacktravel.com/app-builder" },
   { slug: "recruitment", name: "Recruitment", url: "https://cove.leatherbacktravel.com/recruitment" },
   { slug: "superpanel", name: "SuperPanel", url: "https://cove.leatherbacktravel.com/systems" },
   { slug: "trtl", name: "TRTL", url: "https://trtl.leatherbacktravel.com" },

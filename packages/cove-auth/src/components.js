@@ -27,7 +27,7 @@ const STATE_COPY = Object.freeze({
   signed_out: {
     eyebrow: "Cove sign-in required",
     title: "Let’s get you signed in",
-    copy: "Use your Leatherback Google account in Cove, then return here. Your original page will be preserved.",
+    copy: "Use your approved work account in Cove, then return here. Your original page will be preserved.",
   },
   unauthorized: {
     eyebrow: "Access not available",

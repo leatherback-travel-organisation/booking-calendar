@@ -7,9 +7,8 @@ import {
   type VerifiedIdentity
 } from "./types";
 import { isPreviewIdentityEnabled } from "./mode";
+import { workspaceDomainForEmail } from "./workspace-domain";
 import { previewAccessSnapshot, previewIdentities } from "@/lib/access/preview-data";
-
-const EMPLOYEE_DOMAIN = "leatherbacktravel.com";
 
 function previewIdentity(): VerifiedIdentity {
   const accessIdentity = previewIdentities.operations;
@@ -66,19 +65,18 @@ export async function getVerifiedIdentity(): Promise<VerifiedIdentity | null> {
       : process.env.CLERK_ISSUER_URL;
   if (!issuer) throw new IdentityConfigurationError();
 
-  const population = email.endsWith(`@${EMPLOYEE_DOMAIN}`)
-    ? "employee"
-    : "external_partner";
   return {
     subject: `clerk:${user.id}`,
     issuer,
     email,
     displayName,
     initials: initialsFor(displayName, email),
-    population,
+    // Clerk verifies the Google identity. Cove's approved-user record, rather
+    // than the email domain, decides whether this person belongs to the team.
+    population: "employee",
     emailVerified: true,
     verifiedAt: new Date().toISOString(),
-    workspaceDomain: population === "employee" ? EMPLOYEE_DOMAIN : undefined
+    workspaceDomain: workspaceDomainForEmail(email)
   };
 }
 

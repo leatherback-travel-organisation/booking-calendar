@@ -1,9 +1,9 @@
 import type { AccessSnapshot, AuditEvent, VerifiedIdentity } from "./model";
 import {
-  AGENTIC_OS_ADMIN_ROLE_ID,
-  AGENTIC_OS_APPLICATION_ID,
-  AGENTIC_OS_APPLICATION_SLUG,
-  AGENTIC_OS_USER_ROLE_ID,
+  APP_BUILDER_ADMIN_ROLE_ID,
+  APP_BUILDER_APPLICATION_ID,
+  APP_BUILDER_APPLICATION_SLUG,
+  APP_BUILDER_USER_ROLE_ID,
   RECRUITMENT_ADMIN_ROLE_ID,
   RECRUITMENT_APPLICATION_ID,
   RECRUITMENT_APPLICATION_SLUG,
@@ -114,11 +114,11 @@ export const previewAccessSnapshot: AccessSnapshot = {
   ],
   applications: [
     {
-      id: AGENTIC_OS_APPLICATION_ID,
-      slug: AGENTIC_OS_APPLICATION_SLUG,
-      name: "Agentic OS",
-      description: "Voice-first delegation, governed agents and human approval workflows",
-      launchUrl: "https://cove.leatherbacktravel.com/agentic-os",
+      id: APP_BUILDER_APPLICATION_ID,
+      slug: APP_BUILDER_APPLICATION_SLUG,
+      name: "App Builder",
+      description: "Controlled AI-assisted updates for Cove applications",
+      launchUrl: "https://cove.leatherbacktravel.com/app-builder",
       owner: "Systems & Automation",
       status: "active",
       risk: "restricted",
@@ -227,21 +227,21 @@ export const previewAccessSnapshot: AccessSnapshot = {
   ],
   roles: [
     {
-      id: AGENTIC_OS_USER_ROLE_ID,
-      applicationId: AGENTIC_OS_APPLICATION_ID,
+      id: APP_BUILDER_USER_ROLE_ID,
+      applicationId: APP_BUILDER_APPLICATION_ID,
       key: "user",
-      name: "Agentic OS User",
+      name: "App Builder User",
       level: "user",
-      permissions: ["agentic_os.read"],
+      permissions: ["app_builder.read", "app_builder.submit"],
       allowedPopulations: ["employee"],
     },
     {
-      id: AGENTIC_OS_ADMIN_ROLE_ID,
-      applicationId: AGENTIC_OS_APPLICATION_ID,
+      id: APP_BUILDER_ADMIN_ROLE_ID,
+      applicationId: APP_BUILDER_APPLICATION_ID,
       key: "admin",
-      name: "Agentic OS Admin",
+      name: "App Builder Admin",
       level: "admin",
-      permissions: ["agentic_os.read", "agentic_os.approve", "agentic_os.configure", "agentic_os.manage_access"],
+      permissions: ["app_builder.read", "app_builder.submit", "app_builder.approve", "app_builder.configure", "app_builder.manage_access"],
       allowedPopulations: ["employee"],
     },
     {
@@ -391,9 +391,9 @@ export const previewAccessSnapshot: AccessSnapshot = {
   ],
   entitlements: [
     {
-      id: "entitlement-preview-agentic-os-admin",
-      applicationId: AGENTIC_OS_APPLICATION_ID,
-      roleId: AGENTIC_OS_ADMIN_ROLE_ID,
+      id: "entitlement-preview-app-builder-admin",
+      applicationId: APP_BUILDER_APPLICATION_ID,
+      roleId: APP_BUILDER_ADMIN_ROLE_ID,
       subject: { type: "user", userId: "user-operations" },
       grantedByUserId: "user-operations",
       grantedAt: "2026-07-14T16:00:00.000Z",

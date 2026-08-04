@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { evaluateEntitlement, listAccessibleApplications } from "./evaluator.ts";
 import { PREVIEW_NOW, previewAccessSnapshot, previewIdentities } from "./preview-data.ts";
-import { AGENTIC_OS_APPLICATION_ID, RECRUITMENT_APPLICATION_ID, SUPERPANEL_APPLICATION_ID } from "./application-ids.ts";
+import { APP_BUILDER_APPLICATION_ID, RECRUITMENT_APPLICATION_ID, SUPERPANEL_APPLICATION_ID } from "./application-ids.ts";
 
 test("team access exposes the preview super admin applications", () => {
   const apps = listAccessibleApplications({
@@ -13,7 +13,7 @@ test("team access exposes the preview super admin applications", () => {
   });
   assert.deepEqual(
     apps.map((app) => app.id),
-    [AGENTIC_OS_APPLICATION_ID, RECRUITMENT_APPLICATION_ID, SUPERPANEL_APPLICATION_ID, "app-trtl", "app-answers", "app-supplier-portal", "app-1mwu", "app-money", "app-injuries"],
+    [APP_BUILDER_APPLICATION_ID, RECRUITMENT_APPLICATION_ID, SUPERPANEL_APPLICATION_ID, "app-trtl", "app-answers", "app-supplier-portal", "app-1mwu", "app-money", "app-injuries"],
   );
 });
 

@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import {
   createRecruitmentCandidateAction,
   createRecruitmentCommentAction,
+  saveRecruitmentCandidateTagsAction,
+  saveRecruitmentEmailTemplateAction,
   saveRecruitmentRoleAction,
   updateRecruitmentCandidateAction,
   type RecruitmentActionResult,
@@ -13,6 +15,7 @@ import {
   recruitmentStatuses,
   roleReadiness,
   type RecruitmentCandidate,
+  type RecruitmentEmailTemplate,
   type RecruitmentRole,
   type RecruitmentStatus,
   type RecruitmentWorkspace,
@@ -21,14 +24,17 @@ import styles from "./recruitment-workspace.module.css";
 
 const columns: { label: string; hint: string; statuses: RecruitmentStatus[]; moveTo: RecruitmentStatus; tone: string }[] = [
   { label: "Uncategorized", hint: "Status not set", statuses: ["Unreviewed"], moveTo: "Unreviewed", tone: "neutral" },
+  { label: "Review later", hint: "Keep for a future look", statuses: ["Review Later"], moveTo: "Review Later", tone: "review" },
   { label: "Shortlist", hint: "Worth a closer look", statuses: ["Shortlist"], moveTo: "Shortlist", tone: "blue" },
   { label: "Interview", hint: "First conversation", statuses: ["Interview"], moveTo: "Interview", tone: "sun" },
   { label: "Challenge", hint: "Practical assessment", statuses: ["Challenge"], moveTo: "Challenge", tone: "coral" },
   { label: "2nd Interview", hint: "Deeper conversation", statuses: ["2nd Interview"], moveTo: "2nd Interview", tone: "violet" },
   { label: "Final Round", hint: "Decision stage", statuses: ["Final Round"], moveTo: "Final Round", tone: "rose" },
+  { label: "Reference checks", hint: "Confirm the final details", statuses: ["Reference Checks"], moveTo: "Reference Checks", tone: "reference" },
   { label: "Hire", hint: "Offer accepted", statuses: ["Hire"], moveTo: "Hire", tone: "mint" },
   { label: "Personal Rejection", hint: "Personal response", statuses: ["Personal Rejection"], moveTo: "Personal Rejection", tone: "lavender" },
   { label: "General Rejection", hint: "Standard response", statuses: ["General Rejection"], moveTo: "General Rejection", tone: "purple" },
+  { label: "Talent Pool", hint: "Keep in touch with consent", statuses: ["Talent Pool"], moveTo: "Talent Pool", tone: "talent" },
   { label: "Closed", hint: "Process complete", statuses: ["Closed"], moveTo: "Closed", tone: "slate" },
   { label: "Next opening", hint: "Keep warm", statuses: ["Next opening"], moveTo: "Next opening", tone: "ocean" },
   { label: "Other Role", hint: "Consider elsewhere", statuses: ["Other Role"], moveTo: "Other Role", tone: "peach" },
@@ -50,7 +56,7 @@ function roleStatusLabel(status: RecruitmentRole["status"]) {
   return status === "live" ? "Live ads" : status === "ready" ? "Ready to publish" : status === "paused" ? "Paused" : status === "closed" ? "Closed" : "Setup needed";
 }
 
-function Icon({ name }: { name: "search" | "plus" | "people" | "role" | "clock" | "file" | "arrow" | "close" | "link" | "pin" }) {
+function Icon({ name }: { name: "search" | "plus" | "people" | "role" | "clock" | "file" | "arrow" | "close" | "link" | "pin" | "mail" | "copy" }) {
   const common = { fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
   if (name === "search") return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" {...common}/><path d="m15.5 15.5 4.5 4.5" {...common}/></svg>;
   if (name === "plus") return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" {...common}/></svg>;
@@ -61,12 +67,14 @@ function Icon({ name }: { name: "search" | "plus" | "people" | "role" | "clock" 
   if (name === "arrow") return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M14 7l5 5-5 5" {...common}/></svg>;
   if (name === "close") return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" {...common}/></svg>;
   if (name === "link") return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 13 4-4M8.5 16.5l-1 1a3.5 3.5 0 0 1-5-5l3-3a3.5 3.5 0 0 1 5 0M15.5 7.5l1-1a3.5 3.5 0 0 1 5 5l-3 3a3.5 3.5 0 0 1-5 0" {...common}/></svg>;
+  if (name === "mail") return <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="13" rx="2" {...common}/><path d="m4.5 7 7.5 5.5L19.5 7" {...common}/></svg>;
+  if (name === "copy") return <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11.5" height="11.5" rx="2" {...common}/><path d="M16 8V6.5A2 2 0 0 0 14 4.5H6.5a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2H8" {...common}/></svg>;
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21V10M6 3h12l-2 7H8z" {...common}/></svg>;
 }
 
 export function RecruitmentWorkspaceView({ workspace }: { workspace: RecruitmentWorkspace }) {
   const router = useRouter();
-  const [view, setView] = useState<"pipeline" | "roles">("pipeline");
+  const [view, setView] = useState<"pipeline" | "roles" | "templates">("pipeline");
   const [cardDensity, setCardDensity] = useState<"compact" | "resume">("compact");
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
@@ -82,6 +90,7 @@ export function RecruitmentWorkspaceView({ workspace }: { workspace: Recruitment
   const [savingCandidateIds, setSavingCandidateIds] = useState<Set<string>>(() => new Set());
   const [roleMenuOpen, setRoleMenuOpen] = useState(false);
   const [columnLimits, setColumnLimits] = useState<Record<string, number>>({});
+  const [quickCandidate, setQuickCandidate] = useState<RecruitmentCandidate | null>(null);
   const rolePickerRef = useRef<HTMLDivElement>(null);
   const boardRef = useRef<HTMLDivElement>(null);
 
@@ -212,6 +221,51 @@ export function RecruitmentWorkspaceView({ workspace }: { workspace: Recruitment
     });
   }
 
+  function saveCandidateTags(candidate: RecruitmentCandidate, tags: string[]) {
+    if (!workspace.writesEnabled) return;
+    const previous = candidate.tags ?? [];
+    updateLocalCandidates((current) => current.map((item) => item.id === candidate.id ? { ...item, tags } : item));
+    setSelectedCandidate((current) => current?.id === candidate.id ? { ...current, tags } : current);
+    setQuickCandidate((current) => current?.id === candidate.id ? { ...current, tags } : current);
+    startTransition(async () => {
+      const result = await saveRecruitmentCandidateTagsAction({ candidateId: candidate.id, tags });
+      if (!result.ok) {
+        updateLocalCandidates((current) => current.map((item) => item.id === candidate.id ? { ...item, tags: previous } : item));
+        setSelectedCandidate((current) => current?.id === candidate.id ? { ...current, tags: previous } : current);
+        setQuickCandidate((current) => current?.id === candidate.id ? { ...current, tags: previous } : current);
+      }
+      finish(result, undefined, false);
+    });
+  }
+
+  function toggleHighPotential(candidate: RecruitmentCandidate) {
+    const tags = candidate.tags ?? [];
+    saveCandidateTags(candidate, tags.includes("High Potential") ? tags.filter((tag) => tag !== "High Potential") : [...tags, "High Potential"]);
+  }
+
+  async function copyEmail(email?: string) {
+    if (!email) return;
+    try {
+      await navigator.clipboard.writeText(email);
+      setNotice({ ok: true, message: "Email address copied." });
+    } catch {
+      setNotice({ ok: false, message: "Could not copy the email address." });
+    }
+  }
+
+  function submitEmailTemplate(event: FormEvent<HTMLFormElement>, template: RecruitmentEmailTemplate) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    startTransition(async () => finish(await saveRecruitmentEmailTemplateAction({
+      key: template.key,
+      label: template.label,
+      stage: template.stage,
+      subject: data.get("subject"),
+      body: data.get("body"),
+      enabled: false,
+    })));
+  }
+
   return (
     <div className={styles.workspace}>
       <section className={styles.hero}>
@@ -231,8 +285,9 @@ export function RecruitmentWorkspaceView({ workspace }: { workspace: Recruitment
         <div className={styles.tabs} role="tablist" aria-label="Recruitment views">
           <button type="button" role="tab" aria-selected={view === "pipeline"} className={view === "pipeline" ? styles.activeTab : ""} onClick={() => setView("pipeline")}><Icon name="people"/>Pipeline</button>
           <button type="button" role="tab" aria-selected={view === "roles"} className={view === "roles" ? styles.activeTab : ""} onClick={() => setView("roles")}><Icon name="role"/>Roles &amp; ads</button>
+          <button type="button" role="tab" aria-selected={view === "templates"} className={view === "templates" ? styles.activeTab : ""} onClick={() => setView("templates")}><Icon name="mail"/>Email drafts</button>
         </div>
-        <label className={styles.search}><span className="sr-only">Search recruitment</span><Icon name="search"/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={view === "pipeline" ? "Search candidates…" : "Search roles…"}/></label>
+        <label className={styles.search}><span className="sr-only">Search recruitment</span><Icon name="search"/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={view === "pipeline" ? "Search candidates…" : view === "roles" ? "Search roles…" : "Search email drafts…"}/></label>
         {view === "pipeline" && <div className={styles.rolePicker} ref={rolePickerRef}><span>Role in pipeline</span><button type="button" aria-haspopup="listbox" aria-expanded={roleMenuOpen} onClick={() => setRoleMenuOpen((open) => !open)}><strong>{roleFilter === "all" ? "All roles" : roleFilter}</strong><i/></button>{roleMenuOpen && <div className={styles.roleMenu} role="listbox" aria-label="Filter candidates by role"><button type="button" role="option" aria-selected={roleFilter === "all"} onClick={() => { setRoleFilter("all"); setRoleMenuOpen(false); }}>All roles <small>{candidates.length}</small></button>{pipelineRoleNames.map((role) => <button type="button" role="option" aria-selected={roleFilter === role} key={role} onClick={() => { setRoleFilter(role); setRoleMenuOpen(false); }}>{role}<small>{candidates.filter((candidate) => candidate.roles.includes(role)).length}</small></button>)}</div>}</div>}
         {view === "pipeline" && <div className={styles.densityToggle} aria-label="Candidate card layout"><button type="button" aria-pressed={cardDensity === "compact"} onClick={() => setCardDensity("compact")}>Compact</button><button type="button" aria-pressed={cardDensity === "resume"} onClick={() => setCardDensity("resume")}>CV cards</button></div>}
         {view === "pipeline" && <button type="button" className={styles.primaryButton} disabled={!workspace.writesEnabled} onClick={() => setAddingCandidate(true)}><Icon name="plus"/>Add candidate</button>}
@@ -257,7 +312,7 @@ export function RecruitmentWorkspaceView({ workspace }: { workspace: Recruitment
                   {displayedCandidates.map((candidate) => {
                     const résumé = candidate.attachments.find((attachment) => attachment.previewUrl) ?? candidate.attachments[0];
                     const saving = savingCandidateIds.has(candidate.id);
-                    return <article key={candidate.id} className={`${styles.candidateCard} ${cardDensity === "compact" ? styles.compactCard : styles.resumeCard} ${dragging === candidate.id ? styles.dragging : ""} ${saving ? styles.saving : ""}`} aria-busy={saving}>
+                    return <article key={candidate.id} className={`${styles.candidateCard} ${cardDensity === "compact" ? styles.compactCard : styles.resumeCard} ${dragging === candidate.id ? styles.dragging : ""} ${saving ? styles.saving : ""}`} aria-busy={saving} onMouseEnter={() => setQuickCandidate(candidate)}>
                       <button type="button" className={styles.cardButton} draggable={workspace.writesEnabled && !saving} onDragStart={(event) => { setDragging(candidate.id); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/recruitment-candidate", candidate.id); }} onDragEnd={() => { setDragging(null); setDragOverColumn(null); }} onClick={() => { setSelectedCandidate(candidate); setEditingInterviewNotes(false); }} title={workspace.writesEnabled ? "Drag to another phase or click to open" : "Open candidate"}>
                         <span className={styles.dragCue} aria-hidden="true"><i/><i/><i/><i/><i/><i/></span>
                         {cardDensity === "resume" && résumé && <span className={`${styles.documentPreview} ${résumé.previewUrl ? styles.documentPreviewImage : ""}`} style={résumé.previewUrl ? { backgroundImage: `url(${résumé.previewUrl})` } : undefined} aria-hidden="true"><span><Icon name="file"/><i/><i/><i/><i/></span><small>{résumé.filename}</small></span>}
@@ -272,6 +327,7 @@ export function RecruitmentWorkspaceView({ workspace }: { workspace: Recruitment
                           <span className={styles.compactDetails}><span>{candidate.location || "Location not added"}</span>{candidate.assignee && <span>{candidate.assignee}</span>}</span>
                           {candidate.notes && <span className={styles.cardNote}>{candidate.notes}</span>}
                         </>}
+                        {candidate.tags?.length ? <span className={styles.cardTags}>{candidate.tags.map((tag) => <span key={tag}>{tag}</span>)}</span> : null}
                         <span className={styles.cardMeta}><span><Icon name="clock"/>{dateLabel(candidate.updatedAt || candidate.createdAt)}</span><span>{candidate.attachments.length ? <><Icon name="file"/>{candidate.attachments.length}</> : "No files"}</span></span>
                       </button>
                     </article>;
@@ -313,31 +369,53 @@ export function RecruitmentWorkspaceView({ workspace }: { workspace: Recruitment
         </section>
       )}
 
+      {view === "templates" && (
+        <section className={styles.templatesSection}>
+          <header className={styles.sectionHeading}><div><span>Recruitment communications</span><h2>Email drafts</h2></div><p>Draft, review and approve wording here. Sending is deliberately disabled during Phase 1.</p></header>
+          <div className={styles.templatesNotice}><Icon name="mail"/><div><strong>No automated email is active</strong><span>Moving a candidate between stages will never send a message. These are editable drafts only.</span></div></div>
+          <div className={styles.templatesGrid}>{workspace.emailTemplates.filter((template) => !query.trim() || `${template.label} ${template.stage} ${template.subject}`.toLowerCase().includes(query.trim().toLowerCase())).map((template) => <form key={template.key} className={styles.templateCard} onSubmit={(event) => submitEmailTemplate(event, template)}>
+            <header><div><span>{template.stage}</span><h3>{template.label}</h3></div><strong>Draft only</strong></header>
+            <label><span>Subject</span><input name="subject" defaultValue={template.subject}/></label>
+            <label><span>Message</span><textarea name="body" rows={9} defaultValue={template.body}/></label>
+            <footer><small>Last saved {template.updatedAt ? dateLabel(template.updatedAt) : "as a Cove default"}</small><button className={styles.secondaryButton} disabled={isPending || !workspace.writesEnabled}>{isPending ? "Saving…" : "Save draft"}</button></footer>
+          </form>)}</div>
+        </section>
+      )}
+
+      {quickCandidate && !selectedCandidate && view === "pipeline" && <aside className={styles.quickPanel} aria-label={`Quick review for ${quickCandidate.name}`}>
+        <header><div><span>Quick review</span><h2>{quickCandidate.name}</h2><p>{quickCandidate.roles.join(" · ") || "Role not assigned"}</p></div><button type="button" onClick={() => setQuickCandidate(null)} aria-label="Close quick review"><Icon name="close"/></button></header>
+        <dl><div><dt>Stage</dt><dd>{quickCandidate.status}</dd></div><div><dt>Location</dt><dd>{quickCandidate.location || "Not added"}</dd></div><div><dt>Files</dt><dd>{quickCandidate.attachments.length || "None"}</dd></div></dl>
+        <div className={styles.quickActions}><button type="button" className={styles.primaryButton} onClick={() => { setSelectedCandidate(quickCandidate); setEditingInterviewNotes(false); }}>Open full record</button><button type="button" className={styles.secondaryButton} disabled={!workspace.writesEnabled} onClick={() => toggleHighPotential(quickCandidate)}><Icon name="pin"/>{quickCandidate.tags?.includes("High Potential") ? "Remove High Potential" : "Tag High Potential"}</button>{quickCandidate.email && <><a className={styles.secondaryButton} href={`mailto:${quickCandidate.email}`}><Icon name="mail"/>Write one-off email</a><button type="button" className={styles.secondaryButton} onClick={() => copyEmail(quickCandidate.email)}><Icon name="copy"/>Copy email</button></>}</div>
+      </aside>}
+
       {notice && <div className={`${styles.toast} ${notice.ok ? styles.toastOk : styles.toastError}`} role="status"><span>{notice.message}</span><button type="button" onClick={() => setNotice(null)} aria-label="Dismiss"><Icon name="close"/></button></div>}
 
-      {selectedCandidate && <div className={styles.overlay} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) { setSelectedCandidate(null); setEditingInterviewNotes(false); } }}><aside className={styles.drawer} role="dialog" aria-modal="true" aria-labelledby="candidate-title">
+      {selectedCandidate && <div className={styles.overlay} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) { setSelectedCandidate(null); setEditingInterviewNotes(false); } }}><aside className={styles.record} role="dialog" aria-modal="true" aria-labelledby="candidate-title">
         <header className={styles.modalHeader}><div><span>Candidate record</span><h2 id="candidate-title">{selectedCandidate.name}</h2><p>{selectedCandidate.roles.join(" · ") || "Role not assigned"}</p></div><button type="button" onClick={() => { setSelectedCandidate(null); setEditingInterviewNotes(false); }} aria-label="Close candidate"><Icon name="close"/></button></header>
-        <div className={styles.candidateSummary}><span className={styles.largeAvatar}>{initials(selectedCandidate.name)}</span><div><span>{selectedCandidate.status}</span><strong>{selectedCandidate.location || "Location not added"}</strong><small>Updated {dateLabel(selectedCandidate.updatedAt || selectedCandidate.createdAt)}</small></div></div>
-        <div className={styles.contactRow}>{selectedCandidate.email ? <a href={`mailto:${selectedCandidate.email}`}>{selectedCandidate.email}</a> : <span>Email not added</span>}<span>{selectedCandidate.schedule.join(" · ") || "Schedule not added"}</span></div>
-        {(selectedCandidate.interviewer || selectedCandidate.assignee) && <dl className={styles.detailList}>{selectedCandidate.assignee && <div><dt>Assignee</dt><dd>{selectedCandidate.assignee}</dd></div>}{selectedCandidate.interviewer && <div><dt>Interviewer</dt><dd>{selectedCandidate.interviewer}</dd></div>}</dl>}
-        {selectedCandidate.attachments.length > 0 && <section className={styles.fileSection}><h3>Candidate files</h3>{selectedCandidate.attachments.map((file) => <a key={file.id} href={file.url} target="_blank" rel="noreferrer"><Icon name="file"/><span><strong>{file.filename}</strong><small>{file.type || "Attachment"}</small></span><Icon name="arrow"/></a>)}</section>}
-        <section className={styles.interviewNotes}>
+        <div className={styles.recordGrid}>
+          <section className={`${styles.recordCard} ${styles.personalCard}`}><h3>Personal details</h3><div className={styles.candidateSummary}><span className={styles.largeAvatar}>{initials(selectedCandidate.name)}</span><div><span>{selectedCandidate.status}</span><strong>{selectedCandidate.location || "Location not added"}</strong><small>Updated {dateLabel(selectedCandidate.updatedAt || selectedCandidate.createdAt)}</small></div></div><div className={styles.contactRow}>{selectedCandidate.email ? <><a href={`mailto:${selectedCandidate.email}`}>{selectedCandidate.email}</a><button type="button" onClick={() => copyEmail(selectedCandidate.email)} aria-label="Copy email"><Icon name="copy"/>Copy</button></> : <span>Email not added</span>}<span>{selectedCandidate.schedule.join(" · ") || "Schedule not added"}</span></div>{(selectedCandidate.interviewer || selectedCandidate.assignee) && <dl className={styles.detailList}>{selectedCandidate.assignee && <div><dt>Assignee</dt><dd>{selectedCandidate.assignee}</dd></div>}{selectedCandidate.interviewer && <div><dt>Interviewer</dt><dd>{selectedCandidate.interviewer}</dd></div>}</dl>}</section>
+          <section className={styles.recordCard}><h3>Application</h3><dl className={styles.applicationList}><div><dt>Roles considered</dt><dd>{selectedCandidate.roles.join(" · ") || "Not assigned"}</dd></div><div><dt>Application received</dt><dd>{dateLabel(selectedCandidate.createdAt)}</dd></div><div><dt>Current stage</dt><dd>{selectedCandidate.status}</dd></div></dl><p className={styles.cardCopy}>{selectedCandidate.notes || "No application notes have been added."}</p></section>
+          <section className={styles.recordCard}><header className={styles.cardSectionHeader}><h3>Recruiter tags</h3><button type="button" disabled={!workspace.writesEnabled} onClick={() => toggleHighPotential(selectedCandidate)}><Icon name="pin"/>{selectedCandidate.tags?.includes("High Potential") ? "High Potential" : "Tag High Potential"}</button></header><div className={styles.tagList}>{selectedCandidate.tags?.length ? selectedCandidate.tags.map((tag) => <span key={tag}>{tag}</span>) : <p>No recruiter tags yet.</p>}</div></section>
+          <section className={styles.recordCard}><h3>Files &amp; attachments</h3>{selectedCandidate.attachments.length > 0 ? <div className={styles.fileSection}>{selectedCandidate.attachments.map((file) => <a key={file.id} href={file.url} target="_blank" rel="noreferrer"><Icon name="file"/><span><strong>{file.filename}</strong><small>{file.type || "Attachment"}</small></span><Icon name="arrow"/></a>)}</div> : <p className={styles.cardCopy}>No candidate files have been attached.</p>}</section>
+          <section className={`${styles.recordCard} ${styles.recordWide} ${styles.interviewNotes}`}>
           <header><h3>Interview notes</h3>{!editingInterviewNotes && <button type="button" onClick={() => setEditingInterviewNotes(true)} disabled={!workspace.writesEnabled}>{selectedCandidate.firstInterviewNotes || selectedCandidate.secondInterviewNotes ? "Edit notes" : "Add notes"}</button>}</header>
           {editingInterviewNotes ? <form className={styles.interviewNotesForm} onSubmit={submitInterviewNotes}>
             <label><span>First interview</span><textarea name="firstInterviewNotes" rows={8} defaultValue={selectedCandidate.firstInterviewNotes} placeholder="Capture evidence, strengths, concerns and follow-ups…" autoFocus/></label>
             <label><span>Second interview</span><textarea name="secondInterviewNotes" rows={8} defaultValue={selectedCandidate.secondInterviewNotes} placeholder="Add notes from the deeper conversation…"/></label>
             <div><button type="button" className={styles.secondaryButton} onClick={() => setEditingInterviewNotes(false)}>Cancel</button><button className={styles.primaryButton} disabled={isPending || !workspace.writesEnabled}>{isPending ? "Saving…" : "Save interview notes"}</button></div>
           </form> : selectedCandidate.firstInterviewNotes || selectedCandidate.secondInterviewNotes ? <>{selectedCandidate.firstInterviewNotes && <div><span>First interview</span><p>{selectedCandidate.firstInterviewNotes}</p></div>}{selectedCandidate.secondInterviewNotes && <div><span>Second interview</span><p>{selectedCandidate.secondInterviewNotes}</p></div>}</> : <div className={styles.emptyInterviewNotes}><strong>No interview notes yet</strong><p>Add notes after the first or second conversation so the hiring team has one shared record.</p></div>}
-        </section>
-        <section className={styles.commentThread}>
+          </section>
+          <section className={`${styles.recordCard} ${styles.commentThread}`}>
           <header><div><span>Shared discussion</span><h3>Candidate thread</h3></div><strong>{selectedCandidate.comments.length}</strong></header>
           <div className={styles.commentList}>
             {selectedCandidate.comments.map((comment) => <article key={comment.id}><span>{comment.authorInitials}</span><div><header><strong>{comment.authorName}</strong><time dateTime={comment.createdAt}>{dateLabel(comment.createdAt)}</time></header><p>{comment.body}</p></div></article>)}
             {selectedCandidate.comments.length === 0 && <div className={styles.emptyComments}><strong>Start the conversation</strong><p>Questions, impressions and follow-ups stay together here.</p></div>}
           </div>
           <form onSubmit={submitComment}><label><span className="sr-only">Add a comment</span><textarea name="comment" rows={3} required placeholder="Add to the candidate thread…"/></label><button className={styles.threadButton} disabled={isPending || !workspace.writesEnabled}>{isPending ? "Posting…" : "Post comment"}</button></form>
-        </section>
-        <form className={styles.editForm} onSubmit={submitCandidateUpdate}><label><span>Pipeline stage</span><select name="status" defaultValue={selectedCandidate.status}>{recruitmentStatuses.map((item) => <option key={item}>{item}</option>)}</select></label><label><span>Internal notes</span><textarea name="notes" rows={6} defaultValue={selectedCandidate.notes}/></label><button className={styles.primaryButton} disabled={isPending || !workspace.writesEnabled}>{isPending ? "Saving…" : "Save candidate"}</button></form>
+          </section>
+          <section className={`${styles.recordCard} ${styles.emailCard}`}><h3>Personal message</h3><p className={styles.cardCopy}>Open a one-off message in your email app. This does not use automation or send anything from Cove.</p>{selectedCandidate.email ? <div className={styles.messageActions}><a className={styles.primaryButton} href={`mailto:${selectedCandidate.email}?subject=${encodeURIComponent(`Following up on your application`)}`}><Icon name="mail"/>Write one-off email</a><button type="button" className={styles.secondaryButton} onClick={() => copyEmail(selectedCandidate.email)}><Icon name="copy"/>Copy email</button></div> : <p className={styles.cardCopy}>Add an email address before writing a message.</p>}</section>
+          <form className={`${styles.recordCard} ${styles.editForm}`} onSubmit={submitCandidateUpdate}><h3>Pipeline &amp; internal notes</h3><label><span>Pipeline stage</span><select name="status" defaultValue={selectedCandidate.status}>{recruitmentStatuses.map((item) => <option key={item}>{item}</option>)}</select></label><label><span>Internal notes</span><textarea name="notes" rows={6} defaultValue={selectedCandidate.notes}/></label><button className={styles.primaryButton} disabled={isPending || !workspace.writesEnabled}>{isPending ? "Saving…" : "Save candidate"}</button></form>
+        </div>
       </aside></div>}
 
       {addingCandidate && <div className={styles.overlay} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setAddingCandidate(false); }}><section className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="new-candidate-title"><header className={styles.modalHeader}><div><span>Hiring inbox</span><h2 id="new-candidate-title">Add a candidate</h2><p>Create a clean starting record in the Hiring table.</p></div><button type="button" onClick={() => setAddingCandidate(false)} aria-label="Close"><Icon name="close"/></button></header><form className={styles.formGrid} onSubmit={submitNewCandidate}><label><span>Full name *</span><input name="name" required autoFocus/></label><label><span>Email</span><input name="email" type="email"/></label><label className={styles.fullField}><span>Role *</span><select name="role" required defaultValue=""><option value="" disabled>Select a role</option>{workspace.roles.map((role) => <option key={role.title}>{role.title}</option>)}</select></label><label><span>Location</span><input name="location" placeholder="City, country or time zone"/></label><label className={styles.fullField}><span>Internal notes</span><textarea name="notes" rows={5}/></label><div className={styles.formActions}><button type="button" className={styles.secondaryButton} onClick={() => setAddingCandidate(false)}>Cancel</button><button className={styles.primaryButton} disabled={isPending}>{isPending ? "Adding…" : "Add to inbox"}</button></div></form></section></div>}

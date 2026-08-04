@@ -33,7 +33,7 @@ export default async function SignInPage({
             <p>Everything you need for work, together in one secure place.</p>
           </div>
           <div className="identity-login-action">
-            <p>Use your Leatherback email to continue.</p>
+            <p>Sign in with Google using your approved work email.</p>
             <SignIn
               routing="hash"
               forceRedirectUrl={returnUrl}
@@ -45,12 +45,13 @@ export default async function SignInPage({
                   card: { width: "100%", padding: 0, background: "transparent", boxShadow: "none" },
                   header: { display: "none" },
                   dividerRow: { display: "none" },
+                  formFieldRow: { display: "none" },
+                  formButtonPrimary: { display: "none" },
                   footer: { display: "none" },
-                  socialButtonsBlockButton: { display: "none" },
                 },
               }}
             />
-            <small>Access is available to approved Leatherback team members only.</small>
+            <small>Access is available to people approved in Cove Admin.</small>
           </div>
         </section>
       </main>

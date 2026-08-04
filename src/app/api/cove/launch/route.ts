@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { permissionNamespace } from "@/lib/access/cove-service-contract";
 import {
-  getAccessSnapshot,
-  requireApplicationPermission,
+  requireApplicationAccess,
   requireCoveUser,
 } from "@/lib/access/server";
 import { createCoveHandoffTicket } from "@/lib/cove-handoff/protocol";
@@ -30,17 +28,7 @@ export async function GET(request: NextRequest) {
   try {
     const identity = await requireVerifiedIdentity();
     const user = await requireCoveUser(identity);
-    await requireApplicationPermission(
-      identity,
-      applicationSlug,
-      `${permissionNamespace(applicationSlug)}.open`,
-    );
-
-    const snapshot = await getAccessSnapshot();
-    const application = snapshot.applications.find(
-      (candidate) => candidate.slug === applicationSlug && candidate.status === "active",
-    );
-    if (!application) throw new Error("The requested application is not active.");
+    const { application } = await requireApplicationAccess(identity, applicationSlug);
 
     const ticket = createCoveHandoffTicket({
       applicationSlug,

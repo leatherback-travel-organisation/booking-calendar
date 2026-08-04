@@ -10,6 +10,7 @@ const project = {
   scope: "leatherback-travel",
   automaticProductionDomain: "lbcove-leatherback-travel.vercel.app",
   canonicalDomain: "cove.leatherbacktravel.com",
+  legacyDomain: "lbcove.vercel.app",
 };
 
 const rootDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -136,6 +137,17 @@ await runVercel(
     project.scope,
   ],
   "canonical alias update",
+);
+await runVercel(
+  [
+    "alias",
+    "set",
+    project.automaticProductionDomain,
+    project.legacyDomain,
+    "--scope",
+    project.scope,
+  ],
+  "legacy alias update",
 );
 
 console.log(`Canonical production URL updated: https://${project.canonicalDomain}/`);

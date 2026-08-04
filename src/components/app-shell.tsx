@@ -6,7 +6,7 @@ import { identityMode, requireEmployeeIdentity } from "@/lib/identity/server";
 import { requireCoveUser } from "@/lib/access/server";
 
 type AppShellProps = {
-  active: "home" | "people" | "brands" | "money" | "recruitment" | "agentic-os" | "admin" | "systems";
+  active: "home" | "people" | "brands" | "money" | "recruitment" | "app-builder" | "admin" | "systems";
   adminSection?: "people" | "audit" | "money" | "injuries";
   systemsSection?: "apps" | "websites";
   children: React.ReactNode;
@@ -22,7 +22,7 @@ export async function AppShell({ active, adminSection = "people", systemsSection
   const systemsHref = systemsSection === "websites" ? "/systems?view=websites" : "/systems";
 
   return (
-    <div className={`cove-portal-shell ${active === "home" ? "cove-home-shell" : ""} ${active === "admin" || active === "systems" ? "cove-admin-shell" : ""} ${active === "recruitment" ? "cove-recruitment-shell" : ""}`}>
+    <div className={`cove-portal-shell ${active === "home" ? "cove-home-shell" : ""} ${active === "admin" || active === "systems" || active === "app-builder" ? "cove-admin-shell" : ""} ${active === "recruitment" ? "cove-recruitment-shell" : ""}`}>
       <a className="skip-link" href="#main-content">Skip to main content</a>
       <header className="cove-topnav">
         <Link href="/" className="cove-logo" aria-label="Cove home">

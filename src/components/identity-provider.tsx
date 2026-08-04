@@ -17,7 +17,7 @@ export async function IdentityProvider({ children }: { children: React.ReactNode
         signIn: {
           start: {
             title: "Sign in to Cove",
-            subtitle: "Continue with your approved Leatherback email.",
+            subtitle: "Sign in with Google using your approved work email.",
           },
         },
       }}

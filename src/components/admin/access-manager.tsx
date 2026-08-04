@@ -228,10 +228,6 @@ function PeopleWorkspace({ initialDirectory }: { initialDirectory: AccessDirecto
   function inviteUser(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const email = inviteEmail.trim().toLowerCase();
-    if (!email.endsWith("@leatherbacktravel.com")) {
-      setNotice("Use the person’s Leatherback Travel Google Workspace email.");
-      return;
-    }
     if (users.some((user) => user.email.toLowerCase() === email)) {
       setNotice("That email is already approved for Cove.");
       return;
@@ -311,7 +307,7 @@ function PeopleWorkspace({ initialDirectory }: { initialDirectory: AccessDirecto
         <form className={styles.inviteForm} onSubmit={inviteUser}>
           <div className={styles.formIntro}><span className={styles.kicker}>New Cove account</span><h2>Approve a person</h2><p>This creates the allowlist record first. Google verification happens later.</p></div>
           <label>Full name<input required value={inviteName} onChange={(event) => setInviteName(event.target.value)} placeholder="Person’s name" /></label>
-          <label>Google Workspace email<input required type="email" value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} placeholder="name@leatherbacktravel.com" /></label>
+          <label>Work email used for Google sign-in<input required type="email" value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} placeholder="name@company.com" /></label>
           <button className={styles.primaryButton} type="submit" disabled={isPending}>{isPending ? "Saving…" : "Approve for Cove"}</button>
         </form>
       )}

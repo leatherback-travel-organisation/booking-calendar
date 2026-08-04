@@ -294,7 +294,7 @@
   .voiceOrb i { animation: none; }
 }
 
-/* Cove Aqua classification: Agentic OS and Systems are internal employee apps. */
+/* Cove Aqua classification for the internal Systems workspace. */
 .aquaRoom {
   --ink: #071b49;
   --muted: #53617b;

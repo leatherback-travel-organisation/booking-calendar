@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { VerifiedIdentity } from "@/lib/identity/types";
+import { workspaceDomainForEmail } from "@/lib/identity/workspace-domain";
 import { getSql } from "@/lib/db/neon";
 import type { AccessDirectory } from "./admin-model";
 import { parseAuditRows, type AuditFeed } from "./audit-integrity";
@@ -290,7 +291,7 @@ export async function bootstrapFirstAdmin(identity: VerifiedIdentity) {
   if (Number(counts[0]?.count) !== 0) return false;
   await sql`with created_user as (
       insert into users (population, email, display_name, status, workspace_domain)
-      values ('employee', ${identity.email.toLowerCase()}, ${identity.displayName}, 'active', ${identity.workspaceDomain ?? "leatherbacktravel.com"})
+      values ('employee', ${identity.email.toLowerCase()}, ${identity.displayName}, 'active', ${identity.workspaceDomain ?? workspaceDomainForEmail(identity.email)})
       returning id
     ), created_identity as (
       insert into identities (user_id, issuer, subject, email_verified_at, last_authenticated_at)
@@ -321,6 +322,7 @@ export async function bootstrapFirstAdmin(identity: VerifiedIdentity) {
 export async function invitePostgresUser(input: { name: string; email: string; actorUserId: string; requestId: string }) {
   const sql = getSql();
   const expiresAt = new Date(Date.now() + 14 * 86_400_000).toISOString();
+  const workspaceDomain = workspaceDomainForEmail(input.email);
   const rows = await sql`with evergreen_lock as (
       select pg_advisory_xact_lock(hashtext('cove-evergreen-application-access'))
     ), actor as (
@@ -346,7 +348,7 @@ export async function invitePostgresUser(input: { name: string; email: string; a
       ) as already_bound
     ), upserted_user as (
       insert into users (population, email, display_name, status, workspace_domain)
-      select 'employee', lower(${input.email}), ${input.name}, 'active', 'leatherbacktravel.com'
+      select 'employee', lower(${input.email}), ${input.name}, 'active', ${workspaceDomain}
       from claimed, existing_identity where existing_identity.already_bound = false
       on conflict (lower(email)) do update set display_name = excluded.display_name, updated_at = now()
         where not exists (select 1 from identities i where i.user_id = users.id)
@@ -387,7 +389,7 @@ export async function invitePostgresUser(input: { name: string; email: string; a
       from evergreen_grants grant_result
     ), audited as (
       insert into audit_events (action, outcome, actor_user_id, target_type, target_id, request_id, metadata)
-      select 'user.invited', 'success', ${input.actorUserId}, 'user', u.id::text, ${input.requestId}, jsonb_build_object('domain', 'leatherbacktravel.com')
+      select 'user.invited', 'success', ${input.actorUserId}, 'user', u.id::text, ${input.requestId}, jsonb_build_object('domain', ${workspaceDomain}::text)
       from upserted_user u
     )
     select exists(select 1 from actor) as actor_authorized,

@@ -6,6 +6,7 @@ import {
   CoveAccessDeniedError,
   requireCoveUser,
 } from "@/lib/access/server";
+import { coveApplicationLaunchUrl } from "@/lib/identity/canonical-origin";
 import { requireEmployeeIdentity } from "@/lib/identity/server";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +30,7 @@ export default async function Home() {
           id: application.id,
           name: application.name,
           description: application.description,
-          href: application.launchUrl,
+          href: coveApplicationLaunchUrl(application.slug),
           slug: application.slug,
           owner: application.owner,
         }))}

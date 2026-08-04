@@ -33,6 +33,7 @@ type IconName =
   | "supplier"
   | "systems"
   | "1mwu"
+  | "builder"
   | "recruitment";
 
 function CoveIcon({ name }: { name: IconName }) {
@@ -52,13 +53,15 @@ function CoveIcon({ name }: { name: IconName }) {
   if (name === "answers") return <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M8 30c7-12 14-20 22-24-1 9 2 17 8 24M13 28c7-1 13-1 20 0M17 21c4-.7 9-.7 13 0" {...common}/><path d="m31 5 1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3Z" fill="currentColor" stroke="none"/></svg>;
   if (name === "systems") return <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 5 32 10v9c0 8-4.9 13.1-12 16-7.1-2.9-12-8-12-16v-9l12-5Z" {...common}/><circle cx="20" cy="19" r="4" {...common}/><path d="M20 12v3M20 23v3M13 19h3M24 19h3M15 14l2 2M23 22l2 2M25 14l-2 2M17 22l-2 2" {...common}/></svg>;
   if (name === "recruitment") return <svg viewBox="0 0 40 40" aria-hidden="true"><rect x="6" y="12" width="28" height="21" rx="4" {...common}/><path d="M14 12V8h12v4M6 21h28M17 21v4h6v-4" {...common}/></svg>;
+  if (name === "builder") return <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M8 7h18l6 6v20H8zM26 7v7h6" {...common}/><path d="m14 24 4-4 3 3 5-6M14 29h12" {...common}/><path d="m11 12 1.2 2.8L15 16l-2.8 1.2L11 20l-1.2-2.8L7 16l2.8-1.2L11 12Z" fill="currentColor" stroke="none"/></svg>;
   if (name === "1mwu") return <Image className="one-mwu-mark" src="/images/1mwu-logo.png" alt="" width={64} height={64} aria-hidden="true" />;
   return <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M7 26c5-2 9-5 13-10 4 4 9 6 13 7M9 31c6-1 11-3 15-7 3 2 6 3 10 4M20 5v15M15 10l5-5 5 5" {...common}/></svg>;
 }
 
 function iconFor(slug: string): IconName {
-  if (slug === "superpanel" || slug === "agentic-os") return "systems";
+  if (slug === "superpanel") return "systems";
   if (slug === "recruitment") return "recruitment";
+  if (slug === "app-builder") return "builder";
   if (slug.includes("trtl")) return "turtle";
   if (slug.includes("answer")) return "answers";
   if (slug.includes("1mwu")) return "1mwu";

@@ -8,6 +8,7 @@ import {
   recruitmentStatuses,
   type RecruitmentAttachment,
   type RecruitmentCandidate,
+  type RecruitmentEmailTemplate,
   type RecruitmentRole,
   type RecruitmentStatus,
   type RecruitmentWorkspace,
@@ -25,8 +26,16 @@ const DEFAULT_BASE_ID = "appWWdP7HWzwyMw82";
 const DEFAULT_TABLE_ID = "tblCcyoxyILhAjZsP";
 const RECRUITMENT_CANDIDATES_CACHE_TAG = "recruitment-candidates";
 const RECRUITMENT_CANDIDATES_CACHE_SECONDS = 3_600;
-const ACTIVE_PIPELINE_STATUSES = new Set<RecruitmentStatus>(["Unreviewed", "Shortlist", "Interview", "Challenge", "2nd Interview", "Final Round", "Next opening", "Other Role"]);
-const CANDIDATE_FIELDS = ["Name", "Job Title", "Notes", "Status", "Email", "Assignee", "Cover Letter", "Resumé", "Interviewer", "First Interview Notes", "Second Interview Notes", "Schedule", "Scenario Challenge", "Samples", "Attachments", "Location:", "Last Updated", "Created"];
+const ACTIVE_PIPELINE_STATUSES = new Set<RecruitmentStatus>(["Unreviewed", "Review Later", "Shortlist", "Interview", "Challenge", "2nd Interview", "Final Round", "Reference Checks", "Next opening", "Other Role"]);
+const CANDIDATE_FIELDS = ["Name", "Job Title", "Notes", "Status", "High Potential", "Email", "Assignee", "Cover Letter", "Resumé", "Interviewer", "First Interview Notes", "Second Interview Notes", "Schedule", "Scenario Challenge", "Samples", "Attachments", "Location:", "Last Updated", "Created"];
+
+const defaultEmailTemplates: RecruitmentEmailTemplate[] = [
+  { key: "interview", stage: "Interview", label: "Interview invitation", subject: "Let’s find a time to talk", body: "Hi {{candidate_name}},\n\nThank you for your application for {{role_name}}. We’d love to invite you to a first conversation. Please use the link below to choose a time that works for you.\n\n{{scheduling_link}}\n\nKind regards,\nLeatherback Recruitment", enabled: false },
+  { key: "challenge", stage: "Challenge", label: "Challenge invitation", subject: "Your {{role_name}} challenge", body: "Hi {{candidate_name}},\n\nWe’d like to invite you to complete a short role-specific challenge. You can view the brief and submit your work using the link below.\n\n{{challenge_link}}\n\nKind regards,\nLeatherback Recruitment", enabled: false },
+  { key: "reference-checks", stage: "Reference Checks", label: "Reference-check request", subject: "A quick reference-check form", body: "Hi {{candidate_name}},\n\nYou have progressed to the reference-check stage. Please share your referees’ contact details through the secure form below.\n\n{{reference_form_link}}\n\nKind regards,\nLeatherback Recruitment", enabled: false },
+  { key: "talent-pool", stage: "Talent Pool", label: "Talent Pool consent", subject: "May we keep in touch?", body: "Hi {{candidate_name}},\n\nWe are not progressing your application right now, but we would love to keep your details for future opportunities. Please use the link below to let us know whether you consent.\n\n{{consent_link}}\n\nKind regards,\nLeatherback Recruitment", enabled: false },
+  { key: "general-rejection", stage: "General Rejection", label: "General rejection", subject: "Thank you for your application", body: "Hi {{candidate_name}},\n\nThank you for the time you invested in your application. We will not be progressing on this occasion, but we wish you every success.\n\nKind regards,\nLeatherback Recruitment", enabled: false },
+];
 
 type AirtableRecord = RecruitmentSourceRecord;
 type Row = Record<string, unknown>;
@@ -133,6 +142,7 @@ function parseCandidate(record: AirtableRecord): RecruitmentCandidate | null {
     updatedAt: text(record.fields["Last Updated"]) || undefined,
     attachments,
     comments: [],
+    tags: record.fields["High Potential"] === true ? ["High Potential"] : [],
   };
 }
 
@@ -156,6 +166,37 @@ async function readCandidateComments() {
     grouped.set(candidateId, current);
   }
   return grouped;
+}
+
+async function readCandidateTags() {
+  if (!databaseConfigured()) return new Map<string, string[]>();
+  const rows = await getSql()`select candidate_record_id, tag from recruitment_candidate_tags order by tag` as Row[];
+  const grouped = new Map<string, string[]>();
+  for (const row of rows) {
+    const candidateId = text(row.candidate_record_id);
+    const tag = text(row.tag);
+    if (!candidateId || !tag) continue;
+    grouped.set(candidateId, [...(grouped.get(candidateId) ?? []), tag]);
+  }
+  return grouped;
+}
+
+async function readEmailTemplates(): Promise<RecruitmentEmailTemplate[]> {
+  if (!databaseConfigured()) return defaultEmailTemplates;
+  const rows = await getSql()`select template_key, stage, subject, body, enabled, updated_at from recruitment_email_templates order by template_key` as Row[];
+  const saved = new Map(rows.map((row) => [text(row.template_key), row]));
+  return defaultEmailTemplates.map((template) => {
+    const row = saved.get(template.key);
+    if (!row) return template;
+    return {
+      ...template,
+      stage: status(row.stage),
+      subject: text(row.subject) || template.subject,
+      body: text(row.body) || template.body,
+      enabled: row.enabled === true,
+      updatedAt: row.updated_at instanceof Date ? row.updated_at.toISOString() : text(row.updated_at) || undefined,
+    };
+  });
 }
 
 async function readCandidatePageFromAirtable(baseId: string, tableId: string, offset: string) {
@@ -224,8 +265,8 @@ function mergedRoles(candidates: RecruitmentCandidate[], configured: Recruitment
 }
 
 export async function getRecruitmentWorkspace(): Promise<RecruitmentWorkspace> {
-  if (identityMode() === "preview") return { candidates: previewRecruitmentCandidates, roles: mergedRoles(previewRecruitmentCandidates, previewRecruitmentRoles), origin: "preview", integrityIssues: 0, writesEnabled: false, truncated: false };
-  const [source, configuredRoles] = await Promise.all([
+  if (identityMode() === "preview") return { candidates: previewRecruitmentCandidates, roles: mergedRoles(previewRecruitmentCandidates, previewRecruitmentRoles), origin: "preview", integrityIssues: 0, writesEnabled: false, truncated: false, emailTemplates: defaultEmailTemplates };
+  const [source, configuredRoles, tags, emailTemplates] = await Promise.all([
     readHiringCandidates().catch((error) => {
       logRecruitmentFailure("candidate-source", error);
       return undefined;
@@ -234,9 +275,17 @@ export async function getRecruitmentWorkspace(): Promise<RecruitmentWorkspace> {
       logRecruitmentFailure("role-configurations", error);
       return [];
     }),
+    readCandidateTags().catch((error) => {
+      logRecruitmentFailure("candidate-tags", error);
+      return new Map<string, string[]>();
+    }),
+    readEmailTemplates().catch((error) => {
+      logRecruitmentFailure("email-templates", error);
+      return defaultEmailTemplates;
+    }),
   ]);
 
-  if (!source) return { candidates: [], roles: mergedRoles([], configuredRoles), origin: "unavailable", integrityIssues: 0, writesEnabled: false, truncated: false };
+  if (!source) return { candidates: [], roles: mergedRoles([], configuredRoles), origin: "unavailable", integrityIssues: 0, writesEnabled: false, truncated: false, emailTemplates };
 
   let integrityIssues = 0;
   const candidates = source.records.flatMap((record) => {
@@ -248,8 +297,12 @@ export async function getRecruitmentWorkspace(): Promise<RecruitmentWorkspace> {
     logRecruitmentFailure("candidate-comments", error);
     return new Map<string, RecruitmentCandidate["comments"]>();
   });
-  const candidatesWithComments = candidates.map((candidate) => ({ ...candidate, comments: comments.get(candidate.id) ?? [] }));
-  return { candidates: candidatesWithComments, roles: mergedRoles(candidatesWithComments, configuredRoles), origin: "airtable", integrityIssues, writesEnabled: true, truncated: source.truncated };
+  const candidatesWithComments = candidates.map((candidate) => ({
+    ...candidate,
+    comments: comments.get(candidate.id) ?? [],
+    tags: [...new Set([...(candidate.tags ?? []), ...(tags.get(candidate.id) ?? [])])],
+  }));
+  return { candidates: candidatesWithComments, roles: mergedRoles(candidatesWithComments, configuredRoles), origin: "airtable", integrityIssues, writesEnabled: true, truncated: source.truncated, emailTemplates };
 }
 
 export async function getRecruitmentCoverage() {
@@ -291,7 +344,29 @@ export async function updateRecruitmentCandidate(input: { id: string; status: Re
   const fields: Record<string, unknown> = { Status: input.status === "Unreviewed" ? null : input.status, Notes: input.notes || null };
   if (input.firstInterviewNotes !== undefined) fields["First Interview Notes"] = input.firstInterviewNotes || null;
   if (input.secondInterviewNotes !== undefined) fields["Second Interview Notes"] = input.secondInterviewNotes || null;
-  await airtableWrite("PATCH", `/${encodeURIComponent(input.id)}`, { fields });
+  await airtableWrite("PATCH", `/${encodeURIComponent(input.id)}`, { typecast: true, fields });
+}
+
+export async function saveRecruitmentCandidateTags(input: { candidateId: string; tags: string[] }, actorUserId: string) {
+  const tags = [...new Set(input.tags.map((tag) => tag.trim()).filter(Boolean))];
+  await airtableWrite("PATCH", `/${encodeURIComponent(input.candidateId)}`, { fields: { "High Potential": tags.includes("High Potential") } });
+  if (!databaseConfigured()) {
+    if (tags.some((tag) => tag !== "High Potential")) throw new Error("The recruiter tag store is not configured.");
+    return;
+  }
+  const coveOnlyTags = tags.filter((tag) => tag !== "High Potential");
+  const sql = getSql();
+  await sql.transaction([
+    sql`delete from recruitment_candidate_tags where candidate_record_id = ${input.candidateId}`,
+    ...coveOnlyTags.map((tag) => sql`insert into recruitment_candidate_tags (candidate_record_id, tag, updated_by_user_id) values (${input.candidateId}, ${tag}, ${actorUserId})`),
+  ]);
+}
+
+export async function saveRecruitmentEmailTemplate(input: RecruitmentEmailTemplate, actorUserId: string) {
+  if (!databaseConfigured()) throw new Error("The email template store is not configured.");
+  await getSql()`insert into recruitment_email_templates (template_key, stage, subject, body, enabled, updated_by_user_id)
+    values (${input.key}, ${input.stage}, ${input.subject}, ${input.body}, ${input.enabled}, ${actorUserId})
+    on conflict (template_key) do update set stage = excluded.stage, subject = excluded.subject, body = excluded.body, enabled = excluded.enabled, updated_by_user_id = excluded.updated_by_user_id, updated_at = now()`;
 }
 
 export async function createRecruitmentCandidate(input: { name: string; email: string; role: string; location: string; notes: string }) {

@@ -2,8 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { clerkClient } from "@clerk/nextjs/server";
 import { requireEmployeeIdentity } from "@/lib/identity/server";
 import { identityMode } from "@/lib/identity/server";
+import { ensureClerkTeamUser } from "@/lib/identity/clerk-provisioning";
 import { databaseConfigured } from "@/lib/db/neon";
 import { getAccessDirectory, requirePlatformRole } from "./server";
 import {
@@ -16,7 +18,7 @@ import type { AccessActionResult } from "./admin-model";
 import type { MutationOutcome } from "./mutations";
 import { SUPERPANEL_APPLICATION_SLUG } from "./application-ids";
 
-const employeeEmail = z.string().trim().toLowerCase().email().refine((email) => email.endsWith("@leatherbacktravel.com"), "Use a Leatherback Travel work email.");
+const employeeEmail = z.string().trim().toLowerCase().email("Use the person’s work email address.");
 const id = z.string().uuid();
 const mutationRequest = z.string().uuid();
 
@@ -53,8 +55,19 @@ export async function inviteAccessUser(input: unknown): Promise<AccessActionResu
   try {
     const value = z.object({ name: z.string().trim().min(2).max(120), email: employeeEmail, requestId: mutationRequest }).parse(input);
     const user = await accessActor();
+    try {
+      const client = await clerkClient();
+      await ensureClerkTeamUser(client, value);
+    } catch (cause) {
+      console.error("[access-action] Clerk provisioning failed", {
+        action: "invite-user",
+        email: value.email,
+        message: cause instanceof Error ? cause.message : "Unknown Clerk error",
+      });
+      throw new Error("Cove could not prepare this sign-in account. No access was changed. Please try again.");
+    }
     const created = await invitePostgresUser({ ...value, actorUserId: user.id });
-    return success(created ? `${value.name} has been invited for 14 days.` : "This invitation was already processed.");
+    return success(created ? `${value.name} is approved and ready to sign in.` : "This approval was already processed.");
   } catch (cause) {
     return failure("invite-user", cause);
   }
