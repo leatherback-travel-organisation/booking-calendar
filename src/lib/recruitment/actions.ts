@@ -9,8 +9,10 @@ import { createRecruitmentCandidate, createRecruitmentComment, saveRecruitmentCa
 
 export type RecruitmentActionResult = { ok: true; message: string } | { ok: false; message: string };
 
+const candidateIdPattern = /^rec[A-Za-z0-9]+$|^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
 const candidateUpdateSchema = z.object({
-  id: z.string().regex(/^rec[A-Za-z0-9]+$/),
+  id: z.string().regex(candidateIdPattern),
   status: z.enum(recruitmentStatuses),
   notes: z.string().trim().max(10_000),
   firstInterviewNotes: z.string().trim().max(20_000).optional(),
@@ -38,12 +40,12 @@ const roleSchema = z.object({
 });
 
 const commentSchema = z.object({
-  candidateId: z.string().regex(/^rec[A-Za-z0-9]+$/),
+  candidateId: z.string().regex(candidateIdPattern),
   body: z.string().trim().min(1).max(5_000),
 });
 
 const candidateTagsSchema = z.object({
-  candidateId: z.string().regex(/^rec[A-Za-z0-9]+$/),
+  candidateId: z.string().regex(candidateIdPattern),
   tags: z.array(z.string().trim().min(1).max(80)).max(20),
 });
 

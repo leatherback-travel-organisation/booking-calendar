@@ -1,5 +1,6 @@
 export type RecruitmentSourceRecord = {
   id: string;
+  createdTime?: string;
   fields: Record<string, unknown>;
 };
 

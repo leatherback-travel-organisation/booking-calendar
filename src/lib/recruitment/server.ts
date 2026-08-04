@@ -15,6 +15,7 @@ import {
   type RolePublishingStatus,
 } from "./model";
 import { previewRecruitmentCandidates, previewRecruitmentRoles } from "./preview-data";
+import { lakeConfigured, readLakeCandidates, writeLakeCreate, writeLakeUpdate } from "./lake";
 import {
   collectAllRecruitmentRecords,
   recruitmentPageQuery,
@@ -247,6 +248,19 @@ const readHiringCandidates = unstable_cache(
   },
 );
 
+const readLakeCandidateSnapshot = unstable_cache(
+  async () => ({ records: await readLakeCandidates(), truncated: false }),
+  ["recruitment-lake-snapshot-v1"],
+  {
+    revalidate: 60,
+    tags: [RECRUITMENT_CANDIDATES_CACHE_TAG],
+  },
+);
+
+function readRecruitmentCandidates() {
+  return lakeConfigured() ? readLakeCandidateSnapshot() : readHiringCandidates();
+}
+
 async function readRoleConfigurations(): Promise<RecruitmentRole[]> {
   if (!databaseConfigured()) return [];
   const rows = await getSql()`select title, status, hiring_manager, location, employment_type, ad_copy, ad_url, advertising_channels, publishing_notes, updated_at from recruitment_roles order by title` as Row[];
@@ -271,7 +285,7 @@ function mergedRoles(candidates: RecruitmentCandidate[], configured: Recruitment
 export async function getRecruitmentWorkspace(): Promise<RecruitmentWorkspace> {
   if (identityMode() === "preview") return { candidates: previewRecruitmentCandidates, roles: mergedRoles(previewRecruitmentCandidates, previewRecruitmentRoles), origin: "preview", integrityIssues: 0, writesEnabled: false, truncated: false, emailTemplates: defaultEmailTemplates };
   const [source, configuredRoles, tags, emailTemplates] = await Promise.all([
-    readHiringCandidates().catch((error) => {
+    readRecruitmentCandidates().catch((error) => {
       logRecruitmentFailure("candidate-source", error);
       return undefined;
     }),
@@ -320,7 +334,7 @@ export async function getRecruitmentCoverage() {
   }
 
   try {
-    const source = await readHiringCandidates();
+    const source = await readRecruitmentCandidates();
     if (!source) return { available: false, records: 0, candidates: 0, truncated: false };
     return {
       available: true,
@@ -348,12 +362,23 @@ export async function updateRecruitmentCandidate(input: { id: string; status: Re
   const fields: Record<string, unknown> = { Status: input.status === "Unreviewed" ? null : input.status, Notes: input.notes || null };
   if (input.firstInterviewNotes !== undefined) fields["First Interview Notes"] = input.firstInterviewNotes || null;
   if (input.secondInterviewNotes !== undefined) fields["Second Interview Notes"] = input.secondInterviewNotes || null;
+  if (lakeConfigured()) {
+    await writeLakeUpdate(input.id, fields);
+    revalidateTag(RECRUITMENT_CANDIDATES_CACHE_TAG, "max");
+    return;
+  }
   await airtableWrite("PATCH", `/${encodeURIComponent(input.id)}`, { typecast: true, fields });
 }
 
 export async function saveRecruitmentCandidateTags(input: { candidateId: string; tags: string[] }, actorUserId: string) {
   const tags = [...new Set(input.tags.map((tag) => tag.trim()).filter(Boolean))];
-  await airtableWrite("PATCH", `/${encodeURIComponent(input.candidateId)}`, { fields: { "High Potential": tags.includes("High Potential") } });
+  const fields = { "High Potential": tags.includes("High Potential") };
+  if (lakeConfigured()) {
+    await writeLakeUpdate(input.candidateId, fields);
+    revalidateTag(RECRUITMENT_CANDIDATES_CACHE_TAG, "max");
+  } else {
+    await airtableWrite("PATCH", `/${encodeURIComponent(input.candidateId)}`, { fields });
+  }
   if (!databaseConfigured()) {
     if (tags.some((tag) => tag !== "High Potential")) throw new Error("The recruiter tag store is not configured.");
     return;
@@ -374,7 +399,13 @@ export async function saveRecruitmentEmailTemplate(input: RecruitmentEmailTempla
 }
 
 export async function createRecruitmentCandidate(input: { name: string; email: string; role: string; location: string; notes: string }) {
-  await airtableWrite("POST", "", { typecast: true, fields: { Name: input.name, Email: input.email || undefined, "Job Title": [input.role], "Location:": input.location || undefined, Notes: input.notes || undefined } });
+  const fields = { Name: input.name, Email: input.email || undefined, "Job Title": [input.role], "Location:": input.location || undefined, Notes: input.notes || undefined };
+  if (lakeConfigured()) {
+    await writeLakeCreate(fields);
+    revalidateTag(RECRUITMENT_CANDIDATES_CACHE_TAG, "max");
+    return;
+  }
+  await airtableWrite("POST", "", { typecast: true, fields });
 }
 
 export async function saveRecruitmentRole(input: Omit<RecruitmentRole, "activeCandidates" | "updatedAt">, actorUserId: string) {
