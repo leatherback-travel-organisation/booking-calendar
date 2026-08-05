@@ -161,6 +161,8 @@
 }
 
 .roleFilter { height: 40px; max-width: 210px; padding: 0 32px 0 11px; font-size: 12px; }
+.flagFilter { flex: 0 1 205px; }
+.flagFilter select { width: 100%; height: 38px; padding: 0 8px; border: 1px solid #d7e3e5; border-radius: 8px; color: #183255; background: #fff; font: inherit; font-size: 11px; }
 
 .rolePicker { min-width: 190px; flex: 0 1 225px; position: relative; z-index: 25; }
 .rolePicker > span { display: none; }
@@ -302,6 +304,10 @@
 .cardMeta svg { width: 12px; height: 12px; }
 .cardTags { margin-top: 7px; display: flex; flex-wrap: wrap; gap: 4px; }
 .cardTags span { padding: 3px 6px; border-radius: 999px; color: #80521d; background: #fff2d8; font-size: 11px; font-weight: 500; }
+.cardFlags { margin-top: 6px; min-height: 25px; opacity: 0; display: flex; flex-wrap: wrap; gap: 4px; transition: opacity .15s ease; }
+.candidateCard:hover .cardFlags,
+.candidateCard:focus-within .cardFlags { opacity: 1; }
+.cardFlags span { width: 25px; height: 25px; border: 1px solid #e5dcc8; border-radius: 7px; background: #fff8e9; display: grid; place-items: center; font-size: 14px; }
 .emptyColumn { min-height: 88px; border: 1px dashed #d7e1e2; border-radius: 10px; color: #9aa4af; display: grid; place-items: center; align-content: center; text-align: center; }
 .emptyColumn span { color: #7c8a9a; font-size: 12px; font-weight: 500; }
 .emptyColumn p { margin: 4px 0 0; font-size: 11px; }
@@ -390,6 +396,8 @@
 .modalHeader > div > span { color: var(--teal); }
 .modalHeader h2 { margin: 6px 0 4px; color: var(--navy); font-size: 26px; letter-spacing: -.035em; }
 .modalHeader p { margin: 0; color: #7a8798; font-size: 12px; }
+.recordFlags { margin-top: 9px; display: flex; flex-wrap: wrap; gap: 5px; }
+.recordFlags span { padding: 4px 7px; border-radius: 999px; color: #79551f; background: #fff1d6; font-size: 11px; font-weight: 500; }
 .modalHeader > button { width: 36px; height: 36px; padding: 9px; border: 1px solid #dce5e6; border-radius: 10px; color: #52657d; background: white; cursor: pointer; }
 .modalHeader > button svg { width: 17px; height: 17px; }
 
@@ -565,6 +573,17 @@
 .record .commentThread { margin-top: 0; }
 .record .editForm { margin-top: 0; padding-top: 15px; }
 .record .emailCard { display: grid; align-content: start; }
+.classificationCard > header { display: flex; align-items: end; justify-content: space-between; gap: 16px; }
+.classificationCard > header span { color: #008178; font-size: 11px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; }
+.classificationCard > header h3 { margin: 2px 0 0; color: #163659; font-size: 13px; }
+.classificationCard > header small { color: #7e8d9b; font-size: 11px; }
+.flagChoices { margin-top: 12px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.flagChoices label { min-height: 58px; padding: 10px; border: 1px solid #dce6e5; border-radius: 10px; color: #53687d; background: #f8fbfa; display: grid; grid-template-columns: auto auto minmax(0, 1fr); align-items: center; gap: 8px; cursor: pointer; transition: border-color .15s ease, background .15s ease, box-shadow .15s ease; }
+.flagChoices label:hover { border-color: #a9cfca; background: #f1f9f7; }
+.flagChoices label.flagSelected { border-color: #6dbbb3; color: #164f4b; background: #e8f7f4; box-shadow: inset 0 0 0 1px rgba(0,138,132,.08); }
+.flagChoices input { width: 16px; height: 16px; accent-color: #008a84; }
+.flagChoices label > span { font-size: 19px; }
+.flagChoices strong { font-size: 11px; line-height: 1.35; }
 .messageActions { margin-top: 13px; display: flex; flex-wrap: wrap; gap: 7px; }
 .messageActions :is(a,button) { min-height: 33px; padding: 7px 9px; font-size: 11px; text-decoration: none; }
 .messageActions svg { width: 14px; height: 14px; }
@@ -578,6 +597,7 @@
 
 @media (max-width: 1100px) {
   :global(.cove-recruitment-shell .profile-admin) { display: none; }
+  .controlBar { flex-wrap: wrap; }
   :global(.cove-recruitment-shell .cove-topnav) { grid-template-columns: 150px minmax(0,1fr) auto; gap: 12px; }
   :global(.cove-recruitment-shell .cove-primary-nav) { gap: 10px; }
   :global(.cove-recruitment-shell .cove-nav-link) { min-width: 56px; gap: 6px; font-size: 13px; }
@@ -593,6 +613,8 @@
   .tabs { flex: 1 1 auto; }
   .search { order: 3; flex-basis: 100%; }
   .rolePicker { flex: 1 1 230px; }
+  .flagFilter { flex: 1 1 190px; }
+  .flagChoices { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .publishingPath { grid-template-columns: repeat(2, minmax(0,1fr)); }
   .publishingPath > div:nth-child(2) { border-right: 0; }
   .publishingPath > div:nth-child(-n+2) { border-bottom: 1px solid #e5ecec; }
@@ -613,7 +635,9 @@
   .tabs { width: 100%; flex-basis: 100%; }
   .tabs button { flex: 1; justify-content: center; }
   .search { order: initial; }
-  .rolePicker { flex-basis: 100%; }
+  .rolePicker,
+  .flagFilter { flex-basis: 100%; }
+  .flagChoices { grid-template-columns: 1fr; }
   .roleMenu { width: 100%; }
   .densityToggle { width: 100%; }
   .densityToggle button { flex: 1; }

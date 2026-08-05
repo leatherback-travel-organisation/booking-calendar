@@ -5,6 +5,7 @@ import { databaseConfigured, getSql } from "@/lib/db/neon";
 import { identityMode } from "@/lib/identity/server";
 import {
   knownRecruitmentRoles,
+  recruitmentProfileFlags,
   recruitmentStatuses,
   type RecruitmentAttachment,
   type RecruitmentCandidate,
@@ -143,7 +144,7 @@ function parseCandidate(record: AirtableRecord): RecruitmentCandidate | null {
     updatedAt: text(record.fields["Last Updated"]) || undefined,
     attachments,
     comments: [],
-    tags: record.fields["High Potential"] === true ? ["High Potential"] : [],
+    tags: record.fields["High Potential"] === true ? ["Talent Pool / High Potential"] : [],
   };
 }
 
@@ -318,7 +319,8 @@ export async function getRecruitmentWorkspace(): Promise<RecruitmentWorkspace> {
   const candidatesWithComments = candidates.map((candidate) => ({
     ...candidate,
     comments: comments.get(candidate.id) ?? [],
-    tags: [...new Set([...(candidate.tags ?? []), ...(tags.get(candidate.id) ?? [])])],
+    tags: [...new Set([...(candidate.tags ?? []), ...(tags.get(candidate.id) ?? []).map((tag) => tag === "High Potential" ? "Talent Pool / High Potential" : tag)])]
+      .filter((tag) => recruitmentProfileFlags.includes(tag as (typeof recruitmentProfileFlags)[number])),
   }));
   return { candidates: candidatesWithComments, roles: mergedRoles(candidatesWithComments, configuredRoles), origin: "airtable", integrityIssues, writesEnabled: true, truncated: source.truncated, emailTemplates };
 }
@@ -372,7 +374,7 @@ export async function updateRecruitmentCandidate(input: { id: string; status: Re
 
 export async function saveRecruitmentCandidateTags(input: { candidateId: string; tags: string[] }, actorUserId: string) {
   const tags = [...new Set(input.tags.map((tag) => tag.trim()).filter(Boolean))];
-  const fields = { "High Potential": tags.includes("High Potential") };
+  const fields = { "High Potential": tags.includes("Talent Pool / High Potential") };
   if (lakeConfigured()) {
     await writeLakeUpdate(input.candidateId, fields);
     revalidateTag(RECRUITMENT_CANDIDATES_CACHE_TAG, "max");
@@ -380,10 +382,10 @@ export async function saveRecruitmentCandidateTags(input: { candidateId: string;
     await airtableWrite("PATCH", `/${encodeURIComponent(input.candidateId)}`, { fields });
   }
   if (!databaseConfigured()) {
-    if (tags.some((tag) => tag !== "High Potential")) throw new Error("The recruiter tag store is not configured.");
+    if (tags.some((tag) => tag !== "Talent Pool / High Potential")) throw new Error("The recruiter flag store is not configured.");
     return;
   }
-  const coveOnlyTags = tags.filter((tag) => tag !== "High Potential");
+  const coveOnlyTags = tags.filter((tag) => tag !== "Talent Pool / High Potential");
   const sql = getSql();
   await sql.transaction([
     sql`delete from recruitment_candidate_tags where candidate_record_id = ${input.candidateId}`,

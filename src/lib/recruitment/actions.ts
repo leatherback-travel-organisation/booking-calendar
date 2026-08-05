@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireApplicationPermission } from "@/lib/access/server";
 import { requireEmployeeIdentity } from "@/lib/identity/server";
-import { recruitmentStatuses, recruitmentTemplateKeys } from "./model";
+import { recruitmentProfileFlags, recruitmentStatuses, recruitmentTemplateKeys } from "./model";
 import { createRecruitmentCandidate, createRecruitmentComment, saveRecruitmentCandidateTags, saveRecruitmentEmailTemplate, saveRecruitmentRole, updateRecruitmentCandidate } from "./server";
 
 export type RecruitmentActionResult = { ok: true; message: string } | { ok: false; message: string };
@@ -46,7 +46,7 @@ const commentSchema = z.object({
 
 const candidateTagsSchema = z.object({
   candidateId: z.string().regex(candidateIdPattern),
-  tags: z.array(z.string().trim().min(1).max(80)).max(20),
+  tags: z.array(z.enum(recruitmentProfileFlags)).max(recruitmentProfileFlags.length),
 });
 
 const emailTemplateSchema = z.object({
@@ -116,7 +116,7 @@ export async function saveRecruitmentCandidateTagsAction(input: unknown): Promis
     const parsed = candidateTagsSchema.parse(input);
     await saveRecruitmentCandidateTags(parsed, access.user.id);
     revalidatePath("/recruitment");
-    return { ok: true, message: "Candidate tags saved." };
+    return { ok: true, message: "Candidate profile flags saved." };
   } catch (error) { return failure(error); }
 }
 

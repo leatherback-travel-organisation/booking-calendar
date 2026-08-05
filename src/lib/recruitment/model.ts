@@ -21,6 +21,15 @@ export const recruitmentStatuses = [
 export type RecruitmentStatus = (typeof recruitmentStatuses)[number];
 export type RolePublishingStatus = "draft" | "ready" | "live" | "paused" | "closed";
 
+export const recruitmentProfileFlags = [
+  "Talent Pool / High Potential",
+  "Experienced",
+  "Qualified",
+  "Great Energy / Personality",
+] as const;
+
+export type RecruitmentProfileFlag = (typeof recruitmentProfileFlags)[number];
+
 export type RecruitmentAttachment = {
   id: string;
   filename: string;
