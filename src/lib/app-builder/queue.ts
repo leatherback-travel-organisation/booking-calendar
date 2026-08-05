@@ -1,17 +1,18 @@
 import "server-only";
 
-import { APP_BUILDER_MAX_TURNS, type AppBuilderRequest } from "./model";
+import type { AppBuilderRequest } from "./model";
 import { APP_BUILDER_PROMPT, APP_BUILDER_TOOLS, responseText, runAppBuilderTool, type AgentResponse } from "./agent";
 import {
   claimAppBuilderResponse, claimAppBuilderReversal, claimNextAppBuilderRequest,
   deleteAppBuilderPdf, findAppBuilderRequestById, findAppBuilderRequestByResponse,
-  loadAppBuilderPdf, loadAppBuilderStagedChanges, updateAppBuilderRequest,
+  createAppBuilderBriefReadUrl, loadAppBuilderBrief, loadAppBuilderStagedChanges, updateAppBuilderRequest,
 } from "./server";
 import {
   approveAndMergePullRequest,
   getPullRequestChecks,
   prepareGitHubPullRequest,
   prepareGitHubRevertPullRequest,
+  updateGitHubPullRequestFiles,
 } from "@/lib/systems/sso-providers";
 
 type FinalResult = { blocked: boolean; title: string; summary: string };
@@ -20,12 +21,20 @@ export async function kickAppBuilderQueue(targetAssetId: string) {
   const request = await claimNextAppBuilderRequest(targetAssetId);
   if (!request) return;
   try {
-    const pdf = await loadAppBuilderPdf(request.id);
+    const brief = await loadAppBuilderBrief(request.id);
+    let fileInput: Record<string, string>;
+    if (brief.blobUrl) {
+      fileInput = { type: "input_file", filename: request.filename, file_url: await createAppBuilderBriefReadUrl(brief.blobUrl) };
+    } else if (brief.bytes) {
+      fileInput = { type: "input_file", filename: request.filename, file_data: `data:application/pdf;base64,${Buffer.from(brief.bytes).toString("base64")}` };
+    } else {
+      throw new Error("The uploaded PDF is unavailable.");
+    }
     const response = await createResponse({
       request,
       input: [{ role: "user", content: [
         { type: "input_text", text: `Bound app: ${request.targetName}\nBound repository: ${request.repositoryPath}\nProduction URL: ${request.productionUrl}\n\nRequester notes:\n${request.notes || "Implement the requested changes in the attached PDF."}` },
-        { type: "input_file", filename: request.filename, file_data: `data:application/pdf;base64,${Buffer.from(pdf).toString("base64")}`, detail: "auto" },
+        fileInput,
       ] }],
     });
     await updateAppBuilderRequest(request.id, { status: "waiting_openai", detail: "Understanding the requested changes", responseId: response.id, turn: 1 });
@@ -59,7 +68,6 @@ export async function continueAppBuilderResponse(responseId: string, eventType: 
     }
     await updateAppBuilderRequest(request.id, { staged, detail: progressDetail(calls.map((call) => call.name ?? "")) });
     if (final) { await finish(request, staged, final); return true; }
-    if (request.turn >= APP_BUILDER_MAX_TURNS) throw new Error("The request was too broad to complete safely in one run.");
     const next = await createResponse({ request, input: outputs, previousResponseId: responseId });
     await updateAppBuilderRequest(request.id, { status: "waiting_openai", detail: "Continuing the proposed update", responseId: next.id, turn: request.turn + 1, staged });
     return true;
@@ -75,13 +83,24 @@ async function finish(request: AppBuilderRequest, staged: Record<string, string>
   }
   await updateAppBuilderRequest(request.id, { status: "preparing_review", detail: "Preparing the protected change" });
   const branch = `codex/app-builder-${request.id.slice(0, 8)}`;
-  const pull = await prepareGitHubPullRequest({
-    repositoryPath: request.repositoryPath, branch,
-    title: result.title.slice(0, 120),
-    body: `Requested in Cove App Builder by ${request.requestedByName}.\n\nSource: ${request.filename}\n\n${result.summary}\n\nCove will publish this protected change automatically and retain an exact reversal path.`,
-    files: staged,
-  });
-  await updateAppBuilderRequest(request.id, { status: "publishing", detail: "Publishing the protected change", branch: pull.branch, pullNumber: pull.number, pullUrl: pull.url, summary: result.summary });
+  let pull: { branch: string; number: number; url: string };
+  if (request.pullNumber && request.pullUrl && request.branch) {
+    await updateGitHubPullRequestFiles({
+      repositoryPath: request.repositoryPath,
+      pullNumber: request.pullNumber,
+      title: result.title.slice(0, 120),
+      files: staged,
+    });
+    pull = { branch: request.branch, number: request.pullNumber, url: request.pullUrl };
+  } else {
+    pull = await prepareGitHubPullRequest({
+      repositoryPath: request.repositoryPath, branch,
+      title: result.title.slice(0, 120),
+      body: `Requested in Cove App Builder by ${request.requestedByName}.\n\nSource: ${request.filename}\n\n${result.summary}\n\nCove will publish this protected change automatically and retain an exact reversal path.`,
+      files: staged,
+    });
+  }
+  await updateAppBuilderRequest(request.id, { status: "publishing", detail: "Checking and publishing the update", branch: pull.branch, pullNumber: pull.number, pullUrl: pull.url, summary: result.summary });
   await deleteAppBuilderPdf(request.id);
   await publishAppBuilderRequest(request.id);
 }
@@ -101,7 +120,23 @@ export async function publishAppBuilderRequest(id: string) {
       return true;
     }
     if (checks.state === "closed") throw new Error("The protected change was closed without publishing.");
-    if (checks.failing > 0) throw new Error("Repository checks failed. Nothing was published.");
+    if (checks.failing > 0) {
+      const evidence = checks.failureDetails.length
+        ? checks.failureDetails.join("\n\n").slice(0, 12_000)
+        : "A required repository check failed without returning detailed annotations.";
+      const next = await createResponse({
+        request,
+        input: [{ role: "user", content: [{ type: "input_text", text: `The repository checks found issues in the proposed update. Fix the staged files, run review_changes again, and finish when the update is ready. Do not discard the requested work.\n\nCheck evidence:\n${evidence}` }] }],
+        previousResponseId: request.responseId,
+      });
+      await updateAppBuilderRequest(id, {
+        status: "waiting_openai",
+        detail: "Fixing issues found by repository checks",
+        responseId: next.id,
+        turn: request.turn + 1,
+      });
+      return true;
+    }
     if (checks.pending > 0) {
       await updateAppBuilderRequest(id, { status: "publishing", detail: "Waiting for repository checks" });
       return true;

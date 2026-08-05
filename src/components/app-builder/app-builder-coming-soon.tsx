@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { AppBuilderRequest, AppBuilderTarget } from "@/lib/app-builder/model";
+import { upload } from "@vercel/blob/client";
+import { APP_BUILDER_MAX_PDF_BYTES, type AppBuilderRequest, type AppBuilderTarget } from "@/lib/app-builder/model";
 import styles from "./app-builder-coming-soon.module.css";
 
 const active = new Set(["queued", "reading", "waiting_openai", "making_changes", "preparing_review", "needs_approval", "publishing", "reversing"]);
@@ -24,10 +25,13 @@ function Mark({ type }: { type: "spark" | "file" | "check" | "arrow" }) {
 export function AppBuilderComingSoon({ targets, requests, allRequests, engineReady }: { targets: AppBuilderTarget[]; requests: AppBuilderRequest[]; allRequests?: AppBuilderRequest[]; engineReady: boolean }) {
   const router = useRouter();
   const form = useRef<HTMLFormElement>(null);
+  const dragDepth = useRef(0);
   const canSeeOverall = allRequests !== undefined;
   const [selectedId, setSelectedId] = useState(canSeeOverall ? ALL_UPDATES : targets[0]?.id ?? "");
-  const [filename, setFilename] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [draggingBrief, setDraggingBrief] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [reversingId, setReversingId] = useState("");
   const [message, setMessage] = useState("");
   const showingOverall = canSeeOverall && selectedId === ALL_UPDATES;
@@ -46,20 +50,66 @@ export function AppBuilderComingSoon({ targets, requests, allRequests, engineRea
   }, [hasActive, router]);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setSubmitting(true); setMessage("");
+    event.preventDefault(); setSubmitting(true); setUploadProgress(0); setMessage("");
     try {
-      const response = await fetch("/api/app-builder/requests", { method: "POST", body: new FormData(event.currentTarget) });
+      if (!selectedFile) throw new Error("Choose or drop a PDF brief to continue.");
+      const fields = new FormData(event.currentTarget);
+      const blob = await upload(`app-builder/${crypto.randomUUID()}.pdf`, selectedFile, {
+        access: "private",
+        handleUploadUrl: "/api/app-builder/uploads",
+        clientPayload: JSON.stringify({ targetId: selectedId }),
+        multipart: selectedFile.size > 10 * 1024 * 1024,
+        onUploadProgress: ({ percentage }) => setUploadProgress(Math.round(percentage)),
+      });
+      const response = await fetch("/api/app-builder/requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetId: selectedId, notes: String(fields.get("notes") ?? ""), blobUrl: blob.url, filename: selectedFile.name }),
+      });
       const result = response.headers.get("content-type")?.includes("application/json")
         ? await response.json().catch(() => ({})) as { error?: string }
         : {};
       if (!response.ok) {
-        if (response.status === 413) throw new Error("This PDF is too large. Choose one under 4 MB.");
+        if (response.status === 413) throw new Error("This PDF is larger than 200 MB.");
         throw new Error(result.error ?? `Cove could not accept the upload (HTTP ${response.status}).`);
       }
       setMessage("Brief received. Cove is preparing and publishing the protected update.");
-      setFilename(""); form.current?.reset(); router.refresh();
+      setSelectedFile(null); form.current?.reset(); router.refresh();
     } catch (error) { setMessage(error instanceof Error ? error.message : "The request could not be started."); }
-    finally { setSubmitting(false); }
+    finally { setSubmitting(false); setUploadProgress(0); }
+  }
+
+  function chooseBrief(file?: File) {
+    setMessage("");
+    if (!file) { setSelectedFile(null); return; }
+    if (!file.name.toLowerCase().endsWith(".pdf") || (file.type && file.type !== "application/pdf")) {
+      setSelectedFile(null); setMessage("Drop a PDF file to continue."); return;
+    }
+    if (file.size > APP_BUILDER_MAX_PDF_BYTES) {
+      setSelectedFile(null); setMessage("This PDF is larger than 200 MB."); return;
+    }
+    setSelectedFile(file);
+  }
+
+  function dragEnter(event: React.DragEvent<HTMLLabelElement>) {
+    event.preventDefault();
+    if (!engineReady || submitting) return;
+    dragDepth.current += 1;
+    setDraggingBrief(true);
+  }
+
+  function dragLeave(event: React.DragEvent<HTMLLabelElement>) {
+    event.preventDefault();
+    dragDepth.current = Math.max(0, dragDepth.current - 1);
+    if (dragDepth.current === 0) setDraggingBrief(false);
+  }
+
+  function dropBrief(event: React.DragEvent<HTMLLabelElement>) {
+    event.preventDefault();
+    dragDepth.current = 0;
+    setDraggingBrief(false);
+    if (!engineReady || submitting) return;
+    chooseBrief(event.dataTransfer.files[0]);
   }
 
   async function reverse(requestId: string) {
@@ -115,13 +165,13 @@ export function AppBuilderComingSoon({ targets, requests, allRequests, engineRea
             {!engineReady && <div className={styles.connectionNotice}><span>Connection pending</span><p>The workspace is ready, but its private OpenAI key and signed webhook still need to be connected. Uploads stay off until both are verified.</p></div>}
             <form ref={form} onSubmit={submit}>
               <input type="hidden" name="targetId" value={selected.id}/>
-              <div className={styles.uploadIntro}><span><Mark type="file"/></span><div><p className={styles.kicker}>New request</p><h2 id="brief-title">Upload the brief</h2><p>One PDF, up to 4 MB. Include the outcome, exact wording and screenshots where useful.</p></div></div>
-              <label className={styles.drop} data-file={Boolean(filename)} data-disabled={!engineReady}>
-                <input disabled={!engineReady || submitting} type="file" name="pdf" accept="application/pdf,.pdf" required onChange={(event) => setFilename(event.target.files?.[0]?.name ?? "")}/>
-                <span><Mark type="file"/></span><div><strong>{filename || "Choose a PDF brief"}</strong><small>{filename ? "Ready to send securely" : engineReady ? "Click to browse your files" : "Available once the AI connection is verified"}</small></div><b>Browse</b>
+              <div className={styles.uploadIntro}><span><Mark type="file"/></span><div><p className={styles.kicker}>New request</p><h2 id="brief-title">Upload the brief</h2><p>One PDF, up to 200 MB. Include the outcome, exact wording and screenshots where useful.</p></div></div>
+              <label className={styles.drop} data-file={Boolean(selectedFile)} data-dragging={draggingBrief} data-disabled={!engineReady} onDragEnter={dragEnter} onDragOver={(event) => event.preventDefault()} onDragLeave={dragLeave} onDrop={dropBrief} aria-label="Drag and drop a PDF brief, or browse your files">
+                <input disabled={!engineReady || submitting} type="file" name="pdf" accept="application/pdf,.pdf" onChange={(event) => chooseBrief(event.target.files?.[0])}/>
+                <span><Mark type="file"/></span><div><strong>{draggingBrief ? "Drop your PDF here" : selectedFile?.name || "Drag & drop a PDF brief"}</strong><small>{selectedFile ? "Ready to send securely" : engineReady ? "or click to browse your files" : "Available once the AI connection is verified"}</small></div><b>{draggingBrief ? "Drop" : "Browse"}</b>
               </label>
               <label className={styles.notes}><span>Extra context <small>optional</small></span><textarea disabled={!engineReady} name="notes" maxLength={2000} rows={3} placeholder="For example: keep the current desktop layout, but simplify this on mobile."/></label>
-              <div className={styles.actions}><button disabled={!engineReady || !filename || submitting}>{submitting ? "Sending securely…" : "Start protected update"}<Mark type="arrow"/></button>{message && <p role="status">{message}</p>}</div>
+              <div className={styles.actions}><button disabled={!engineReady || !selectedFile || submitting}>{submitting ? uploadProgress < 100 ? `Uploading ${uploadProgress}%…` : "Starting update…" : "Start update"}<Mark type="arrow"/></button>{message && <p role="status">{message}</p>}</div>
             </form>
           </section> : <section className={styles.setupPanel}>
             <span><Mark type="file"/></span>
@@ -142,9 +192,10 @@ export function AppBuilderComingSoon({ targets, requests, allRequests, engineRea
 
 function RequestCard({ request, showTarget = false, onReverse, reversing = false }: { request: AppBuilderRequest; showTarget?: boolean; onReverse?: (id: string) => void; reversing?: boolean }) {
   const working = active.has(request.status);
+  const superseded = request.status === "failed" && request.statusDetail.startsWith("Superseded");
   return <article className={styles.request} data-status={request.status}>
-    <span className={styles.statusIcon}>{request.status === "needs_approval" ? "↗" : request.status === "failed" ? "!" : working ? "↻" : "✓"}</span>
-    <div>{showTarget && <p className={styles.requestTarget}>{request.targetName}</p>}<div className={styles.requestTitle}><h3>{request.filename}</h3><span>{labels[request.status]}</span></div><p>{request.statusDetail}</p>{request.summary && <blockquote>{request.summary}</blockquote>}{request.error && <p className={styles.error}>{request.error}</p>}<small>{request.requestedByName} · {new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(request.createdAt))}</small></div>
+    <span className={styles.statusIcon}>{request.status === "needs_approval" ? "↗" : request.status === "failed" && !superseded ? "!" : working ? "↻" : "✓"}</span>
+    <div>{showTarget && <p className={styles.requestTarget}>{request.targetName}</p>}<div className={styles.requestTitle}><h3>{request.filename}</h3><span>{superseded ? "Superseded" : labels[request.status]}</span></div><p>{request.statusDetail}</p>{request.summary && <blockquote>{request.summary}</blockquote>}{request.error && <p className={styles.error}>{request.error}</p>}<small>{request.requestedByName} · {new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(request.createdAt))}</small></div>
     {(request.pullUrl || (onReverse && request.status === "live")) && <div className={styles.requestActions}>
       {request.pullUrl && <a href={request.pullUrl} target="_blank" rel="noreferrer">View change <Mark type="arrow"/></a>}
       {onReverse && request.status === "live" && <button type="button" disabled={reversing} onClick={() => onReverse(request.id)}>{reversing ? "Starting…" : "Reverse"}</button>}

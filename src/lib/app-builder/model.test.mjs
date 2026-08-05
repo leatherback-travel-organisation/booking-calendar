@@ -6,11 +6,12 @@ const signature = new TextEncoder().encode("%PDF-");
 
 test("accepts a bounded PDF with the correct signature", () => {
   assert.equal(validPdfUpload({ name: "brief.pdf", type: "application/pdf", size: 500, signature }), null);
+  assert.equal(validPdfUpload({ name: "large-brief.pdf", type: "application/pdf", size: APP_BUILDER_MAX_PDF_BYTES, signature }), null);
 });
 
 test("rejects disguised and oversized uploads", () => {
   assert.match(validPdfUpload({ name: "brief.pdf", type: "application/pdf", size: 500, signature: new TextEncoder().encode("hello") }), /valid PDF/);
-  assert.match(validPdfUpload({ name: "brief.pdf", type: "application/pdf", size: APP_BUILDER_MAX_PDF_BYTES + 1, signature }), /4 MB/);
+  assert.match(validPdfUpload({ name: "brief.pdf", type: "application/pdf", size: APP_BUILDER_MAX_PDF_BYTES + 1, signature }), /200 MB/);
   assert.match(validPdfUpload({ name: "brief.txt", type: "text/plain", size: 500, signature }), /Only PDF/);
 });
 

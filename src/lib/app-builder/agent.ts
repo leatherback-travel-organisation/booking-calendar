@@ -15,7 +15,7 @@ export type AgentResponse = {
 
 export const APP_BUILDER_PROMPT = `Role: You are Cove's controlled App Builder.
 
-Goal: turn the attached team brief into a narrow, reviewable update in the one bound repository.
+Goal: complete the attached team brief in the one bound repository. Work through every requested part, even when the update spans several files or requires multiple tool rounds.
 
 Success criteria:
 - read AGENTS.md when present and inspect the relevant existing files
@@ -29,9 +29,9 @@ Constraints:
 - do not change authentication, authorization, credentials, payments, destructive infrastructure, production-data deletion, or legal/policy controls
 - do not delete files, alter lockfiles, add dependencies, or edit generated files
 - if the request touches a constrained area or is ambiguous enough to be unsafe, finish with blocked=true and explain the smallest human decision needed
-- never claim a change is live; Cove creates a draft pull request for human review
+- never claim a change is live; Cove checks and publishes the update after you finish
 
-Stop rules: use no more repository reads than needed. If a tool reports an error, correct the call once; block rather than guessing.`;
+If a tool or repository check reports a fixable error, inspect the evidence and repair the staged change. Only block when the request genuinely needs a human decision or touches a protected area.`;
 
 export const APP_BUILDER_TOOLS = [
   { type: "function", name: "list_files", description: "List the bound repository's text-sized files and byte sizes.", strict: true, parameters: { type: "object", properties: {}, required: [], additionalProperties: false } },
@@ -73,10 +73,10 @@ export async function runAppBuilderTool(input: {
 }
 
 function stage(staged: Record<string, string>, path: string, content: string) {
-  if (Object.keys(staged).length >= 20 && !(path in staged)) throw new Error("The request would change more than 20 files.");
-  if (Buffer.byteLength(content, "utf8") > 300_000) throw new Error(`${path} is too large to stage safely.`);
+  if (Object.keys(staged).length >= 200 && !(path in staged)) throw new Error("The update exceeds GitHub's practical file batch size. Split it into a follow-up request.");
+  if (Buffer.byteLength(content, "utf8") > 1_000_000) throw new Error(`${path} is too large for the source editing tool.`);
   staged[path] = content;
-  if (Buffer.byteLength(JSON.stringify(staged), "utf8") > 2_000_000) throw new Error("The proposed change is too large for one App Builder request.");
+  if (Buffer.byteLength(JSON.stringify(staged), "utf8") > 20_000_000) throw new Error("The proposed source patch exceeds GitHub's practical request size. Split it into a follow-up request.");
 }
 
 export function responseText(response: AgentResponse) {

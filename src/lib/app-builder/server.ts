@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createHash, randomUUID } from "node:crypto";
+import { del, get, head, issueSignedToken, presignUrl } from "@vercel/blob";
 import { getSql } from "@/lib/db/neon";
 import { identityMode } from "@/lib/identity/server";
 import type { User } from "@/lib/access/model";
@@ -47,7 +48,7 @@ function mapRequest(row: Row): AppBuilderRequest {
 }
 
 export function appBuilderEngineConfigured() {
-  return Boolean(process.env.OPENAI_API_KEY?.trim() && process.env.OPENAI_WEBHOOK_SECRET?.trim());
+  return Boolean(process.env.OPENAI_API_KEY?.trim() && process.env.OPENAI_WEBHOOK_SECRET?.trim() && process.env.BLOB_READ_WRITE_TOKEN?.trim());
 }
 
 export async function listAppBuilderTargets(user: User): Promise<AppBuilderTarget[]> {
@@ -125,10 +126,10 @@ export async function listAllAppBuilderRequests(): Promise<AppBuilderRequest[]> 
 }
 
 export async function createAppBuilderRequest(input: {
-  user: User; target: Extract<AppBuilderTarget, { readiness: "ready" }>; filename: string; notes: string; pdf: Uint8Array;
+  user: User; target: Extract<AppBuilderTarget, { readiness: "ready" }>; filename: string; notes: string;
+  blobUrl: string; byteSize: number; pdfSha256: string;
 }) {
   const id = randomUUID();
-  const digest = createHash("sha256").update(input.pdf).digest("hex");
   await getSql().transaction([
     getSql()`insert into app_builder_requests (
       id, target_asset_id, target_application_id, target_slug, target_name,
@@ -137,12 +138,42 @@ export async function createAppBuilderRequest(input: {
     ) values (
       ${id}, ${input.target.executionAssetId}, ${input.target.applicationId}, ${input.target.slug}, ${input.target.name},
       ${input.target.repositoryPath}, ${input.target.productionUrl}, ${input.user.id}, ${input.user.displayName},
-      ${input.filename.slice(0, 180)}, ${input.notes.slice(0, 2000)}, ${digest}
+      ${input.filename.slice(0, 180)}, ${input.notes.slice(0, 2000)}, ${input.pdfSha256}
     )`,
-    getSql()`insert into app_builder_request_files (request_id, pdf_bytes, byte_size)
-      values (${id}, ${Buffer.from(input.pdf)}, ${input.pdf.byteLength})`,
+    getSql()`insert into app_builder_request_files (request_id, blob_url, byte_size)
+      values (${id}, ${input.blobUrl}, ${input.byteSize})`,
   ]);
   return { id };
+}
+
+export async function inspectAppBuilderBriefBlob(blobUrl: string) {
+  const result = await get(blobUrl, { access: "private", useCache: false });
+  if (!result || result.statusCode !== 200) throw new Error("The uploaded PDF is unavailable.");
+  if (!/^app-builder\/[0-9a-f-]{36}\.pdf$/i.test(result.blob.pathname)) throw new Error("The uploaded file is outside App Builder storage.");
+  const reader = result.stream.getReader();
+  const digest = createHash("sha256");
+  const signature = new Uint8Array(5);
+  let signatureBytes = 0;
+  let bytesRead = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    digest.update(value);
+    bytesRead += value.byteLength;
+    if (signatureBytes < signature.length) {
+      const length = Math.min(signature.length - signatureBytes, value.byteLength);
+      signature.set(value.subarray(0, length), signatureBytes);
+      signatureBytes += length;
+    }
+  }
+  if (bytesRead !== result.blob.size) throw new Error("The uploaded PDF did not transfer completely.");
+  return {
+    byteSize: bytesRead,
+    contentType: result.blob.contentType,
+    pathname: result.blob.pathname,
+    pdfSha256: digest.digest("hex"),
+    signature,
+  };
 }
 
 export async function claimNextAppBuilderRequest(targetAssetId: string) {
@@ -170,11 +201,21 @@ export async function claimNextAppBuilderRequest(targetAssetId: string) {
   }
 }
 
-export async function loadAppBuilderPdf(requestId: string) {
-  const rows = await getSql()`select pdf_bytes from app_builder_request_files where request_id = ${requestId}::uuid` as Row[];
+export async function loadAppBuilderBrief(requestId: string) {
+  const rows = await getSql()`select pdf_bytes, blob_url from app_builder_request_files where request_id = ${requestId}::uuid` as Row[];
   const bytes = rows[0]?.pdf_bytes;
-  if (!(bytes instanceof Uint8Array)) throw new Error("The uploaded PDF is unavailable.");
-  return bytes;
+  const blobUrl = text(rows[0]?.blob_url);
+  if (bytes instanceof Uint8Array) return { bytes } as const;
+  if (blobUrl) return { blobUrl } as const;
+  throw new Error("The uploaded PDF is unavailable.");
+}
+
+export async function createAppBuilderBriefReadUrl(blobUrl: string) {
+  const metadata = await head(blobUrl);
+  const validUntil = Date.now() + 60 * 60 * 1000;
+  const signed = await issueSignedToken({ pathname: metadata.pathname, operations: ["get"], validUntil });
+  const result = await presignUrl(signed, { operation: "get", pathname: metadata.pathname, access: "private", validUntil, useCache: false });
+  return result.presignedUrl;
 }
 
 export async function findAppBuilderRequestByResponse(responseId: string) {
@@ -258,5 +299,8 @@ export async function loadAppBuilderStagedChanges(id: string): Promise<Record<st
 }
 
 export async function deleteAppBuilderPdf(id: string) {
+  const rows = await getSql()`select blob_url from app_builder_request_files where request_id = ${id}::uuid` as Row[];
+  const blobUrl = text(rows[0]?.blob_url);
   await getSql()`delete from app_builder_request_files where request_id = ${id}::uuid`;
+  if (blobUrl) await del(blobUrl).catch((error) => console.error("[app-builder] blob cleanup failed", { id, error }));
 }

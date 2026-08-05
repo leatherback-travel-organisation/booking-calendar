@@ -337,6 +337,7 @@ export type PullRequestChecks = {
   readonly failing: number;
   readonly pending: number;
   readonly headSha: string;
+  readonly failureDetails: readonly string[];
   readonly mergeCommitSha?: string;
 };
 
@@ -350,14 +351,67 @@ export async function getPullRequestChecks(repositoryPath: string, pullNumber: n
   }
   const checks = await githubRequest<{ check_runs?: unknown }>(`${root}/commits/${encodeURIComponent(pull.head.sha)}/check-runs?per_page=100`, token);
   if (!Array.isArray(checks.check_runs)) throw new ProviderOperationError("github", "GitHub did not return check-run evidence.");
-  const conclusions = checks.check_runs.map((item) => item && typeof item === "object" ? item as { status?: unknown; conclusion?: unknown } : {});
+  const conclusions = checks.check_runs.map((item) => item && typeof item === "object" ? item as {
+    id?: unknown; name?: unknown; status?: unknown; conclusion?: unknown;
+    output?: { title?: unknown; summary?: unknown; text?: unknown };
+  } : {});
   const pending = conclusions.filter((check) => check.status !== "completed").length;
   const passing = conclusions.filter((check) => check.status === "completed" && ["success", "neutral", "skipped"].includes(String(check.conclusion))).length;
   const failing = conclusions.length - pending - passing;
+  const failedChecks = conclusions.filter((check) => check.status === "completed" && !["success", "neutral", "skipped"].includes(String(check.conclusion)));
+  const failureDetails = (await Promise.all(failedChecks.map(async (check) => {
+    const name = typeof check.name === "string" ? check.name : "Repository check";
+    const output = [check.output?.title, check.output?.summary, check.output?.text]
+      .filter((value): value is string => typeof value === "string" && Boolean(value.trim()));
+    const annotations = typeof check.id === "number"
+      ? await githubRequest<Array<{ path?: unknown; start_line?: unknown; annotation_level?: unknown; message?: unknown }>>(
+          `${root}/check-runs/${check.id}/annotations?per_page=100`, token,
+        ).catch(() => [])
+      : [];
+    const annotationText = annotations
+      .filter((item) => typeof item.message === "string")
+      .map((item) => `${typeof item.path === "string" ? item.path : "repository"}${typeof item.start_line === "number" ? `:${item.start_line}` : ""}: ${item.message}`);
+    return [`${name}: ${String(check.conclusion ?? "failed")}`, ...output, ...annotationText];
+  }))).flat().map((detail) => detail.replace(/(?:ghs|ghp|github_pat|sk_live|sk_test)_[A-Za-z0-9_\-]+/g, "[redacted]").slice(0, 2_000));
   const mergeCommitSha = typeof pull.merge_commit_sha === "string" && /^[0-9a-f]{40,64}$/.test(pull.merge_commit_sha)
     ? pull.merge_commit_sha
     : undefined;
-  return { state: pull.state, merged: pull.merged, total: conclusions.length, passing, failing, pending, headSha: pull.head.sha, mergeCommitSha };
+  return { state: pull.state, merged: pull.merged, total: conclusions.length, passing, failing, pending, headSha: pull.head.sha, failureDetails, mergeCommitSha };
+}
+
+export async function updateGitHubPullRequestFiles(input: {
+  readonly repositoryPath: string;
+  readonly pullNumber: number;
+  readonly title: string;
+  readonly files: Readonly<Record<string, string>>;
+}) {
+  const repository = repositoryParts(input.repositoryPath);
+  const token = await githubInstallationToken(repository);
+  const root = `/repos/${encodeURIComponent(repository.owner)}/${encodeURIComponent(repository.name)}`;
+  const pull = await githubRequest<{ state?: unknown; head?: { ref?: unknown; sha?: unknown } }>(`${root}/pulls/${input.pullNumber}`, token);
+  if (pull.state !== "open" || typeof pull.head?.ref !== "string" || typeof pull.head.sha !== "string") {
+    throw new ProviderOperationError("github", "The App Builder pull request is no longer open for repair.");
+  }
+  const headCommit = await githubRequest<{ tree?: { sha?: unknown } }>(`${root}/git/commits/${encodeURIComponent(pull.head.sha)}`, token);
+  if (typeof headCommit.tree?.sha !== "string") throw new ProviderOperationError("github", "GitHub did not return the proposed change tree.");
+  const tree = await githubRequest<{ sha?: unknown }>(`${root}/git/trees`, token, {
+    method: "POST",
+    body: JSON.stringify({
+      base_tree: headCommit.tree.sha,
+      tree: Object.entries(input.files).map(([path, content]) => ({ path, mode: "100644", type: "blob", content })),
+    }),
+  });
+  if (typeof tree.sha !== "string") throw new ProviderOperationError("github", "GitHub did not prepare the repaired file tree.");
+  const commit = await githubRequest<{ sha?: unknown }>(`${root}/git/commits`, token, {
+    method: "POST",
+    body: JSON.stringify({ message: input.title, tree: tree.sha, parents: [pull.head.sha] }),
+  });
+  if (typeof commit.sha !== "string") throw new ProviderOperationError("github", "GitHub did not create the repair commit.");
+  await githubRequest(`${root}/git/refs/heads/${pull.head.ref.split("/").map(encodeURIComponent).join("/")}`, token, {
+    method: "PATCH",
+    body: JSON.stringify({ sha: commit.sha, force: false }),
+  });
+  return { commitSha: commit.sha };
 }
 
 export async function approveAndMergePullRequest(input: {

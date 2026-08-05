@@ -1,7 +1,7 @@
-// Vercel Functions cap request bodies at 4.5 MB. Leave room for multipart
-// framing so oversized briefs are rejected clearly in the browser first.
-export const APP_BUILDER_MAX_PDF_BYTES = 4 * 1024 * 1024;
-export const APP_BUILDER_MAX_TURNS = 24;
+// Briefs upload directly to private Blob storage, bypassing Vercel Functions'
+// 4.5 MB request-body ceiling. 200 MB supports image-heavy team briefs while
+// remaining comfortably inside the upstream file service's supported range.
+export const APP_BUILDER_MAX_PDF_BYTES = 200 * 1024 * 1024;
 
 export const appBuilderStatuses = [
   "queued", "reading", "waiting_openai", "making_changes",
@@ -66,7 +66,7 @@ export type AppBuilderRequest = {
 
 export function validPdfUpload(input: { name: string; type: string; size: number; signature: Uint8Array }) {
   if (input.type !== "application/pdf" || !input.name.toLowerCase().endsWith(".pdf")) return "Only PDF files are accepted.";
-  if (input.size < 5 || input.size > APP_BUILDER_MAX_PDF_BYTES) return "Choose a PDF between 5 bytes and 4 MB.";
+  if (input.size < 5 || input.size > APP_BUILDER_MAX_PDF_BYTES) return "Choose a PDF between 5 bytes and 200 MB.";
   if (new TextDecoder().decode(input.signature) !== "%PDF-") return "This file does not appear to be a valid PDF.";
   return null;
 }

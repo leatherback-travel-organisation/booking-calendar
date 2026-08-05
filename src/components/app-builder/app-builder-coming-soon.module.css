@@ -104,10 +104,12 @@
 .uploadIntro svg { width: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; }
 .uploadIntro h2 { margin: 0; font-size: 18px; font-weight: 500; letter-spacing: -.025em; }
 .uploadIntro > div > p:last-child { margin: 3px 0 0; color: #657288; font-size: 11px; }
-.drop { min-height: 82px; margin: 14px 0 12px; padding: 13px 15px; border: 1.5px dashed #8fc2bd; border-radius: 9px; color: #526177; background: rgba(255, 255, 255, .8); display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: center; gap: 12px; cursor: pointer; transition: border-color .15s ease, background .15s ease; }
+.drop { min-height: 82px; margin: 14px 0 12px; padding: 13px 15px; border: 1.5px dashed #8fc2bd; border-radius: 9px; color: #526177; background: rgba(255, 255, 255, .8); display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: center; gap: 12px; cursor: pointer; transition: border-color .15s ease, background .15s ease, box-shadow .15s ease, transform .15s ease; }
 .drop:hover { border-color: var(--teal); background: #fff; }
 .drop[data-disabled="true"] { opacity: .55; cursor: not-allowed; }
 .drop[data-file="true"] { border-style: solid; border-color: #57aaa5; background: #f5fbfa; }
+.drop[data-dragging="true"] { border-style: solid; border-color: #007d78; color: #075f5b; background: #e7f7f4; box-shadow: 0 8px 22px rgba(0, 125, 120, .14), inset 0 0 0 2px rgba(0, 125, 120, .08); transform: translateY(-1px); }
+.drop[data-dragging="true"] > span { color: #fff; background: #007d78; }
 .drop input { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; }
 .drop > span { width: 40px; height: 40px; border-radius: 10px 10px 4px 10px; color: #007d78; background: #e1f4f1; display: grid; place-items: center; }
 .drop svg { width: 21px; fill: none; stroke: currentColor; stroke-width: 1.7; }
