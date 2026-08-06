@@ -5,7 +5,7 @@ import { del, get, head, issueSignedToken, presignUrl } from "@vercel/blob";
 import { getSql } from "@/lib/db/neon";
 import { identityMode } from "@/lib/identity/server";
 import type { User } from "@/lib/access/model";
-import type { AppBuilderRequest, AppBuilderStatus, AppBuilderTarget } from "./model";
+import { isAppBuilderBriefPath, type AppBuilderRequest, type AppBuilderStatus, type AppBuilderTarget } from "./model";
 
 type Row = Record<string, unknown>;
 
@@ -149,7 +149,7 @@ export async function createAppBuilderRequest(input: {
 export async function inspectAppBuilderBriefBlob(blobUrl: string) {
   const result = await get(blobUrl, { access: "private", useCache: false });
   if (!result || result.statusCode !== 200) throw new Error("The uploaded PDF is unavailable.");
-  if (!/^app-builder\/[0-9a-f-]{36}\.pdf$/i.test(result.blob.pathname)) throw new Error("The uploaded file is outside App Builder storage.");
+  if (!isAppBuilderBriefPath(result.blob.pathname)) throw new Error("The uploaded file is outside App Builder storage.");
   const reader = result.stream.getReader();
   const digest = createHash("sha256");
   const signature = new Uint8Array(5);

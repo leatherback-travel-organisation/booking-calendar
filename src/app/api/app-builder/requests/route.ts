@@ -27,8 +27,8 @@ export async function POST(request: Request) {
     if (!target) return json("You are not an administrator for this app.", 403);
     if (target.readiness !== "ready") return json("This app needs a connected build source before Cove can prepare changes.", 409);
     if (!blobUrl || !filename) return json("Choose a PDF to continue.", 400);
-    const inspected = await inspectAppBuilderBriefBlob(blobUrl);
     cleanupBlobUrl = blobUrl;
+    const inspected = await inspectAppBuilderBriefBlob(blobUrl);
     if (inspected.byteSize > APP_BUILDER_MAX_PDF_BYTES) {
       await del(blobUrl).catch(() => undefined); cleanupBlobUrl = "";
       return json("Choose a PDF no larger than 200 MB.", 413);

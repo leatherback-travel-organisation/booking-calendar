@@ -3,6 +3,12 @@
 // remaining comfortably inside the upstream file service's supported range.
 export const APP_BUILDER_MAX_PDF_BYTES = 200 * 1024 * 1024;
 
+const APP_BUILDER_BRIEF_PATH = /^app-builder\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:-[A-Za-z0-9]{20,})?\.pdf$/i;
+
+export function isAppBuilderBriefPath(pathname: string) {
+  return APP_BUILDER_BRIEF_PATH.test(pathname);
+}
+
 export const appBuilderStatuses = [
   "queued", "reading", "waiting_openai", "making_changes",
   "preparing_review", "needs_approval", "publishing", "live",

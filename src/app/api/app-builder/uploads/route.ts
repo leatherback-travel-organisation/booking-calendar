@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { requireApplicationPermission, requireCoveUser } from "@/lib/access/server";
 import { requireEmployeeIdentity } from "@/lib/identity/server";
-import { APP_BUILDER_MAX_PDF_BYTES } from "@/lib/app-builder/model";
+import { APP_BUILDER_MAX_PDF_BYTES, isAppBuilderBriefPath } from "@/lib/app-builder/model";
 import { listAppBuilderTargets } from "@/lib/app-builder/server";
 
 export const runtime = "nodejs";
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
         const target = (await listAppBuilderTargets(user)).find((item) => item.id === targetId);
         if (!target) throw new Error("You are not an administrator for this app.");
         if (target.readiness !== "ready") throw new Error("This app needs a connected build source.");
-        if (!/^app-builder\/[0-9a-f-]{36}\.pdf$/i.test(pathname)) throw new Error("Choose a PDF brief to continue.");
+        if (!isAppBuilderBriefPath(pathname)) throw new Error("Choose a PDF brief to continue.");
         return {
           allowedContentTypes: ["application/pdf"],
           maximumSizeInBytes: APP_BUILDER_MAX_PDF_BYTES,
