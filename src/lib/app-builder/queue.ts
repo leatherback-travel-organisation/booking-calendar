@@ -26,7 +26,9 @@ export async function kickAppBuilderQueue(targetAssetId: string) {
     const brief = await loadAppBuilderBrief(request.id);
     let fileInput: Record<string, string>;
     if (brief.blobUrl) {
-      fileInput = { type: "input_file", filename: request.filename, file_url: await createAppBuilderBriefReadUrl(brief.blobUrl) };
+      // OpenAI rejects filename alongside file_url (mutually exclusive);
+      // filename is only valid with inline file_data.
+      fileInput = { type: "input_file", file_url: await createAppBuilderBriefReadUrl(brief.blobUrl) };
     } else if (brief.bytes) {
       fileInput = { type: "input_file", filename: request.filename, file_data: `data:application/pdf;base64,${Buffer.from(brief.bytes).toString("base64")}` };
     } else {
