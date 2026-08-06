@@ -3,6 +3,15 @@
 // remaining comfortably inside the upstream file service's supported range.
 export const APP_BUILDER_MAX_PDF_BYTES = 200 * 1024 * 1024;
 
+// Generous ceiling so genuinely large briefs finish, while a looping agent
+// cannot spend without bound or hold an app's queue open indefinitely.
+export const APP_BUILDER_MAX_TURNS = 100;
+
+// Processing states that hold an app's one-active-request lock. A request
+// stuck in one of these longer than this window is presumed orphaned (the
+// serverless function died mid-step) and is safe to recover.
+export const APP_BUILDER_STALL_MINUTES = 10;
+
 const APP_BUILDER_BRIEF_PATH = /^app-builder\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:-[A-Za-z0-9]{20,})?\.pdf$/i;
 
 export function isAppBuilderBriefPath(pathname: string) {
@@ -87,7 +96,8 @@ export function assertWritablePath(path: string) {
   const normalized = `/${path.toLowerCase()}`;
   const blocked = [
     "/.env", "/.github/", "/db/", "/drizzle/", "/migrations/",
-    "/package-lock.json", "/pnpm-lock.yaml", "/yarn.lock", "/vercel.json",
+    "/package.json", "/package-lock.json", "/pnpm-lock.yaml", "/yarn.lock",
+    "/vercel.json", "/next.config.",
     "/proxy.ts", "/middleware.ts", "/scripts/deploy", "/api/auth/",
     "/lib/auth/", "/lib/identity/", "/lib/access/", "/payments/", "/billing/",
   ];

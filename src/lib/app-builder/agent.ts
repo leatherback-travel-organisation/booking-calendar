@@ -30,6 +30,7 @@ Constraints:
 - do not delete files, alter lockfiles, add dependencies, or edit generated files
 - if the request touches a constrained area or is ambiguous enough to be unsafe, finish with blocked=true and explain the smallest human decision needed
 - never claim a change is live; Cove checks and publishes the update after you finish
+- never describe the finished update as a draft or as awaiting human review; when blocked=false it will be checked and published automatically, and it stays reversible afterwards
 
 If a tool or repository check reports a fixable error, inspect the evidence and repair the staged change. Only block when the request genuinely needs a human decision or touches a protected area.`;
 
@@ -39,10 +40,25 @@ export const APP_BUILDER_TOOLS = [
   { type: "function", name: "replace_in_file", description: "Replace one exact, unique string in an existing file.", strict: true, parameters: { type: "object", properties: { path: { type: "string" }, old_text: { type: "string" }, new_text: { type: "string" } }, required: ["path", "old_text", "new_text"], additionalProperties: false } },
   { type: "function", name: "create_file", description: "Create one small UTF-8 source file when the brief requires it.", strict: true, parameters: { type: "object", properties: { path: { type: "string" }, content: { type: "string" } }, required: ["path", "content"], additionalProperties: false } },
   { type: "function", name: "review_changes", description: "Review the staged file list and sizes before finishing.", strict: true, parameters: { type: "object", properties: {}, required: [], additionalProperties: false } },
-  { type: "function", name: "finish", description: "Finish after review, or stop for human approval. blocked=false means a draft PR may be created.", strict: true, parameters: { type: "object", properties: { blocked: { type: "boolean" }, title: { type: "string" }, summary: { type: "string" } }, required: ["blocked", "title", "summary"], additionalProperties: false } },
+  { type: "function", name: "finish", description: "Finish after review, or stop when a human decision is required. blocked=false means Cove checks and publishes the update automatically, keeping a reversal available.", strict: true, parameters: { type: "object", properties: { blocked: { type: "boolean" }, title: { type: "string" }, summary: { type: "string" } }, required: ["blocked", "title", "summary"], additionalProperties: false } },
 ] as const;
 
 export async function runAppBuilderTool(input: {
+  name: string; args: Record<string, unknown>; repositoryPath: string; staged: Record<string, string>;
+}) {
+  // Guard rejections (protected paths, missing files, size limits) go back to
+  // the model as tool errors so it can adjust or block with an explanation.
+  // Throwing here would discard the whole run and every turn already spent.
+  try {
+    return await runTool(input);
+  } catch (error) {
+    if (input.name === "finish") throw error;
+    const message = error instanceof Error ? error.message : "The tool call failed.";
+    return { ok: false, error: message.slice(0, 700) };
+  }
+}
+
+async function runTool(input: {
   name: string; args: Record<string, unknown>; repositoryPath: string; staged: Record<string, string>;
 }) {
   if (input.name === "list_files") return { files: await listGitHubRepositoryTextFiles(input.repositoryPath) };

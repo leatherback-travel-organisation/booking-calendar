@@ -452,6 +452,29 @@ export async function approveAndMergePullRequest(input: {
   return { commitSha: merged.sha };
 }
 
+/** Close an unpublished pull request and remove its branch. Merged pulls are left untouched. */
+export async function closeGitHubPullRequest(input: {
+  readonly repositoryPath: string;
+  readonly pullNumber: number;
+  readonly branch?: string;
+}) {
+  const repository = repositoryParts(input.repositoryPath);
+  const token = await githubInstallationToken(repository);
+  const root = `/repos/${encodeURIComponent(repository.owner)}/${encodeURIComponent(repository.name)}`;
+  const pull = await githubRequest<{ state?: unknown; merged?: unknown }>(`${root}/pulls/${input.pullNumber}`, token);
+  if (pull.merged === true) return;
+  if (pull.state === "open") {
+    await githubRequest(`${root}/pulls/${input.pullNumber}`, token, {
+      method: "PATCH",
+      body: JSON.stringify({ state: "closed" }),
+    });
+  }
+  if (input.branch) {
+    await githubRequest(`${root}/git/refs/heads/${encodeURIComponent(input.branch)}`, token, { method: "DELETE" })
+      .catch(() => undefined);
+  }
+}
+
 export async function prepareGitHubRevertPullRequest(input: {
   readonly repositoryPath: string;
   readonly originalPullNumber: number;

@@ -18,6 +18,7 @@ export function isPublicIdentityRoute(pathname: string) {
     pathname === "/api/cove/verify-handoff" ||
     pathname === "/api/delegate-handoff" ||
     pathname === "/api/app-builder/openai-webhook" ||
+    pathname === "/api/app-builder/cron" ||
     pathname.startsWith("/api/app-icons/")
   );
 }

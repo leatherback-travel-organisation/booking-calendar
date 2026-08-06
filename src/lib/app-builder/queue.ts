@@ -1,14 +1,16 @@
 import "server-only";
 
-import type { AppBuilderRequest } from "./model";
+import { APP_BUILDER_MAX_TURNS, type AppBuilderRequest } from "./model";
 import { APP_BUILDER_PROMPT, APP_BUILDER_TOOLS, responseText, runAppBuilderTool, type AgentResponse } from "./agent";
 import {
   claimAppBuilderResponse, claimAppBuilderReversal, claimNextAppBuilderRequest,
   deleteAppBuilderPdf, findAppBuilderRequestById, findAppBuilderRequestByResponse,
-  createAppBuilderBriefReadUrl, loadAppBuilderBrief, loadAppBuilderStagedChanges, updateAppBuilderRequest,
+  createAppBuilderBriefReadUrl, listAppBuilderPublishingRequestIds, listRecoverableAppBuilderResponses,
+  loadAppBuilderBrief, loadAppBuilderStagedChanges, recoverStalledAppBuilderRequests, updateAppBuilderRequest,
 } from "./server";
 import {
   approveAndMergePullRequest,
+  closeGitHubPullRequest,
   getPullRequestChecks,
   prepareGitHubPullRequest,
   prepareGitHubRevertPullRequest,
@@ -41,6 +43,30 @@ export async function kickAppBuilderQueue(targetAssetId: string) {
   } catch (error) { await fail(request.id, targetAssetId, error); }
 }
 
+/**
+ * Drive every kind of outstanding App Builder work for the given targets:
+ * recover stalled runs, resume completed OpenAI responses the webhook missed,
+ * advance publishing and reversals, and start queued requests whose kick was
+ * lost. Used by the browser-side reconcile poll and the scheduled cron, so
+ * progress no longer depends on someone keeping the App Builder page open.
+ */
+export async function reconcileAppBuilderWork(targetAssetIds: readonly string[]) {
+  const recovered = await recoverStalledAppBuilderRequests();
+  const scope = [...new Set([...targetAssetIds, ...recovered])];
+  if (!scope.length) return;
+  const [responseIds, publishingIds] = await Promise.all([
+    listRecoverableAppBuilderResponses(scope),
+    listAppBuilderPublishingRequestIds(scope),
+  ]);
+  for (const id of responseIds) await continueAppBuilderResponse(id, "reconcile");
+  for (const id of publishingIds) {
+    const request = await findAppBuilderRequestById(id);
+    if (request?.status === "reversing") await continueAppBuilderReversal(id);
+    else await publishAppBuilderRequest(id);
+  }
+  for (const targetAssetId of scope) await kickAppBuilderQueue(targetAssetId);
+}
+
 export async function continueAppBuilderResponse(responseId: string, eventType: string) {
   const existing = await findAppBuilderRequestByResponse(responseId);
   if (!existing) return false;
@@ -68,6 +94,7 @@ export async function continueAppBuilderResponse(responseId: string, eventType: 
     }
     await updateAppBuilderRequest(request.id, { staged, detail: progressDetail(calls.map((call) => call.name ?? "")) });
     if (final) { await finish(request, staged, final); return true; }
+    if (request.turn >= APP_BUILDER_MAX_TURNS) throw new Error("The request used its full processing budget without finishing. Split the brief into smaller, more specific requests.");
     const next = await createResponse({ request, input: outputs, previousResponseId: responseId });
     await updateAppBuilderRequest(request.id, { status: "waiting_openai", detail: "Continuing the proposed update", responseId: next.id, turn: request.turn + 1, staged });
     return true;
@@ -121,6 +148,7 @@ export async function publishAppBuilderRequest(id: string) {
     }
     if (checks.state === "closed") throw new Error("The protected change was closed without publishing.");
     if (checks.failing > 0) {
+      if (request.turn >= APP_BUILDER_MAX_TURNS) throw new Error("Repository checks kept failing after repeated repair attempts. Nothing was published.");
       const evidence = checks.failureDetails.length
         ? checks.failureDetails.join("\n\n").slice(0, 12_000)
         : "A required repository check failed without returning detailed annotations.";
@@ -155,8 +183,7 @@ export async function publishAppBuilderRequest(id: string) {
       await updateAppBuilderRequest(id, { status: "publishing", detail: "Waiting for repository checks" });
       return true;
     }
-    await updateAppBuilderRequest(id, { status: "failed", detail: "Stopped safely — nothing was published", error: message });
-    await kickAppBuilderQueue(request.targetAssetId);
+    await fail(id, request.targetAssetId, error);
     return false;
   }
 }
@@ -229,6 +256,16 @@ async function fail(id: string, targetAssetId: string, error: unknown) {
   console.error("[app-builder] request failed", { id, message });
   await updateAppBuilderRequest(id, { status: "failed", detail: "Stopped safely — nothing was published", error: message });
   await deleteAppBuilderPdf(id).catch(() => undefined);
+  // A dead request must not leave its unpublished pull request and branch
+  // behind; the next attempt gets a fresh id and a fresh pull request.
+  const request = await findAppBuilderRequestById(id).catch(() => null);
+  if (request?.pullNumber && !request.publishedCommitSha) {
+    await closeGitHubPullRequest({
+      repositoryPath: request.repositoryPath,
+      pullNumber: request.pullNumber,
+      branch: request.branch,
+    }).catch((closeError) => console.error("[app-builder] pull request cleanup failed", { id, closeError }));
+  }
   await kickAppBuilderQueue(targetAssetId);
 }
 

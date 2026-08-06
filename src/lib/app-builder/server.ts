@@ -5,7 +5,7 @@ import { del, get, head, issueSignedToken, presignUrl } from "@vercel/blob";
 import { getSql } from "@/lib/db/neon";
 import { identityMode } from "@/lib/identity/server";
 import type { User } from "@/lib/access/model";
-import { isAppBuilderBriefPath, type AppBuilderRequest, type AppBuilderStatus, type AppBuilderTarget } from "./model";
+import { APP_BUILDER_STALL_MINUTES, isAppBuilderBriefPath, type AppBuilderRequest, type AppBuilderStatus, type AppBuilderTarget } from "./model";
 
 type Row = Record<string, unknown>;
 
@@ -174,6 +174,46 @@ export async function inspectAppBuilderBriefBlob(blobUrl: string) {
     pdfSha256: digest.digest("hex"),
     signature,
   };
+}
+
+export async function findActiveAppBuilderDuplicate(targetAssetId: string, pdfSha256: string) {
+  const rows = await getSql()`select id from app_builder_requests
+    where target_asset_id = ${targetAssetId}::uuid
+      and pdf_sha256 = ${pdfSha256}
+      and status = any(${["queued", ...ACTIVE]}::text[])
+    limit 1` as Row[];
+  return rows[0] ? text(rows[0].id) : null;
+}
+
+/**
+ * Recover requests orphaned by a serverless function dying mid-step. Both
+ * states hold the one-active-per-app lock, so without this an interrupted
+ * run blocks its app's queue forever.
+ * - `reading` stalls before OpenAI is involved: safe to requeue from scratch.
+ * - `making_changes` stalls mid tool-run: the completed OpenAI response is
+ *   still retrievable, so returning to `waiting_openai` lets reconcile
+ *   re-drive it from the stored response id.
+ * Returns the target asset ids of requeued requests so callers can re-kick.
+ */
+export async function recoverStalledAppBuilderRequests() {
+  const requeued = await getSql()`update app_builder_requests
+    set status = 'queued', status_detail = 'Recovered — waiting for this app''s turn', updated_at = now()
+    where status = 'reading'
+      and updated_at < now() - make_interval(mins => ${APP_BUILDER_STALL_MINUTES})
+    returning target_asset_id` as Row[];
+  await getSql()`update app_builder_requests
+    set status = 'waiting_openai', status_detail = 'Recovering the in-progress update', updated_at = now()
+    where status = 'making_changes'
+      and openai_response_id is not null
+      and updated_at < now() - make_interval(mins => ${APP_BUILDER_STALL_MINUTES})`;
+  return [...new Set(requeued.map((row) => text(row.target_asset_id)).filter(Boolean))];
+}
+
+/** Every target asset with work outstanding, for unscoped cron reconciliation. */
+export async function listActiveAppBuilderTargetAssetIds() {
+  const rows = await getSql()`select distinct target_asset_id from app_builder_requests
+    where status = any(${["queued", ...ACTIVE, "needs_approval"]}::text[])` as Row[];
+  return rows.map((row) => text(row.target_asset_id)).filter(Boolean);
 }
 
 export async function claimNextAppBuilderRequest(targetAssetId: string) {

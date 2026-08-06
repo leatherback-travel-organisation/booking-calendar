@@ -34,4 +34,7 @@ test("sensitive repository surfaces are blocked below the prompt layer", () => {
   assert.throws(() => assertWritablePath("src/lib/identity/server.ts"), /protected/);
   assert.throws(() => assertWritablePath(".github/workflows/deploy.yml"), /protected/);
   assert.throws(() => assertWritablePath("package-lock.json"), /protected/);
+  assert.throws(() => assertWritablePath("package.json"), /protected/);
+  assert.throws(() => assertWritablePath("packages/cove-auth/package.json"), /protected/);
+  assert.throws(() => assertWritablePath("next.config.ts"), /protected/);
 });

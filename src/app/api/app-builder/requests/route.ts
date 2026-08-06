@@ -3,7 +3,7 @@ import { del } from "@vercel/blob";
 import { requireApplicationPermission, requireCoveUser } from "@/lib/access/server";
 import { requireEmployeeIdentity } from "@/lib/identity/server";
 import { APP_BUILDER_MAX_PDF_BYTES, validPdfUpload } from "@/lib/app-builder/model";
-import { appBuilderEngineConfigured, createAppBuilderRequest, inspectAppBuilderBriefBlob, listAppBuilderTargets } from "@/lib/app-builder/server";
+import { appBuilderEngineConfigured, createAppBuilderRequest, findActiveAppBuilderDuplicate, inspectAppBuilderBriefBlob, listAppBuilderTargets } from "@/lib/app-builder/server";
 import { kickAppBuilderQueue } from "@/lib/app-builder/queue";
 
 export const runtime = "nodejs";
@@ -28,7 +28,14 @@ export async function POST(request: Request) {
     if (target.readiness !== "ready") return json("This app needs a connected build source before Cove can prepare changes.", 409);
     if (!blobUrl || !filename) return json("Choose a PDF to continue.", 400);
     cleanupBlobUrl = blobUrl;
-    const inspected = await inspectAppBuilderBriefBlob(blobUrl);
+    let inspected: Awaited<ReturnType<typeof inspectAppBuilderBriefBlob>>;
+    try {
+      inspected = await inspectAppBuilderBriefBlob(blobUrl);
+    } catch (error) {
+      console.error("[app-builder] brief inspection failed", { blobUrl, error });
+      await del(blobUrl).catch(() => undefined); cleanupBlobUrl = "";
+      return json(error instanceof Error ? error.message : "Cove could not read the uploaded PDF. Try the upload again.", 400);
+    }
     if (inspected.byteSize > APP_BUILDER_MAX_PDF_BYTES) {
       await del(blobUrl).catch(() => undefined); cleanupBlobUrl = "";
       return json("Choose a PDF no larger than 200 MB.", 413);
@@ -37,6 +44,11 @@ export async function POST(request: Request) {
     if (problem) {
       await del(blobUrl).catch(() => undefined); cleanupBlobUrl = "";
       return json(problem, 415);
+    }
+    const duplicate = await findActiveAppBuilderDuplicate(target.executionAssetId, inspected.pdfSha256);
+    if (duplicate) {
+      await del(blobUrl).catch(() => undefined); cleanupBlobUrl = "";
+      return json("This exact PDF is already queued or in progress for this app. Its progress appears in the request history below.", 409);
     }
     const created = await createAppBuilderRequest({ user, target, filename, notes, blobUrl, byteSize: inspected.byteSize, pdfSha256: inspected.pdfSha256 });
     cleanupBlobUrl = "";
