@@ -1,0 +1,60 @@
+.workspace {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: var(--density-4, 24px) var(--density-3, 16px) 64px;
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--density-3, 16px);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: var(--density-2, 12px);
+  margin-bottom: var(--density-4, 24px);
+}
+
+.title {
+  font-size: var(--text-lead, 17px);
+  font-weight: 500;
+  color: var(--ink);
+  margin: 0;
+}
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.navLink {
+  color: var(--ink-soft);
+  font-size: var(--text-ui, 14px);
+  text-decoration: none;
+  padding: 6px 10px;
+  border-radius: var(--radius-control, 6px);
+}
+
+.navLink:hover {
+  color: var(--ink);
+  background: var(--paper-deep);
+}
+
+.navLinkActive {
+  color: var(--ink);
+  background: var(--paper-deep);
+  font-weight: 500;
+}
+
+.content {
+  min-height: 320px;
+}
+
+.placeholder {
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-panel, 10px);
+  padding: 40px;
+  color: var(--ink-soft);
+  font-size: var(--text-body, 15px);
+  text-align: center;
+}

@@ -6,7 +6,7 @@ import { identityMode, requireEmployeeIdentity } from "@/lib/identity/server";
 import { requireCoveUser } from "@/lib/access/server";
 
 type AppShellProps = {
-  active: "home" | "people" | "brands" | "money" | "recruitment" | "app-builder" | "admin" | "systems";
+  active: "home" | "people" | "brands" | "money" | "recruitment" | "app-builder" | "admin" | "systems" | "booking";
   adminSection?: "people" | "audit" | "money" | "injuries";
   systemsSection?: "apps" | "websites";
   children: React.ReactNode;

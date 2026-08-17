@@ -21,6 +21,7 @@
     "@clerk/nextjs": "^7.0.0",
     "@neondatabase/serverless": "^1.1.0",
     "@vercel/blob": "^2.6.1",
+    "luxon": "^3.7.2",
     "next": "16.2.11",
     "pg": "^8.16.3",
     "postcss": "^8.5.19",
@@ -30,6 +31,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@types/luxon": "^3.7.4",
     "@types/node": "^22",
     "@types/pg": "^8.20.0",
     "@types/react": "^19",
