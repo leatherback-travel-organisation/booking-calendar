@@ -11,7 +11,7 @@ import { calendarConfigured } from "./google/auth";
 import { deleteEvent, freeBusy, insertEvent, patchEvent } from "./google/calendar";
 import type { Brand, EventType, Interval, Staff } from "./model";
 import { computeSlots, resolveSchedulingZone } from "./availability/engine";
-import { getWorkingHours } from "./availability/service";
+import { getConfirmed, getWorkingHours } from "./availability/service";
 import { sendBookingEmail } from "./notify/messages";
 import { createOrThreadConversation } from "./helpscout";
 import { issueToken, manageTokenSecret, parseDerivedManageToken, tokenMatches } from "./tokens";
@@ -86,9 +86,14 @@ export async function createBooking(args: CreateBookingArgs): Promise<CreateBook
     }
   }
 
-  const [workingHours, holds] = await Promise.all([
+  // NOTE: slot holds are deliberately NOT counted here — the guest booking
+  // this slot is usually the very person holding it, and their own hold must
+  // not veto their booking. Holds keep the picker honest for other guests;
+  // correctness comes from fresh busy data, confirmed bookings, and finally
+  // the exclusion constraint.
+  const [workingHours, confirmed] = await Promise.all([
     getWorkingHours(args.staff.id),
-    activeHolds(args.staff.id, args.idempotencyKey),
+    getConfirmed(args.staff.id, nowIso, new Date(now.getTime() + args.staff.bookingWindowDays * 86_400_000).toISOString()),
   ]);
   const validSlots = computeSlots({
     schedulingZone: resolveSchedulingZone(args.staff, args.brand),
@@ -100,7 +105,7 @@ export async function createBooking(args: CreateBookingArgs): Promise<CreateBook
     windowEnd: new Date(now.getTime() + args.staff.bookingWindowDays * 86_400_000).toISOString(),
     now: nowIso,
     busy,
-    holds,
+    confirmed,
   });
   if (!validSlots.some((slot) => slot.start === startIso)) {
     // Distinguish "someone beat you to it" from "that was never a slot".
@@ -270,18 +275,6 @@ function buildEventDescription(args: CreateBookingArgs): string {
     `Booked via Leatherback Booking (${args.sourceKind}).`,
   ];
   return lines.filter(Boolean).join("\n");
-}
-
-async function activeHolds(staffId: string, excludeIdempotencyKey?: string): Promise<Interval[]> {
-  const sql = getSql();
-  void excludeIdempotencyKey;
-  const rows = await sql`
-    select starts_at, ends_at from booking.slot_hold
-    where staff_id = ${staffId} and expires_at > now()`;
-  return rows.map((r) => ({
-    start: new Date(r.starts_at as string).toISOString(),
-    end: new Date(r.ends_at as string).toISOString(),
-  }));
 }
 
 export async function createHold(staffId: string, startIso: string, durationMin: number): Promise<string> {

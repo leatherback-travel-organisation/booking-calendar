@@ -148,7 +148,7 @@ async function getHolds(staffId: string): Promise<Interval[]> {
   return rows.map((r) => ({ start: new Date(r.starts_at as string).toISOString(), end: new Date(r.ends_at as string).toISOString() }));
 }
 
-async function getConfirmed(staffId: string, fromIso: string, toIso: string): Promise<Interval[]> {
+export async function getConfirmed(staffId: string, fromIso: string, toIso: string): Promise<Interval[]> {
   const sql = getSql();
   const rows = await sql`
     select starts_at, ends_at from booking.booking

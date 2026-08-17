@@ -8,3 +8,4 @@ node_modules
 .codex-tmp/
 .env*
 !.env.example
+.pglite-dev/

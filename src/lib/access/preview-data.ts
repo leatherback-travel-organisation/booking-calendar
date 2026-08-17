@@ -114,6 +114,17 @@ export const previewAccessSnapshot: AccessSnapshot = {
   ],
   applications: [
     {
+      id: "app-booking",
+      slug: "booking",
+      name: "Booking",
+      description: "Guest call scheduling for Booking Managers — availability, routing, reminders and the trip-page widget",
+      launchUrl: "https://cove.leatherbacktravel.com/booking",
+      owner: "Booking Operations",
+      status: "active",
+      risk: "restricted",
+      allowedPopulations: ["employee"],
+    },
+    {
       id: APP_BUILDER_APPLICATION_ID,
       slug: APP_BUILDER_APPLICATION_SLUG,
       name: "App Builder",
@@ -226,6 +237,24 @@ export const previewAccessSnapshot: AccessSnapshot = {
     },
   ],
   roles: [
+    {
+      id: "role-booking-user",
+      applicationId: "app-booking",
+      key: "user",
+      name: "Booking Manager",
+      level: "user",
+      permissions: ["booking.open", "booking.read", "booking.manage_own"],
+      allowedPopulations: ["employee"],
+    },
+    {
+      id: "role-booking-admin",
+      applicationId: "app-booking",
+      key: "admin",
+      name: "Pod Lead",
+      level: "admin",
+      permissions: ["booking.open", "booking.read", "booking.manage_own", "booking.manage"],
+      allowedPopulations: ["employee"],
+    },
     {
       id: APP_BUILDER_USER_ROLE_ID,
       applicationId: APP_BUILDER_APPLICATION_ID,
@@ -390,6 +419,14 @@ export const previewAccessSnapshot: AccessSnapshot = {
     },
   ],
   entitlements: [
+    {
+      id: "entitlement-preview-booking-admin",
+      applicationId: "app-booking",
+      roleId: "role-booking-admin",
+      subject: { type: "user", userId: "user-operations" },
+      grantedByUserId: "user-operations",
+      grantedAt: "2026-08-17T09:00:00.000Z",
+    },
     {
       id: "entitlement-preview-app-builder-admin",
       applicationId: APP_BUILDER_APPLICATION_ID,

@@ -36,6 +36,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.5",
     "@playwright/test": "^1.62.1",
     "@types/luxon": "^3.7.4",
     "@types/node": "^22",
