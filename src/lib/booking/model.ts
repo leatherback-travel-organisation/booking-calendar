@@ -1,0 +1,90 @@
+// Shared domain types for the booking app. Database rows live in the
+// `booking` Postgres schema; reference data is read-only from Airtable/Notion.
+
+export type Brand = {
+  id: string;
+  key: string;
+  name: string;
+  aliases: string[];
+  logoUrl: string | null;
+  colorPrimary: string | null;
+  colorAccent: string | null;
+  schedulingTimezone: string;
+  market: "AU" | "US";
+  phoneAu: string | null;
+  phoneNz: string | null;
+  phoneDefault: string | null;
+  helpscoutMailboxId: string | null;
+  fromEmail: string;
+  fromName: string;
+  replyTo: string | null;
+  active: boolean;
+};
+
+export type Staff = {
+  id: string;
+  email: string;
+  fullName: string;
+  firstName: string;
+  slug: string;
+  primaryBrandId: string | null;
+  brandIds: string[];
+  timezoneOverride: string | null;
+  bio: string | null;
+  photoUrl: string | null;
+  helpscoutUserId: string | null;
+  aircallUserId: string | null;
+  slackUserId: string | null;
+  airtableRecordId: string | null;
+  bufferMinutes: number;
+  minNoticeHours: number;
+  bookingWindowDays: number;
+  active: boolean;
+  calendarOk: boolean;
+};
+
+/** day_of_week: 0 = Sunday. Minutes from midnight in the scheduling zone. */
+export type WorkingHours = {
+  dayOfWeek: number;
+  startMin: number;
+  endMin: number;
+};
+
+export type EventType = {
+  id: string;
+  brandId: string;
+  key: string;
+  name: string;
+  description: string | null;
+  durationMin: number;
+  guestFacing: boolean;
+  supportsGroup: boolean;
+  locationKind: "google_meet" | "phone";
+  active: boolean;
+  position: number;
+};
+
+/** A single Airtable trip departure, as cached by the reference sync. */
+export type Departure = {
+  airtableId: string;
+  titleAndCode: string;
+  tripName: string;
+  niceName: string | null;
+  brandName: string | null;
+  status: string | null;
+  startDate: string | null; // ISO date
+  websiteUrl: string | null;
+  /** Parsed from websiteUrl at sync time. */
+  host: string | null;
+  slug: string | null;
+  coordinatorAirtableIds: string[];
+  coordinatorEmails: string[];
+};
+
+/** Half-open UTC interval [start, end) as ISO strings with offset. */
+export type Interval = {
+  start: string;
+  end: string;
+};
+
+export type Slot = Interval;

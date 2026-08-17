@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { BookingShell } from "@/components/booking/booking-shell";
+import { TeamRoster } from "@/components/booking/team-roster";
 import { requireBookingAccess } from "@/lib/booking/access";
-import styles from "@/components/booking/booking-shell.module.css";
+import { databaseConfigured } from "@/lib/booking/db";
+import { getBrands, getDepartureStats, getStaffWithBrands } from "@/lib/booking/reference/queries";
+import shellStyles from "@/components/booking/booking-shell.module.css";
 
 export const dynamic = "force-dynamic";
 
@@ -11,9 +14,20 @@ export const metadata: Metadata = {
 
 export default async function BookingTeamPage() {
   const { canManage } = await requireBookingAccess("booking.read");
+
+  if (!databaseConfigured()) {
+    return (
+      <BookingShell active="team" canManage={canManage}>
+        <p className={shellStyles.placeholder}>The booking database is not configured in this environment.</p>
+      </BookingShell>
+    );
+  }
+
+  const [staff, brands, stats] = await Promise.all([getStaffWithBrands(), getBrands(), getDepartureStats()]);
+
   return (
     <BookingShell active="team" canManage={canManage}>
-      <p className={styles.placeholder}>Team is coming in a later phase.</p>
+      <TeamRoster staff={staff} brands={brands} fetchedAt={stats.fetchedAt} />
     </BookingShell>
   );
 }

@@ -230,6 +230,9 @@ create table booking.booking (
   google_ical_uid   text,
   meet_url          text,
   manage_token_hash bytea not null,
+  -- RFC 5545 SEQUENCE for the guest's .ics; bumped on every reschedule and on
+  -- cancellation so calendar clients apply updates to the same UID.
+  ical_sequence     integer not null default 0,
   status            text not null default 'confirmed' check (status in ('confirmed', 'cancelled', 'rescheduled')),
   reminder_24h_sent_at timestamptz,
   reminder_1h_sent_at  timestamptz,

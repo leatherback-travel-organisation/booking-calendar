@@ -1,0 +1,174 @@
+.roster {
+  display: grid;
+  gap: var(--density-3, 14px);
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--density-2, 10px);
+}
+
+.counts {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-body, 15px);
+  font-weight: 500;
+}
+
+.syncTimes {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-small, 13px);
+}
+
+.empty {
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-panel, 10px);
+  padding: 40px;
+  color: var(--ink-soft);
+  font-size: var(--text-body, 15px);
+  text-align: center;
+}
+
+.tableWrap {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel, 10px);
+  background: var(--card);
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-ui, 14px);
+}
+
+.table th {
+  text-align: left;
+  color: var(--ink-soft);
+  font-size: var(--text-label, 12px);
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  vertical-align: middle;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.center {
+  text-align: center;
+}
+
+.inactiveRow td {
+  opacity: 0.55;
+}
+
+.person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 220px;
+}
+
+.photo,
+.photoFallback {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  object-fit: cover;
+}
+
+.photoFallback {
+  display: grid;
+  place-items: center;
+  background: var(--paper-deep);
+  color: var(--ink-soft);
+  font-size: var(--text-label, 12px);
+  font-weight: 500;
+}
+
+.personText {
+  display: grid;
+  min-width: 0;
+}
+
+.personText strong {
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.personText span {
+  color: var(--ink-soft);
+  font-size: var(--text-small, 13px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brandChips,
+.flagChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.brandChip {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--pine);
+  font-size: var(--text-label, 12px);
+  font-weight: 500;
+  padding: 2px 9px;
+  white-space: nowrap;
+}
+
+.noneChip {
+  color: var(--ink-soft);
+  font-size: var(--text-small, 13px);
+}
+
+.flagChip {
+  border: 1px solid color-mix(in srgb, var(--terracotta) 35%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--terracotta) 8%, var(--card));
+  color: var(--terracotta);
+  font-size: var(--text-label, 12px);
+  padding: 2px 9px;
+  white-space: nowrap;
+}
+
+.tick {
+  color: var(--pine);
+  font-weight: 500;
+}
+
+.warnMark {
+  color: var(--terracotta);
+  font-weight: 500;
+}
+
+.dash {
+  color: var(--ink-soft);
+}
+
+.footnote {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-small, 13px);
+}
