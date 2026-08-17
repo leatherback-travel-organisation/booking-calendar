@@ -1,0 +1,223 @@
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(260px, 1fr);
+  gap: var(--density-4, 18px);
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.editor {
+  display: grid;
+  gap: var(--density-3, 14px);
+}
+
+.selectorLabel {
+  display: grid;
+  gap: 6px;
+  color: var(--ink-soft);
+  font-size: var(--text-small, 13px);
+  max-width: 340px;
+}
+
+.card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel, 10px);
+  background: var(--card);
+  padding: var(--density-3, 14px) var(--density-4, 18px);
+  display: grid;
+  gap: var(--density-2, 10px);
+}
+
+.cardTitle {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-ui, 14px);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.cardHint {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-small, 13px);
+}
+
+.lockedNote {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-small, 13px);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-control, 7px);
+  padding: 6px 10px;
+  background: var(--paper);
+}
+
+.savedNote {
+  margin: 0;
+  color: var(--pine);
+  font-size: var(--text-small, 13px);
+  font-weight: 500;
+}
+
+.hoursGrid {
+  display: grid;
+  gap: 6px;
+}
+
+.hoursRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.hoursRow[data-off="true"] .timeSelect {
+  opacity: 0.5;
+}
+
+.dayToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: 120px;
+  color: var(--ink);
+  font-size: var(--text-small, 13px);
+}
+
+.dayToggle input {
+  accent-color: var(--pine);
+}
+
+.timeSelect,
+.select,
+.input {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control, 7px);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: var(--text-small, 13px);
+  font-family: inherit;
+  padding: 6px 8px;
+}
+
+.select,
+.input {
+  width: 100%;
+}
+
+.timeDash {
+  color: var(--ink-soft);
+  font-size: var(--text-small, 13px);
+}
+
+.fieldGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--density-2, 10px);
+}
+
+.field {
+  display: grid;
+  gap: 5px;
+  color: var(--ink-soft);
+  font-size: var(--text-small, 13px);
+  align-content: start;
+}
+
+.textarea {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control, 7px);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: var(--text-small, 13px);
+  font-family: inherit;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+.zoneWarning {
+  margin: 0;
+  border: 1px solid rgba(180, 135, 66, 0.5);
+  border-radius: var(--radius-control, 7px);
+  background: rgba(180, 135, 66, 0.12);
+  color: var(--ink);
+  font-size: var(--text-small, 13px);
+  padding: 7px 10px;
+  line-height: 1.45;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--density-2, 10px);
+}
+
+.saveButton {
+  border: 1px solid var(--pine);
+  border-radius: var(--radius-control, 7px);
+  background: var(--pine);
+  color: #fdfbf5;
+  font-size: var(--text-small, 13px);
+  font-weight: 500;
+  font-family: inherit;
+  padding: 7px 14px;
+  cursor: pointer;
+}
+
+.saveButton:hover {
+  background: var(--pine-bright, #1f5b4e);
+}
+
+.preview {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel, 10px);
+  background: var(--paper-deep);
+  padding: var(--density-3, 14px) var(--density-4, 18px);
+  display: grid;
+  gap: var(--density-2, 10px);
+  position: sticky;
+  top: 18px;
+}
+
+.previewTitle {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-ui, 14px);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.previewNote {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-small, 13px);
+  line-height: 1.45;
+}
+
+.previewList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.previewSlot {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control, 7px);
+  background: var(--card);
+  color: var(--ink);
+  font-size: var(--text-small, 13px);
+  padding: 7px 10px;
+}
+
+.previewWarning {
+  margin: 0;
+  color: var(--terracotta);
+  font-size: var(--text-small, 13px);
+}

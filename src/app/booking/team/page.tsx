@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { BookingShell } from "@/components/booking/booking-shell";
 import { TeamRoster } from "@/components/booking/team-roster";
 import { requireBookingAccess } from "@/lib/booking/access";
@@ -27,6 +28,7 @@ export default async function BookingTeamPage() {
 
   return (
     <BookingShell active="team" canManage={canManage}>
+      <p style={{ margin: "0 0 14px", fontSize: "var(--text-small, 13px)" }}><Link href="/booking/team/sessions">Group sessions</Link> · <Link href="/booking/team/invitations">Invitations</Link></p>
       <TeamRoster staff={staff} brands={brands} fetchedAt={stats.fetchedAt} />
     </BookingShell>
   );

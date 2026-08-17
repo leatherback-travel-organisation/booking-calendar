@@ -1,0 +1,138 @@
+.board {
+  display: grid;
+  gap: var(--density-4, 18px);
+}
+
+.intro {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-small, 13px);
+  max-width: 68ch;
+  line-height: 1.5;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel, 10px);
+  background: var(--card);
+  overflow: hidden;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--density-2, 10px);
+  padding: var(--density-3, 14px) var(--density-4, 18px);
+  border-bottom: 1px solid var(--line);
+}
+
+.row:last-child {
+  border-bottom: 0;
+}
+
+.rowMain {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.dot {
+  flex: 0 0 auto;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--ink-soft);
+  align-self: center;
+}
+
+.dot[data-tone="green"] {
+  background: var(--pine);
+}
+
+.dot[data-tone="amber"] {
+  background: var(--brass);
+}
+
+.dot[data-tone="red"] {
+  background: var(--terracotta);
+}
+
+.dot[data-tone="grey"] {
+  background: rgba(83, 96, 90, 0.5);
+}
+
+.name {
+  color: var(--ink);
+  font-size: var(--text-ui, 14px);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.status {
+  color: var(--ink-soft);
+  font-size: var(--text-small, 13px);
+}
+
+.status[data-tone="red"] {
+  color: var(--terracotta);
+}
+
+.when {
+  color: var(--ink-soft);
+  font-size: var(--text-label, 12px);
+  white-space: nowrap;
+}
+
+.actionButton {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control, 7px);
+  background: var(--pine);
+  color: #fdfbf5;
+  font-size: var(--text-small, 13px);
+  font-weight: 500;
+  font-family: inherit;
+  padding: 6px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.actionButton:hover {
+  background: var(--pine-bright, #1f5b4e);
+}
+
+.staffTableWrap {
+  width: 100%;
+  overflow-x: auto;
+  padding-left: 19px;
+}
+
+.staffTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-small, 13px);
+}
+
+.staffTable td {
+  padding: 6px 12px 6px 0;
+  border-top: 1px solid var(--line);
+  color: var(--ink);
+  vertical-align: baseline;
+}
+
+.staffError {
+  color: var(--terracotta);
+  font-size: var(--text-label, 12px);
+}
+
+.staffWhen {
+  color: var(--ink-soft);
+  font-size: var(--text-label, 12px);
+  white-space: nowrap;
+}

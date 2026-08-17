@@ -14,7 +14,7 @@ import { computeSlots, resolveSchedulingZone } from "./availability/engine";
 import { getWorkingHours } from "./availability/service";
 import { sendBookingEmail } from "./notify/messages";
 import { createOrThreadConversation } from "./helpscout";
-import { issueToken, tokenMatches } from "./tokens";
+import { issueToken, manageTokenSecret, parseDerivedManageToken, tokenMatches } from "./tokens";
 
 const HOLD_SECONDS = 120;
 
@@ -317,10 +317,22 @@ export type ManagedBooking = {
   helpscoutConversationId: string | null;
 };
 
-/** Constant-time token check against the sha256 index lookup. */
+/** Constant-time token check against the sha256 index lookup. Accepts both
+ * the original random token (from the confirmation email) and the derived
+ * `r.<id>.<hmac>` form used in reminder emails, where the original cannot be
+ * reconstructed from its stored hash. */
 export async function findBookingByToken(rawToken: string): Promise<ManagedBooking | null> {
   const sql = getSql();
-  if (!rawToken || rawToken.length < 16 || rawToken.length > 128) return null;
+  if (!rawToken || rawToken.length < 16 || rawToken.length > 160) return null;
+
+  const secret = manageTokenSecret();
+  if (rawToken.startsWith("r.") && secret) {
+    const parsed = parseDerivedManageToken(rawToken, secret);
+    if (!parsed) return null;
+    const rows = await sql`select * from booking.booking where id = ${parsed.bookingId}`;
+    return rows.length ? mapManagedBooking(rows[0]) : null;
+  }
+
   const { createHash } = await import("node:crypto");
   const hash = createHash("sha256").update(rawToken).digest();
   const rows = await sql`select * from booking.booking where manage_token_hash = ${hash}`;
@@ -328,6 +340,10 @@ export async function findBookingByToken(rawToken: string): Promise<ManagedBooki
   const row = rows[0];
   // Belt and braces on top of the indexed lookup.
   if (!tokenMatches(rawToken, row.manage_token_hash as Uint8Array)) return null;
+  return mapManagedBooking(row);
+}
+
+function mapManagedBooking(row: Record<string, unknown>): ManagedBooking {
   return {
     id: String(row.id),
     staffId: String(row.staff_id),

@@ -1,0 +1,246 @@
+"use client";
+
+// Confirmation step: guest details + honeypot + optional Turnstile.
+// The idempotency key is minted ONCE when the form mounts, so a double-tap
+// of "Confirm booking" can never create two bookings.
+
+import { useState } from "react";
+import type { FormEvent } from "react";
+import styles from "./bp.module.css";
+import { Turnstile } from "./Turnstile";
+import { formatFullDateTime, guestTimeZone } from "./format";
+import type { BookFailure, BookSuccess, PublicSlot } from "./types";
+
+export type BookMeta = {
+  staffSlug: string;
+  brandKey: string;
+  eventTypeKey: string;
+  sourceKind: "trip" | "bm";
+  sourceSlug: string | null;
+  routedVia: "primary" | "backup" | "pool";
+  routedReason: string | null;
+  tripName: string | null;
+  tripUrl: string | null;
+  airtableTripRecordId: string | null;
+};
+
+export type BookedResult = {
+  bookingId: string | null;
+  manageUrl: string | null;
+  meetUrl: string | null;
+  startIso: string;
+  endIso: string;
+};
+
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
+
+function makeIdempotencyKey(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
+  // Extremely old browsers only — RFC4122-shaped fallback.
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = Math.floor(Math.random() * 16);
+    const v = c === "x" ? r : (r % 4) + 8;
+    return v.toString(16);
+  });
+}
+
+export function ConfirmForm({
+  slot,
+  timeZone,
+  staffFirstName,
+  eventTypeName,
+  phone,
+  meta,
+  onBack,
+  onSuccess,
+  onSlotTaken,
+}: {
+  slot: PublicSlot;
+  timeZone: string;
+  staffFirstName: string;
+  eventTypeName: string;
+  phone: string | null;
+  meta: BookMeta;
+  onBack: () => void;
+  onSuccess: (result: BookedResult) => void;
+  onSlotTaken: (message: string) => void;
+}) {
+  const [idempotencyKey] = useState(makeIdempotencyKey);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phoneField, setPhoneField] = useState("");
+  const [notes, setNotes] = useState("");
+  const [honeypot, setHoneypot] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (submitting) return;
+    setError(null);
+    setSubmitting(true);
+    try {
+      const body: Record<string, unknown> = {
+        staffSlug: meta.staffSlug,
+        brandKey: meta.brandKey,
+        eventTypeKey: meta.eventTypeKey,
+        startIso: slot.start,
+        guestName: name.trim(),
+        guestEmail: email.trim(),
+        guestTimezone: guestTimeZone(),
+        sourceKind: meta.sourceKind,
+        routedVia: meta.routedVia,
+        idempotencyKey,
+        website: honeypot,
+      };
+      if (phoneField.trim()) body.guestPhone = phoneField.trim();
+      if (notes.trim()) body.guestNotes = notes.trim();
+      if (meta.sourceSlug) body.sourceSlug = meta.sourceSlug;
+      if (meta.routedReason) body.routedReason = meta.routedReason;
+      if (meta.tripName) body.tripName = meta.tripName;
+      if (meta.tripUrl) body.tripUrl = meta.tripUrl;
+      if (meta.airtableTripRecordId) body.airtableTripRecordId = meta.airtableTripRecordId;
+      if (turnstileToken) body.turnstileToken = turnstileToken;
+
+      const response = await fetch("/api/booking/public/book", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (response.ok) {
+        const payload = (await response.json()) as BookSuccess;
+        onSuccess({
+          bookingId: payload.bookingId ?? null,
+          manageUrl: payload.manageUrl ?? null,
+          meetUrl: payload.meetUrl ?? null,
+          startIso: payload.startIso ?? slot.start,
+          endIso: payload.endIso ?? slot.end,
+        });
+        return;
+      }
+
+      let failure: BookFailure = { error: "unknown" };
+      try {
+        failure = (await response.json()) as BookFailure;
+      } catch {
+        // Non-JSON error body; keep the generic failure.
+      }
+
+      if (response.status === 409 || response.status === 422) {
+        onSlotTaken(failure.message ?? "That time was just taken — here are fresh options.");
+        return;
+      }
+      if (response.status === 502) {
+        setError(
+          failure.message ??
+            `We couldn't confirm the calendar just now. Please try again${phone ? `, or call us on ${phone}` : ""}.`,
+        );
+        return;
+      }
+      if (response.status === 403) {
+        setError("We couldn't verify your request. Please complete the check below and try again.");
+        return;
+      }
+      setError(`Something went wrong on our side. Please try again${phone ? `, or call us on ${phone}` : ""}.`);
+    } catch {
+      setError(`We couldn't reach the booking service. Please check your connection and try again${phone ? `, or call us on ${phone}` : ""}.`);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <form className={styles.form} onSubmit={submit}>
+      <div className={styles.slotSummary}>
+        {eventTypeName} with {staffFirstName}
+        <br />
+        <strong>{formatFullDateTime(slot.start, timeZone)}</strong>
+      </div>
+
+      <div className={styles.field}>
+        <label className={styles.fieldLabel} htmlFor="bp-name">Your name</label>
+        <input
+          id="bp-name"
+          className={styles.input}
+          type="text"
+          required
+          autoComplete="name"
+          maxLength={200}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+      </div>
+
+      <div className={styles.field}>
+        <label className={styles.fieldLabel} htmlFor="bp-email">Email</label>
+        <input
+          id="bp-email"
+          className={styles.input}
+          type="email"
+          required
+          autoComplete="email"
+          maxLength={320}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+      </div>
+
+      <div className={styles.field}>
+        <label className={styles.fieldLabel} htmlFor="bp-phone">
+          Phone <span className={styles.optionalTag}>(optional)</span>
+        </label>
+        <input
+          id="bp-phone"
+          className={styles.input}
+          type="tel"
+          autoComplete="tel"
+          maxLength={50}
+          value={phoneField}
+          onChange={(e) => setPhoneField(e.target.value)}
+        />
+      </div>
+
+      <div className={styles.field}>
+        <label className={styles.fieldLabel} htmlFor="bp-notes">
+          Anything you&rsquo;d like us to know? <span className={styles.optionalTag}>(optional)</span>
+        </label>
+        <textarea
+          id="bp-notes"
+          className={styles.textarea}
+          maxLength={2000}
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+        />
+      </div>
+
+      {/* Honeypot: hidden by CSS, not type=hidden — humans never see it. */}
+      <div className={styles.honeypot} aria-hidden="true">
+        <label htmlFor="bp-website">Website</label>
+        <input
+          id="bp-website"
+          name="website"
+          type="text"
+          tabIndex={-1}
+          autoComplete="off"
+          value={honeypot}
+          onChange={(e) => setHoneypot(e.target.value)}
+        />
+      </div>
+
+      {TURNSTILE_SITE_KEY && <Turnstile siteKey={TURNSTILE_SITE_KEY} onToken={setTurnstileToken} />}
+
+      {error && <div className={`${styles.notice} ${styles.noticeError}`} role="alert">{error}</div>}
+
+      <div className={styles.btnRow}>
+        <button type="submit" className={styles.primaryBtn} disabled={submitting}>
+          {submitting ? "Booking your time…" : "Confirm booking"}
+        </button>
+        <button type="button" className={styles.secondaryBtn} onClick={onBack} disabled={submitting}>
+          Pick a different time
+        </button>
+      </div>
+    </form>
+  );
+}

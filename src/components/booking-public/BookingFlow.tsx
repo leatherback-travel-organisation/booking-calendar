@@ -1,0 +1,618 @@
+"use client";
+
+// The single-page guest booking experience for /book. Resolution → (optional
+// brand/team choice) → slot picker → confirmation form → success. All slots
+// are fetched once per BM+type; paging is client-side.
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import styles from "./bp.module.css";
+import { BrandFrame } from "./BrandFrame";
+import { ConfirmForm, type BookMeta, type BookedResult } from "./ConfirmForm";
+import { SlotPicker } from "./SlotPicker";
+import { TeamList } from "./TeamList";
+import { formatFullDateTime, guestTimeZone } from "./format";
+import { resolveBrandPoolAction } from "@/app/book/actions";
+import type {
+  AvailabilityPayload,
+  BackupEntry,
+  PublicBrand,
+  PublicDeparture,
+  PublicEventType,
+  PublicSlot,
+  PublicStaff,
+  ResolvePayload,
+} from "./types";
+
+type Ctx = {
+  mode: "primary" | "pool";
+  brand: PublicBrand;
+  eventTypes: PublicEventType[];
+  departures: PublicDeparture[];
+  primary: PublicStaff | null;
+  poolLabel: string | null;
+};
+
+type ActiveStaff = {
+  slug: string;
+  firstName: string;
+  photoUrl: string | null;
+  bio: string | null;
+  routedVia: "primary" | "backup" | "pool";
+  routedReason: string | null;
+};
+
+// Fetch results are stored together with the request key that produced them;
+// "loading" is derived (current key has no matching result yet), so effects
+// never need a synchronous setState.
+type AvailResult = { key: string; data: AvailabilityPayload | null; failed: boolean };
+type BackupsResult = { key: string; list: BackupEntry[]; failed: boolean };
+
+function defaultEventTypeKey(eventTypes: PublicEventType[], typeParam: string | null): string | null {
+  if (typeParam && eventTypes.some((t) => t.key === typeParam)) return typeParam;
+  if (eventTypes.some((t) => t.key === "enquiry")) return "enquiry";
+  return eventTypes[0]?.key ?? null;
+}
+
+function sortDepartures(departures: PublicDeparture[]): PublicDeparture[] {
+  return [...departures].sort((a, b) => {
+    if (a.startDate === b.startDate) return 0;
+    if (a.startDate === null) return 1;
+    if (b.startDate === null) return -1;
+    return a.startDate < b.startDate ? -1 : 1;
+  });
+}
+
+export function BookingFlow({
+  trip,
+  host,
+  bm,
+  typeParam,
+  embed,
+}: {
+  trip: string | null;
+  host: string | null;
+  bm: string | null;
+  typeParam: string | null;
+  embed: boolean;
+}) {
+  // SSR only ever renders the loading card (resolution is a client fetch), so
+  // a lazy client-side init never produces a hydration mismatch.
+  const [tz] = useState(() => (typeof window === "undefined" ? "UTC" : guestTimeZone()));
+  const [resolveState, setResolveState] = useState<"loading" | "error" | "ready">("loading");
+  const [brands, setBrands] = useState<{ key: string; name: string }[] | null>(null);
+  const [brandPickPending, setBrandPickPending] = useState(false);
+  const [ctx, setCtx] = useState<Ctx | null>(null);
+  const [eventTypeKey, setEventTypeKey] = useState<string | null>(null);
+  const [departureId, setDepartureId] = useState<string | null>(null);
+  const [active, setActive] = useState<ActiveStaff | null>(null);
+  const [availResult, setAvailResult] = useState<AvailResult | null>(null);
+  const [availNonce, setAvailNonce] = useState(0);
+  const [backupsResult, setBackupsResult] = useState<BackupsResult | null>(null);
+  const [showBackups, setShowBackups] = useState(false);
+  const [selected, setSelected] = useState<PublicSlot | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [booked, setBooked] = useState<BookedResult | null>(null);
+
+  const applyResolved = useCallback(
+    (payload: Exclude<ResolvePayload, { kind: "brand-picker" }>) => {
+      const departures = sortDepartures(payload.departures);
+      const primary = payload.kind === "primary" ? payload.staff : null;
+      setCtx({
+        mode: payload.kind,
+        brand: payload.brand,
+        eventTypes: payload.eventTypes,
+        departures,
+        primary,
+        poolLabel: payload.kind === "pool" ? payload.poolLabel : null,
+      });
+      setEventTypeKey(defaultEventTypeKey(payload.eventTypes, typeParam));
+      setDepartureId(departures[0]?.airtableId ?? null);
+      if (primary) {
+        setActive({ ...primary, routedVia: "primary", routedReason: null });
+      }
+      setResolveState("ready");
+    },
+    [typeParam],
+  );
+
+  // 1. Resolve who the guest is booking with.
+  useEffect(() => {
+    const controller = new AbortController();
+    const params = new URLSearchParams();
+    if (trip) {
+      params.set("trip", trip);
+      if (host) params.set("host", host);
+    } else if (bm) {
+      params.set("bm", bm);
+    }
+    const query = params.toString();
+    fetch(`/api/booking/public/resolve${query ? `?${query}` : ""}`, {
+      signal: controller.signal,
+      cache: "no-store",
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error("resolve failed");
+        return response.json() as Promise<ResolvePayload>;
+      })
+      .then((payload) => {
+        if (payload.kind === "brand-picker") {
+          setBrands(payload.brands);
+          setResolveState("ready");
+        } else {
+          applyResolved(payload);
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setResolveState("error");
+      });
+    return () => controller.abort();
+  }, [trip, host, bm, applyResolved]);
+
+  // 2. Availability: fetched once per BM + event type, paged client-side.
+  const brandKey = ctx?.brand.key ?? null;
+  const activeSlug = active?.slug ?? null;
+  const availKey =
+    brandKey && activeSlug && eventTypeKey ? `${brandKey}|${activeSlug}|${eventTypeKey}|${availNonce}` : null;
+  useEffect(() => {
+    if (!availKey || !brandKey || !activeSlug || !eventTypeKey) return;
+    const controller = new AbortController();
+    const params = new URLSearchParams({ staff: activeSlug, brand: brandKey, type: eventTypeKey });
+    fetch(`/api/booking/public/availability?${params}`, { signal: controller.signal, cache: "no-store" })
+      .then((response) => {
+        if (!response.ok) throw new Error("availability failed");
+        return response.json() as Promise<AvailabilityPayload>;
+      })
+      .then((data) => setAvailResult({ key: availKey, data, failed: false }))
+      .catch(() => {
+        if (!controller.signal.aborted) setAvailResult({ key: availKey, data: null, failed: true });
+      });
+    return () => controller.abort();
+  }, [availKey, brandKey, activeSlug, eventTypeKey]);
+
+  // 3. Team list: eagerly the whole pool UI when there is no primary, and
+  //    lazily (click only) behind "Can't find a time that works?" otherwise.
+  const poolNeedsTeam = ctx?.mode === "pool" && !active && Boolean(eventTypeKey);
+  const backupsExclude = poolNeedsTeam ? null : activeSlug;
+  const backupsKey =
+    brandKey && eventTypeKey && (poolNeedsTeam || showBackups)
+      ? `${brandKey}|${eventTypeKey}|${backupsExclude ?? ""}`
+      : null;
+  useEffect(() => {
+    if (!backupsKey || !brandKey || !eventTypeKey) return;
+    const controller = new AbortController();
+    const params = new URLSearchParams({ brand: brandKey, type: eventTypeKey });
+    if (backupsExclude) params.set("exclude", backupsExclude);
+    fetch(`/api/booking/public/backups?${params}`, { signal: controller.signal, cache: "no-store" })
+      .then((response) => {
+        if (!response.ok) throw new Error("backups failed");
+        return response.json() as Promise<{ backups: BackupEntry[] }>;
+      })
+      .then((payload) => setBackupsResult({ key: backupsKey, list: payload.backups, failed: false }))
+      .catch(() => {
+        if (!controller.signal.aborted) setBackupsResult({ key: backupsKey, list: [], failed: true });
+      });
+    return () => controller.abort();
+  }, [backupsKey, brandKey, eventTypeKey, backupsExclude]);
+
+  const pickEventType = (key: string) => {
+    setEventTypeKey(key);
+    setSelected(null);
+    setNotice(null);
+    setShowBackups(false);
+  };
+
+  const pickSlot = (slot: PublicSlot) => {
+    setSelected(slot);
+    setNotice(null);
+    if (ctx && active && eventTypeKey) {
+      // Cosmetic 120s hold — fire and forget, failures are irrelevant.
+      fetch("/api/booking/public/hold", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          staffSlug: active.slug,
+          brandKey: ctx.brand.key,
+          eventTypeKey,
+          startIso: slot.start,
+        }),
+      }).catch(() => {});
+    }
+  };
+
+  const chooseTeamMember = (entry: BackupEntry) => {
+    if (!ctx) return;
+    const cameFromPrimary = ctx.mode === "primary" && ctx.primary !== null;
+    setActive({
+      slug: entry.staff.slug,
+      firstName: entry.staff.firstName,
+      photoUrl: entry.staff.photoUrl,
+      bio: entry.staff.bio,
+      routedVia: cameFromPrimary ? "backup" : "pool",
+      routedReason: cameFromPrimary
+        ? `Chose ${entry.staff.firstName} from alternatives; ${ctx.primary!.firstName} had no suitable times.`
+        : `Chose ${entry.staff.firstName} from the ${ctx.brand.name} team.`,
+    });
+    setShowBackups(false);
+    setSelected(null);
+    setNotice(null);
+  };
+
+  const backToPrimary = () => {
+    if (!ctx?.primary) {
+      setActive(null);
+      return;
+    }
+    setActive({ ...ctx.primary, routedVia: "primary", routedReason: null });
+    setSelected(null);
+    setNotice(null);
+    setShowBackups(false);
+  };
+
+  const openBackups = () => {
+    // The backups fetch itself is driven by backupsKey becoming non-null.
+    setShowBackups(true);
+  };
+
+  const pickBrand = async (key: string) => {
+    setBrandPickPending(true);
+    try {
+      const resolution = await resolveBrandPoolAction(key);
+      if (!resolution) {
+        setNotice("We couldn't load that brand just now — please try again.");
+        return;
+      }
+      setCtx({
+        mode: "pool",
+        brand: resolution.brand,
+        eventTypes: resolution.eventTypes,
+        departures: [],
+        primary: null,
+        poolLabel: resolution.poolLabel,
+      });
+      setEventTypeKey(defaultEventTypeKey(resolution.eventTypes, typeParam));
+      setActive(null);
+      setNotice(null);
+    } finally {
+      setBrandPickPending(false);
+    }
+  };
+
+  const onSlotTaken = (message: string) => {
+    setNotice(message);
+    setSelected(null);
+    setAvailNonce((n) => n + 1);
+  };
+
+  const selectedDeparture = useMemo(() => {
+    if (!ctx || ctx.departures.length === 0) return null;
+    return ctx.departures.find((d) => d.airtableId === departureId) ?? ctx.departures[0];
+  }, [ctx, departureId]);
+
+  const eventType = ctx?.eventTypes.find((t) => t.key === eventTypeKey) ?? null;
+  const phone = ctx?.brand.phone ?? null;
+
+  const meta: BookMeta | null =
+    ctx && active && eventTypeKey
+      ? {
+          staffSlug: active.slug,
+          brandKey: ctx.brand.key,
+          eventTypeKey,
+          sourceKind: trip ? "trip" : "bm",
+          sourceSlug: trip ?? bm ?? null,
+          routedVia: active.routedVia,
+          routedReason: active.routedReason,
+          tripName: selectedDeparture?.title ?? null,
+          tripUrl:
+            selectedDeparture?.url && /^https?:\/\//.test(selectedDeparture.url)
+              ? selectedDeparture.url
+              : null,
+          airtableTripRecordId:
+            selectedDeparture && /^rec[A-Za-z0-9]+$/.test(selectedDeparture.airtableId)
+              ? selectedDeparture.airtableId
+              : null,
+        }
+      : null;
+
+  // ---------------- Render ----------------
+
+  if (resolveState === "loading") {
+    return (
+      <BrandFrame brand={null} embed={embed}>
+        <section className={styles.card}>
+          <p className={styles.loadingText}>Loading your booking page…</p>
+        </section>
+      </BrandFrame>
+    );
+  }
+
+  if (resolveState === "error") {
+    return (
+      <BrandFrame brand={null} embed={embed}>
+        <section className={styles.card}>
+          <h1 className={styles.pageTitle}>We couldn&rsquo;t load this page</h1>
+          <p className={styles.pageSub}>
+            Something went wrong on our side. Please refresh the page to try again.
+          </p>
+        </section>
+      </BrandFrame>
+    );
+  }
+
+  // Brand picker: no brand context yet.
+  if (!ctx) {
+    return (
+      <BrandFrame brand={null} embed={embed}>
+        <section className={styles.card}>
+          <h1 className={styles.pageTitle}>Book a call with our team</h1>
+          <p className={styles.pageSub}>Which of our travel brands would you like to talk to?</p>
+          {notice && <div className={`${styles.notice} ${styles.noticeError}`}>{notice}</div>}
+          <div className={styles.typeGrid}>
+            {(brands ?? []).map((entry) => (
+              <button
+                key={entry.key}
+                type="button"
+                className={styles.typeBtn}
+                onClick={() => void pickBrand(entry.key)}
+                disabled={brandPickPending}
+              >
+                <span className={styles.typeName}>{entry.name}</span>
+              </button>
+            ))}
+          </div>
+          {brandPickPending && <p className={styles.loadingText}>Opening the booking page…</p>}
+        </section>
+      </BrandFrame>
+    );
+  }
+
+  // Success screen.
+  if (booked && active && eventType) {
+    return (
+      <BrandFrame brand={ctx.brand} embed={embed}>
+        <section className={styles.card}>
+          <div className={styles.successIcon} aria-hidden="true">✓</div>
+          <h1 className={styles.pageTitle}>You&rsquo;re booked with {active.firstName}!</h1>
+          <div className={styles.detailList}>
+            <div>
+              <span className={styles.detailLabel}>When</span>
+              <span className={styles.detailValue}>{formatFullDateTime(booked.startIso, tz)}</span>
+            </div>
+            <div>
+              <span className={styles.detailLabel}>What</span>
+              <span className={styles.detailValue}>
+                {eventType.name} ({eventType.durationMin} minutes)
+              </span>
+            </div>
+            {booked.meetUrl && (
+              <div>
+                <span className={styles.detailLabel}>Where</span>
+                <a className={styles.meetLink} href={booked.meetUrl} target="_blank" rel="noreferrer">
+                  Join your video call
+                </a>
+              </div>
+            )}
+          </div>
+          <p className={styles.pageSub}>A confirmation email is on its way to your inbox.</p>
+          {booked.manageUrl && (
+            <p className={styles.mutedText}>
+              Need to change it later?{" "}
+              <a className={styles.meetLink} href={booked.manageUrl}>
+                Manage this booking
+              </a>
+            </p>
+          )}
+          {phone && (
+            <div className={styles.phoneBox}>
+              <span>Prefer to talk sooner? Call {ctx.brand.name} any time:</span>
+              <a className={styles.phoneBig} href={`tel:${phone.replace(/\s/g, "")}`}>{phone}</a>
+            </div>
+          )}
+        </section>
+      </BrandFrame>
+    );
+  }
+
+  const availLoading = availKey !== null && availResult?.key !== availKey;
+  const availFailed = availKey !== null && availResult?.key === availKey && availResult.failed;
+  const availData =
+    availKey !== null && availResult?.key === availKey && !availResult.failed ? availResult.data : null;
+  const calendarDown = availData !== null && !availData.calendarReachable && availData.slots.length === 0;
+  const fullyBooked = availData !== null && availData.calendarReachable && availData.slots.length === 0;
+
+  const backupsLoading = backupsKey !== null && backupsResult?.key !== backupsKey;
+  const backupsFailed = backupsKey !== null && backupsResult?.key === backupsKey && backupsResult.failed;
+  const backupsList =
+    backupsKey !== null && backupsResult?.key === backupsKey && !backupsResult.failed
+      ? backupsResult.list
+      : null;
+
+  return (
+    <BrandFrame brand={ctx.brand} embed={embed}>
+      <section className={styles.card}>
+        {/* Who the guest is booking with */}
+        {active && active.routedVia === "primary" && ctx.primary ? (
+          <div className={styles.bmCard}>
+            {ctx.primary.photoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={ctx.primary.photoUrl} alt={ctx.primary.firstName} className={styles.bmPhoto} />
+            ) : (
+              <span className={styles.bmPhotoFallback} aria-hidden="true">
+                {ctx.primary.firstName.charAt(0)}
+              </span>
+            )}
+            <div>
+              <h1 className={styles.bmName}>Book a call with {ctx.primary.firstName}</h1>
+              {ctx.primary.bio && <p className={styles.bmBio}>{ctx.primary.bio}</p>}
+            </div>
+          </div>
+        ) : active ? (
+          <div className={styles.bmCard}>
+            {active.photoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={active.photoUrl} alt={active.firstName} className={styles.bmPhoto} />
+            ) : (
+              <span className={styles.bmPhotoFallback} aria-hidden="true">
+                {active.firstName.charAt(0)}
+              </span>
+            )}
+            <div>
+              <h1 className={styles.bmName}>Book a call with {active.firstName}</h1>
+              <button type="button" className={styles.linkBtn} onClick={backToPrimary}>
+                {ctx.primary ? `Back to ${ctx.primary.firstName}` : "Choose someone else"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <h1 className={styles.pageTitle}>{ctx.poolLabel ?? `Book a call with the ${ctx.brand.name} team`}</h1>
+        )}
+
+        {/* Event type choice */}
+        {ctx.eventTypes.length > 1 && !selected && (
+          <div>
+            <p className={styles.sectionLabel}>What kind of call?</p>
+            <div className={styles.typeGrid}>
+              {ctx.eventTypes.map((t) => (
+                <button
+                  key={t.key}
+                  type="button"
+                  className={t.key === eventTypeKey ? `${styles.typeBtn} ${styles.typeBtnActive}` : styles.typeBtn}
+                  onClick={() => pickEventType(t.key)}
+                >
+                  <span className={styles.typeName}>{t.name} · {t.durationMin} min</span>
+                  {t.description && <span className={styles.typeMeta}>{t.description}</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Departure context (informational — same calendar either way) */}
+        {ctx.departures.length > 1 && !selected && (
+          <div className={styles.selectWrap}>
+            <label className={styles.fieldLabel} htmlFor="bp-departure">Which departure are you interested in?</label>
+            <select
+              id="bp-departure"
+              className={styles.select}
+              value={selectedDeparture?.airtableId ?? ""}
+              onChange={(e) => setDepartureId(e.target.value)}
+            >
+              {ctx.departures.map((d) => (
+                <option key={d.airtableId} value={d.airtableId}>
+                  {d.title}
+                  {d.startDate ? ` — departs ${d.startDate}` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {notice && <div className={styles.notice} role="status">{notice}</div>}
+
+        <hr className={styles.divider} />
+
+        {/* Main area */}
+        {selected && active && eventType && meta ? (
+          <ConfirmForm
+            slot={selected}
+            timeZone={tz}
+            staffFirstName={active.firstName}
+            eventTypeName={eventType.name}
+            phone={phone}
+            meta={meta}
+            onBack={() => setSelected(null)}
+            onSuccess={setBooked}
+            onSlotTaken={onSlotTaken}
+          />
+        ) : !active ? (
+          // Pool: guest chooses a team member. Never auto-assigned.
+          <div className={styles.dayGroup}>
+            <p className={styles.sectionLabel}>Choose who you&rsquo;d like to speak with</p>
+            {backupsLoading && <p className={styles.loadingText}>Checking the team&rsquo;s calendars…</p>}
+            {backupsFailed && (
+              <div className={`${styles.notice} ${styles.noticeError}`}>
+                We couldn&rsquo;t load the team&rsquo;s availability just now. Please refresh to try again.
+              </div>
+            )}
+            {backupsList !== null && backupsList.length === 0 && phone && (
+              <div className={styles.phoneBox}>
+                <span>Nobody has open times online right now — call us and we&rsquo;ll find you a time:</span>
+                <a className={styles.phoneBig} href={`tel:${phone.replace(/\s/g, "")}`}>{phone}</a>
+              </div>
+            )}
+            {backupsList !== null && backupsList.length > 0 && (
+              <TeamList backups={backupsList} timeZone={tz} onPick={chooseTeamMember} />
+            )}
+          </div>
+        ) : (
+          <div className={styles.dayGroup}>
+            {availLoading && (
+              <p className={styles.loadingText}>Finding {active.firstName}&rsquo;s available times…</p>
+            )}
+            {availFailed && (
+              <div className={`${styles.notice} ${styles.noticeError}`}>
+                We couldn&rsquo;t load available times just now. Please refresh to try again
+                {phone ? `, or call us on ${phone}` : ""}.
+              </div>
+            )}
+            {calendarDown && (
+              <>
+                <div className={styles.notice}>
+                  We can&rsquo;t load {active.firstName}&rsquo;s calendar right now — it doesn&rsquo;t mean they&rsquo;re
+                  fully booked.
+                </div>
+                {phone && (
+                  <div className={styles.phoneBox}>
+                    <span>Call us and we&rsquo;ll book you in directly:</span>
+                    <a className={styles.phoneBig} href={`tel:${phone.replace(/\s/g, "")}`}>{phone}</a>
+                  </div>
+                )}
+                <button type="button" className={styles.secondaryBtn} onClick={openBackups}>
+                  See the rest of the team
+                </button>
+              </>
+            )}
+            {fullyBooked && (
+              <>
+                <div className={styles.notice}>
+                  {active.firstName} has no open times in the next few weeks.
+                </div>
+                <button type="button" className={styles.secondaryBtn} onClick={openBackups}>
+                  See who else can help
+                </button>
+              </>
+            )}
+            {availData !== null && availData.slots.length > 0 && (
+              <>
+                <SlotPicker slots={availData.slots} timeZone={tz} onPick={pickSlot} />
+                {active.routedVia === "primary" && !showBackups && (
+                  <button type="button" className={styles.linkBtn} onClick={openBackups}>
+                    Can&rsquo;t find a time that works?
+                  </button>
+                )}
+              </>
+            )}
+            {showBackups && (
+              <div className={styles.dayGroup}>
+                <p className={styles.sectionLabel}>Other people who can help</p>
+                {backupsLoading && <p className={styles.loadingText}>Checking the team&rsquo;s calendars…</p>}
+                {backupsFailed && (
+                  <div className={`${styles.notice} ${styles.noticeError}`}>
+                    We couldn&rsquo;t load the team just now — please try again.
+                  </div>
+                )}
+                {backupsList !== null && backupsList.length === 0 && (
+                  <p className={styles.mutedText}>
+                    Nobody else has open times online right now{phone ? ` — call us on ${phone} and we'll sort it out` : ""}.
+                  </p>
+                )}
+                {backupsList !== null && backupsList.length > 0 && (
+                  <TeamList backups={backupsList} timeZone={tz} onPick={chooseTeamMember} />
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+    </BrandFrame>
+  );
+}

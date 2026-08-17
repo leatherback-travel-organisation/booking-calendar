@@ -2,7 +2,7 @@
 // digest is stored; the raw token appears once, in the guest's email link,
 // and is never logged.
 
-import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 export type IssuedToken = {
   /** Goes into the emailed link. Never persist or log this. */
@@ -18,6 +18,37 @@ export function issueToken(): IssuedToken {
 
 export function hashToken(raw: string): Buffer {
   return createHash("sha256").update(raw).digest();
+}
+
+/**
+ * Derived manage tokens for emails sent AFTER creation (reminders), where the
+ * original random token cannot be recovered from its stored hash. Format
+ * `r.<bookingId>.<hmac>` — regenerable server-side from the booking id plus a
+ * server secret, so nothing sensitive is stored per booking.
+ */
+export function derivedManageToken(bookingId: string, secret: string): string {
+  const mac = createHmac("sha256", secret).update(`manage:${bookingId}`).digest("base64url");
+  return `r.${bookingId}.${mac}`;
+}
+
+export function parseDerivedManageToken(
+  token: string,
+  secret: string,
+): { bookingId: string } | null {
+  if (!token.startsWith("r.")) return null;
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+  const [, bookingId, mac] = parts;
+  if (!/^[0-9a-f-]{36}$/.test(bookingId)) return null;
+  const expected = createHmac("sha256", secret).update(`manage:${bookingId}`).digest("base64url");
+  const a = Buffer.from(mac);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
+  return { bookingId };
+}
+
+export function manageTokenSecret(): string | null {
+  return process.env.BOOKING_TOKEN_SECRET ?? process.env.COVE_HANDOFF_SECRET ?? null;
 }
 
 /** Constant-time comparison of a presented token against a stored digest. */

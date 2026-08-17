@@ -1,0 +1,649 @@
+/* Guest-facing booking surfaces. Deliberately NOT Cove admin styling:
+   warm, generous, brand-themed via --bp-primary / --bp-accent custom
+   properties set inline on the frame. Mobile-first, 360px-safe. */
+
+.frame {
+  --bp-paper: #faf7f2;
+  --bp-card: #ffffff;
+  --bp-ink: #26302c;
+  --bp-ink-soft: #5c6862;
+  --bp-line: rgba(38, 48, 44, 0.14);
+  min-height: 100vh;
+  background: var(--bp-paper);
+  color: var(--bp-ink);
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 16px 48px;
+}
+
+.frameEmbed {
+  min-height: 0;
+  background: transparent;
+  padding: 8px 8px 20px;
+}
+
+/* Widget iframe overlays want to show through around the card. */
+:global(html.bp-embed),
+:global(html.bp-embed) body {
+  background: transparent !important;
+}
+
+.inner {
+  width: 100%;
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 4px;
+}
+
+.logoImg {
+  max-height: 44px;
+  max-width: 220px;
+  display: block;
+}
+
+.brandName {
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--bp-primary);
+}
+
+.phoneLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 16px;
+  color: var(--bp-primary);
+  text-decoration: none;
+  border: 1px solid var(--bp-line);
+  background: var(--bp-card);
+  border-radius: 999px;
+  padding: 8px 16px;
+  min-height: 44px;
+  white-space: nowrap;
+}
+
+.phoneLink:hover {
+  border-color: var(--bp-accent);
+}
+
+.card {
+  background: var(--bp-card);
+  border: 1px solid var(--bp-line);
+  border-radius: 18px;
+  box-shadow: 0 18px 50px rgba(38, 48, 44, 0.07);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.frameEmbed .card {
+  padding: 18px;
+  border-radius: 14px;
+  box-shadow: none;
+}
+
+.footer {
+  text-align: center;
+  font-size: 14px;
+  color: var(--bp-ink-soft);
+  padding: 8px 4px 0;
+}
+
+.footer a {
+  color: var(--bp-primary);
+  text-decoration: underline;
+}
+
+.pageTitle {
+  font-size: 24px;
+  font-weight: 500;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.pageSub {
+  margin: 0;
+  color: var(--bp-ink-soft);
+  font-size: 16px;
+}
+
+/* ---- Booking manager card ---- */
+
+.bmCard {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.bmPhoto {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--bp-accent);
+  flex-shrink: 0;
+}
+
+.bmPhotoFallback {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--bp-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  flex-shrink: 0;
+}
+
+.bmName {
+  font-size: 20px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.bmBio {
+  margin: 2px 0 0;
+  color: var(--bp-ink-soft);
+  font-size: 15px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ---- Section titles & choices ---- */
+
+.sectionLabel {
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--bp-ink-soft);
+  margin: 0;
+}
+
+.typeGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.typeBtn {
+  text-align: left;
+  border: 1.5px solid var(--bp-line);
+  background: var(--bp-card);
+  border-radius: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  min-height: 52px;
+  color: var(--bp-ink);
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.typeBtn:hover {
+  border-color: var(--bp-accent);
+}
+
+.typeBtnActive {
+  border-color: var(--bp-primary);
+  background: color-mix(in srgb, var(--bp-primary) 6%, #fff);
+}
+
+.typeName {
+  font-size: 17px;
+  font-weight: 500;
+  display: block;
+}
+
+.typeMeta {
+  font-size: 14px;
+  color: var(--bp-ink-soft);
+  display: block;
+  margin-top: 2px;
+}
+
+.selectWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.select {
+  border: 1.5px solid var(--bp-line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 16px;
+  background: var(--bp-card);
+  color: var(--bp-ink);
+  min-height: 48px;
+  width: 100%;
+}
+
+/* ---- Slot picker ---- */
+
+.tzLine {
+  font-size: 15px;
+  color: var(--bp-ink-soft);
+  margin: 0;
+}
+
+.weekNav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.weekRange {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.navBtn {
+  border: 1.5px solid var(--bp-line);
+  background: var(--bp-card);
+  color: var(--bp-primary);
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-size: 15px;
+  cursor: pointer;
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.navBtn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.dayGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dayHeading {
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--bp-line);
+}
+
+.slotGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(126px, 1fr));
+  gap: 8px;
+}
+
+.slotBtn {
+  border: 1.5px solid var(--bp-primary);
+  background: var(--bp-card);
+  color: var(--bp-primary);
+  border-radius: 10px;
+  padding: 10px 6px;
+  font-size: 15px;
+  cursor: pointer;
+  min-height: 48px;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.slotBtn:hover {
+  background: var(--bp-primary);
+  color: #fff;
+}
+
+.emptyWeek {
+  color: var(--bp-ink-soft);
+  font-size: 16px;
+  padding: 12px 0;
+}
+
+/* ---- Notices ---- */
+
+.notice {
+  border: 1px solid var(--bp-line);
+  border-left: 4px solid var(--bp-accent);
+  background: color-mix(in srgb, var(--bp-accent) 7%, #fff);
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 16px;
+}
+
+.noticeError {
+  border-left-color: #b3543e;
+  background: #fdf3f0;
+}
+
+.phoneBox {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid var(--bp-line);
+  border-radius: 12px;
+  padding: 16px;
+  background: color-mix(in srgb, var(--bp-primary) 4%, #fff);
+  font-size: 16px;
+}
+
+.phoneBig {
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--bp-primary);
+  text-decoration: none;
+}
+
+/* ---- Links & buttons ---- */
+
+.linkBtn {
+  background: none;
+  border: none;
+  padding: 8px 0;
+  color: var(--bp-primary);
+  text-decoration: underline;
+  font-size: 16px;
+  cursor: pointer;
+  text-align: left;
+  min-height: 44px;
+}
+
+.primaryBtn {
+  background: var(--bp-primary);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 14px 22px;
+  font-size: 17px;
+  font-weight: 500;
+  cursor: pointer;
+  min-height: 52px;
+  transition: filter 120ms ease;
+}
+
+.primaryBtn:hover {
+  filter: brightness(1.12);
+}
+
+.primaryBtn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.secondaryBtn {
+  background: var(--bp-card);
+  color: var(--bp-primary);
+  border: 1.5px solid var(--bp-line);
+  border-radius: 12px;
+  padding: 13px 20px;
+  font-size: 16px;
+  cursor: pointer;
+  min-height: 52px;
+}
+
+.secondaryBtn:hover {
+  border-color: var(--bp-accent);
+}
+
+.dangerBtn {
+  background: var(--bp-card);
+  color: #a2442f;
+  border: 1.5px solid rgba(162, 68, 47, 0.4);
+  border-radius: 12px;
+  padding: 13px 20px;
+  font-size: 16px;
+  cursor: pointer;
+  min-height: 52px;
+}
+
+.dangerBtn:hover {
+  background: #fdf3f0;
+}
+
+.btnRow {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ---- Backup / team list ---- */
+
+.backupList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.backupCard {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+  border: 1.5px solid var(--bp-line);
+  background: var(--bp-card);
+  border-radius: 12px;
+  padding: 12px 16px;
+  cursor: pointer;
+  min-height: 64px;
+  color: var(--bp-ink);
+  transition: border-color 120ms ease;
+}
+
+.backupCard:hover {
+  border-color: var(--bp-accent);
+}
+
+.backupPhoto {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.backupPhotoFallback {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--bp-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.backupName {
+  font-size: 17px;
+  font-weight: 500;
+  display: block;
+}
+
+.backupMeta {
+  font-size: 14px;
+  color: var(--bp-ink-soft);
+  display: block;
+  margin-top: 1px;
+}
+
+/* ---- Confirmation form ---- */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.slotSummary {
+  border: 1.5px solid var(--bp-primary);
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: color-mix(in srgb, var(--bp-primary) 6%, #fff);
+  font-size: 17px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fieldLabel {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.optionalTag {
+  color: var(--bp-ink-soft);
+  font-weight: 400;
+  font-size: 14px;
+}
+
+.input,
+.textarea {
+  border: 1.5px solid var(--bp-line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 16px;
+  color: var(--bp-ink);
+  background: var(--bp-card);
+  width: 100%;
+  min-height: 48px;
+}
+
+.input:focus,
+.textarea:focus,
+.select:focus {
+  outline: 2px solid var(--bp-accent);
+  outline-offset: 1px;
+  border-color: var(--bp-accent);
+}
+
+.textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
+/* CSS-hidden honeypot: real input, positioned far off-screen. */
+.honeypot {
+  position: absolute;
+  left: -9999px;
+  top: -9999px;
+  height: 1px;
+  width: 1px;
+  overflow: hidden;
+}
+
+.turnstileSlot {
+  min-height: 12px;
+}
+
+/* ---- Success / manage ---- */
+
+.successIcon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--bp-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+}
+
+.detailList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+}
+
+.detailList > div {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.detailLabel {
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--bp-ink-soft);
+}
+
+.detailValue {
+  font-size: 17px;
+}
+
+.meetLink {
+  color: var(--bp-primary);
+  font-weight: 500;
+  text-decoration: underline;
+  word-break: break-all;
+}
+
+.statusLine {
+  font-size: 18px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.mutedText {
+  color: var(--bp-ink-soft);
+  font-size: 15px;
+  margin: 0;
+}
+
+.loadingText {
+  color: var(--bp-ink-soft);
+  font-size: 16px;
+  padding: 20px 0;
+  text-align: center;
+}
+
+.divider {
+  border: none;
+  border-top: 1px solid var(--bp-line);
+  margin: 4px 0;
+}
+
+@media (max-width: 420px) {
+  .frame {
+    padding: 12px 10px 36px;
+  }
+
+  .card {
+    padding: 18px 16px;
+  }
+
+  .header {
+    justify-content: center;
+  }
+
+  .slotGrid {
+    grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+  }
+
+  .btnRow > button,
+  .btnRow > a {
+    flex: 1 1 100%;
+  }
+}

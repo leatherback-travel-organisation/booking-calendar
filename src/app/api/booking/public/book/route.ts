@@ -5,7 +5,7 @@
 import { z } from "zod";
 import { getBrandByKey, getEventType, getStaffBySlug } from "@/lib/booking/availability/service";
 import { createBooking } from "@/lib/booking/service";
-import { appUrl, clientIp, honeypotTripped, jsonResponse, supportPhone, verifyTurnstile } from "@/lib/booking/public-api";
+import { appUrl, clientIp, honeypotTripped, jsonResponse, rateLimited, supportPhone, verifyTurnstile } from "@/lib/booking/public-api";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -45,6 +45,13 @@ export async function POST(request: Request): Promise<Response> {
   if (honeypotTripped(parsed.website)) {
     // Silently pretend success — do not teach the bot what failed.
     return jsonResponse({ ok: true });
+  }
+  const ip = clientIp(request);
+  if (
+    (await rateLimited("book-ip", ip, 10, 60)) ||
+    (await rateLimited("book-email", parsed.guestEmail, 3, 3600))
+  ) {
+    return jsonResponse({ error: "rate_limited", message: "Too many requests — please try again shortly." }, { status: 429 });
   }
   if (!(await verifyTurnstile(parsed.turnstileToken ?? null, clientIp(request)))) {
     return jsonResponse({ error: "verification failed" }, { status: 403 });

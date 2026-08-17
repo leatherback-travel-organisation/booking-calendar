@@ -1,0 +1,137 @@
+.journey {
+  display: grid;
+  gap: var(--density-4, 18px);
+}
+
+.intro {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-ui, 14px);
+  max-width: 68ch;
+}
+
+.stage {
+  display: grid;
+  gap: var(--density-2, 10px);
+}
+
+.stageTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-small, 13px);
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--density-2, 10px);
+}
+
+.row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--density-3, 14px);
+  flex-wrap: wrap;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel, 10px);
+  background: var(--card);
+  padding: var(--density-3, 14px) var(--density-4, 18px);
+}
+
+.rowInfo {
+  background: var(--paper, #f3efe6);
+}
+
+.rowMain {
+  display: grid;
+  gap: 5px;
+  min-width: 260px;
+  flex: 1;
+}
+
+.rowName {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-body, 15px);
+  font-weight: 500;
+}
+
+.rowDescription {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-small, 13px);
+  max-width: 60ch;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--density-1, 6px);
+  margin-top: 3px;
+}
+
+.chip {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper-deep);
+  color: var(--ink-soft);
+  font-size: var(--text-label, 12px);
+  padding: 2px 9px;
+  white-space: nowrap;
+}
+
+.chip[data-kind="custom"] {
+  color: var(--pine);
+  background: var(--card);
+}
+
+.chip[data-kind="override"] {
+  color: var(--ink);
+}
+
+.rowSide {
+  display: grid;
+  gap: var(--density-1, 6px);
+  justify-items: end;
+}
+
+.edited {
+  color: var(--ink-soft);
+  font-size: var(--text-label, 12px);
+}
+
+.rowActions {
+  display: flex;
+  gap: var(--density-1, 6px);
+}
+
+.actionButton {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control, 7px);
+  background: var(--card);
+  color: var(--ink);
+  font-size: var(--text-small, 13px);
+  padding: 6px 12px;
+  text-decoration: none;
+}
+
+.actionButton:hover {
+  background: var(--paper-deep);
+}
+
+.actionButton[data-primary] {
+  background: var(--pine);
+  border-color: var(--pine);
+  color: #fdfbf5;
+}
+
+.actionButton[data-primary]:hover {
+  background: var(--pine-bright, #1f5b4e);
+}

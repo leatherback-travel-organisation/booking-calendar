@@ -2,6 +2,7 @@
 
 import "server-only";
 
+import { getSql } from "./db";
 import type { Brand } from "./model";
 
 export function jsonResponse(body: unknown, init?: ResponseInit): Response {
@@ -59,6 +60,41 @@ export function clientIp(request: Request): string | null {
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
     null
   );
+}
+
+/**
+ * Fixed-window rate limit backed by Postgres (serverless-safe — in-memory
+ * counters reset on every cold start). Returns true when the caller is over
+ * the limit. Fails open on database errors: availability beats strictness
+ * for guests, and the exclusion constraint still protects correctness.
+ */
+export async function rateLimited(
+  kind: string,
+  principal: string | null,
+  limit: number,
+  windowSeconds: number,
+): Promise<boolean> {
+  if (!principal) return false;
+  const key = `${kind}:${principal.toLowerCase()}`.slice(0, 200);
+  try {
+    const sql = getSql();
+    const rows = await sql`
+      insert into booking.rate_limit (key, window_start, count)
+      values (${key}, now(), 1)
+      on conflict (key) do update set
+        count = case
+          when booking.rate_limit.window_start < now() - make_interval(secs => ${windowSeconds}) then 1
+          else booking.rate_limit.count + 1
+        end,
+        window_start = case
+          when booking.rate_limit.window_start < now() - make_interval(secs => ${windowSeconds}) then now()
+          else booking.rate_limit.window_start
+        end
+      returning count`;
+    return Number(rows[0].count) > limit;
+  } catch {
+    return false;
+  }
 }
 
 export function appUrl(): string {

@@ -5,7 +5,7 @@
 import { z } from "zod";
 import { getBrandByKey, getEventType, getStaffBySlug } from "@/lib/booking/availability/service";
 import { createHold } from "@/lib/booking/service";
-import { jsonResponse } from "@/lib/booking/public-api";
+import { clientIp, jsonResponse, rateLimited } from "@/lib/booking/public-api";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -18,6 +18,9 @@ const HoldSchema = z.object({
 });
 
 export async function POST(request: Request): Promise<Response> {
+  if (await rateLimited("hold-ip", clientIp(request), 20, 60)) {
+    return jsonResponse({ error: "rate_limited" }, { status: 429 });
+  }
   let parsed;
   try {
     parsed = HoldSchema.parse(await request.json());

@@ -4,12 +4,15 @@
 // ordering, never assignment.
 
 import { getBrandByKey, getEventType, getStaffBySlug, rankBackups } from "@/lib/booking/availability/service";
-import { jsonResponse } from "@/lib/booking/public-api";
+import { clientIp, jsonResponse, rateLimited } from "@/lib/booking/public-api";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET(request: Request): Promise<Response> {
+  if (await rateLimited("backups-ip", clientIp(request), 10, 60)) {
+    return jsonResponse({ error: "rate_limited" }, { status: 429 });
+  }
   const url = new URL(request.url);
   const brandKey = url.searchParams.get("brand");
   const typeKey = url.searchParams.get("type");

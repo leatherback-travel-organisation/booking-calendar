@@ -1,0 +1,479 @@
+.editor {
+  display: grid;
+  gap: var(--density-4, 18px);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--density-3, 14px);
+  flex-wrap: wrap;
+}
+
+.backLink {
+  color: var(--ink-soft);
+  font-size: var(--text-small, 13px);
+  text-decoration: none;
+}
+
+.backLink:hover {
+  color: var(--ink);
+}
+
+.title {
+  margin: 4px 0 0;
+  font-family: var(--font-display);
+  font-size: 21px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.description {
+  margin: 4px 0 0;
+  color: var(--ink-soft);
+  font-size: var(--text-ui, 14px);
+  max-width: 60ch;
+}
+
+.sourceBadge {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper-deep);
+  color: var(--ink-soft);
+  font-size: var(--text-label, 12px);
+  padding: 4px 10px;
+  white-space: nowrap;
+}
+
+.sourceBadge[data-source="brand"],
+.sourceBadge[data-source="brand-type"] {
+  color: var(--pine);
+  background: var(--card);
+}
+
+.scopeBar {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--density-3, 14px);
+  flex-wrap: wrap;
+}
+
+.scopeField {
+  display: grid;
+  gap: 4px;
+  font-size: var(--text-label, 12px);
+  color: var(--ink-soft);
+}
+
+.scopeField select {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control, 7px);
+  background: var(--card);
+  color: var(--ink);
+  font-size: var(--text-small, 13px);
+  padding: 7px 10px;
+  min-width: 190px;
+}
+
+.readOnlyNote {
+  color: var(--ink-soft);
+  font-size: var(--text-small, 13px);
+  padding-bottom: 8px;
+}
+
+.panel {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel, 10px);
+  background: var(--card);
+  padding: var(--density-4, 18px);
+  display: grid;
+  gap: var(--density-3, 14px);
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--density-2, 10px);
+}
+
+.panelHeader h3 {
+  margin: 0;
+  font-size: var(--text-body, 15px);
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.panelHeaderActions {
+  display: flex;
+  gap: var(--density-1, 6px);
+}
+
+.subjectField {
+  display: grid;
+  gap: 4px;
+  font-size: var(--text-label, 12px);
+  color: var(--ink-soft);
+}
+
+.subjectField input {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control, 7px);
+  background: var(--paper, #f3efe6);
+  color: var(--ink);
+  font-size: var(--text-ui, 14px);
+  padding: 9px 12px;
+}
+
+.subjectField input:read-only {
+  color: var(--ink-soft);
+}
+
+.bodyToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--density-2, 10px);
+  flex-wrap: wrap;
+}
+
+.modeToggle {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control, 7px);
+  overflow: hidden;
+  background: var(--paper-deep);
+}
+
+.modeToggle button {
+  border: none;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: var(--text-small, 13px);
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.modeToggle button[data-active] {
+  background: var(--card);
+  color: var(--ink);
+}
+
+.hint {
+  color: var(--ink-soft);
+  font-size: var(--text-label, 12px);
+}
+
+.bodyArea {
+  display: grid;
+}
+
+.body :global(.tiptap) {
+  min-height: 220px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control, 7px);
+  background: var(--paper, #f3efe6);
+  color: var(--ink);
+  font-size: var(--text-body, 15px);
+  line-height: 1.55;
+  padding: 14px 16px;
+  outline: none;
+}
+
+.body :global(.tiptap p) {
+  margin: 0 0 0.6em;
+}
+
+.body :global(.tiptap a) {
+  color: var(--pine);
+}
+
+.body :global(span[data-variable]),
+.pickerChip {
+  font-size: var(--text-label, 12px);
+}
+
+.body :global(span[data-variable]) {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper-deep);
+  color: var(--ink);
+  padding: 1px 8px 1px 6px;
+  margin: 0 1px;
+  white-space: nowrap;
+  vertical-align: baseline;
+}
+
+.body :global(span[data-variable])::before,
+.pickerChip::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ink-soft);
+  flex: none;
+}
+
+.body :global(span[data-variable-group="guest"])::before,
+.pickerChip[data-variable-group="guest"]::before {
+  background: var(--pine);
+}
+
+.body :global(span[data-variable-group="booking"])::before,
+.pickerChip[data-variable-group="booking"]::before {
+  background: var(--brass);
+}
+
+.body :global(span[data-variable-group="host"])::before,
+.pickerChip[data-variable-group="host"]::before {
+  background: var(--terracotta);
+}
+
+.body :global(span[data-variable-group="brand"])::before,
+.pickerChip[data-variable-group="brand"]::before {
+  background: var(--pine-bright, #1f5b4e);
+}
+
+.body :global(span.ProseMirror-selectednode[data-variable]) {
+  border-color: var(--pine);
+}
+
+.valuesPreview {
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-control, 7px);
+  background: var(--paper, #f3efe6);
+  color: var(--ink);
+  font-size: var(--text-body, 15px);
+  line-height: 1.55;
+  padding: 14px 16px;
+}
+
+.valuesPreview p {
+  margin: 0 0 0.6em;
+}
+
+.valuesPreview a {
+  color: var(--pine);
+}
+
+.valuesSubject {
+  font-size: var(--text-small, 13px);
+  color: var(--ink-soft);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 8px;
+  margin-bottom: 10px;
+}
+
+.errorBox {
+  border: 1px solid var(--terracotta);
+  border-radius: var(--radius-control, 7px);
+  background: var(--card);
+  color: var(--terracotta);
+  font-size: var(--text-small, 13px);
+  padding: 10px 14px;
+}
+
+.errorBox p {
+  margin: 0;
+}
+
+.errorBox ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+.errorBox code {
+  font-size: var(--text-small, 13px);
+}
+
+.actionsRow {
+  display: flex;
+  align-items: center;
+  gap: var(--density-2, 10px);
+}
+
+.saveButton {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control, 7px);
+  background: var(--pine);
+  color: #fdfbf5;
+  font-size: var(--text-small, 13px);
+  font-weight: 500;
+  padding: 8px 14px;
+  cursor: pointer;
+  justify-self: start;
+}
+
+.saveButton:hover:not(:disabled) {
+  background: var(--pine-bright, #1f5b4e);
+}
+
+.saveButton:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.quietButton {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control, 7px);
+  background: var(--card);
+  color: var(--ink-soft);
+  font-size: var(--text-label, 12px);
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
+.quietButton:hover:not(:disabled) {
+  color: var(--ink);
+}
+
+.notice {
+  color: var(--pine);
+  font-size: var(--text-small, 13px);
+}
+
+.mutedNote {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-small, 13px);
+}
+
+.emailPreview {
+  display: grid;
+  gap: var(--density-2, 10px);
+}
+
+.emailSubject {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-ui, 14px);
+}
+
+.emailSubject span {
+  color: var(--ink-soft);
+  font-size: var(--text-label, 12px);
+  margin-right: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.emailFrame {
+  width: 100%;
+  height: 520px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control, 7px);
+  background: #f5f4f0;
+}
+
+.applyPanel {
+  display: grid;
+  gap: var(--density-3, 14px);
+}
+
+.applyBrands {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--density-2, 10px);
+}
+
+.applyBrand {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control, 7px);
+  background: var(--paper, #f3efe6);
+  color: var(--ink);
+  font-size: var(--text-small, 13px);
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.diffList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--density-1, 6px);
+}
+
+.diffList li {
+  border-left: 3px solid var(--line);
+  color: var(--ink-soft);
+  font-size: var(--text-small, 13px);
+  padding: 3px 0 3px 10px;
+}
+
+.diffList li[data-action="replace"] {
+  border-left-color: var(--terracotta);
+  color: var(--ink);
+}
+
+.confirmRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  font-size: var(--text-small, 13px);
+  cursor: pointer;
+}
+
+.picker {
+  position: fixed;
+  z-index: 40;
+  min-width: 260px;
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel, 10px);
+  background: var(--card);
+  box-shadow: var(--shadow, 0 22px 65px rgba(28, 39, 34, 0.09));
+  padding: 6px;
+  display: grid;
+  gap: 2px;
+}
+
+.pickerEmpty {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-small, 13px);
+  padding: 6px 8px;
+}
+
+.pickerItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--density-2, 10px);
+  border: none;
+  border-radius: var(--radius-control, 7px);
+  background: transparent;
+  padding: 6px 8px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.pickerItem[data-active] {
+  background: var(--paper-deep);
+}
+
+.pickerChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper-deep);
+  color: var(--ink);
+  padding: 1px 8px 1px 6px;
+  white-space: nowrap;
+}
+
+.pickerName {
+  color: var(--ink-soft);
+  font-size: var(--text-label, 12px);
+}

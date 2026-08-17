@@ -339,6 +339,15 @@ create table booking.alert_sent (
   sent_at timestamptz not null default now()
 );
 
+-- Fixed-window rate limiting for the public endpoints (10 req/min/IP,
+-- 3 bookings/hour/email). One row per (kind, principal); the window resets
+-- in-place so the table stays tiny.
+create table booking.rate_limit (
+  key          text primary key,
+  window_start timestamptz not null default now(),
+  count        integer not null default 0
+);
+
 -- ---------------------------------------------------------------------------
 -- Seed: the seven booking brands. Scheduling timezones anchor to the market
 -- the brand sells into, NOT where any BM lives (decided; see build brief §5.1a).

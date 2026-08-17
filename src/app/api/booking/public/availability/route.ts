@@ -2,12 +2,15 @@
 // The whole booking window in one response; the picker paginates client-side.
 
 import { availabilityForStaff, getBrandByKey, getEventType, getStaffBySlug } from "@/lib/booking/availability/service";
-import { jsonResponse } from "@/lib/booking/public-api";
+import { clientIp, jsonResponse, rateLimited } from "@/lib/booking/public-api";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET(request: Request): Promise<Response> {
+  if (await rateLimited("availability-ip", clientIp(request), 30, 60)) {
+    return jsonResponse({ error: "rate_limited" }, { status: 429 });
+  }
   const url = new URL(request.url);
   const staffSlug = url.searchParams.get("staff");
   const brandKey = url.searchParams.get("brand");

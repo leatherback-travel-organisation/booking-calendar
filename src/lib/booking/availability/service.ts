@@ -122,6 +122,12 @@ export async function getEventTypesForBrand(brandId: string): Promise<EventType[
   return rows.map(mapEventType);
 }
 
+export async function getEventTypeById(id: string): Promise<EventType | null> {
+  const sql = getSql();
+  const rows = await sql`select * from booking.event_type where id = ${id}`;
+  return rows.length ? mapEventType(rows[0]) : null;
+}
+
 export async function getEventType(brandId: string, key: string): Promise<EventType | null> {
   const sql = getSql();
   const rows = await sql`select * from booking.event_type where brand_id = ${brandId} and key = ${key} and active`;
