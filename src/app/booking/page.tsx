@@ -35,10 +35,12 @@ const HEAT_MAX_STAFF = 20;
 
 type WeekRow = Record<string, unknown>;
 
-function mapWeekBooking(row: WeekRow): { booking: DashboardBooking; isToday: boolean } {
+function mapWeekBooking(row: WeekRow, viewer: { email: string; canManage: boolean }): { booking: DashboardBooking; isToday: boolean } {
   const zone = (row.timezone_override as string | null) ?? String(row.scheduling_timezone);
   const dt = DateTime.fromISO(new Date(row.starts_at as string).toISOString(), { zone });
   const isToday = dt.hasSame(DateTime.now().setZone(zone), "day");
+  const hasPhone = Boolean((row.guest_phone as string | null)?.trim());
+  const ownBooking = String(row.staff_email).toLowerCase() === viewer.email.toLowerCase();
   return {
     booking: {
       id: String(row.id),
@@ -49,16 +51,17 @@ function mapWeekBooking(row: WeekRow): { booking: DashboardBooking; isToday: boo
       eventTypeName: String(row.event_type_name),
       brandName: String(row.brand_name),
       routedVia: String(row.routed_via),
+      canCall: hasPhone && (ownBooking || viewer.canManage),
     },
     isToday,
   };
 }
 
-async function loadWeek(): Promise<{ today: DashboardBooking[]; week: DashboardBooking[] }> {
+async function loadWeek(viewer: { email: string; canManage: boolean }): Promise<{ today: DashboardBooking[]; week: DashboardBooking[] }> {
   const sql = getSql();
   const rows = await sql`
-    select b.id, b.starts_at, b.guest_name, b.routed_via,
-           s.first_name, s.photo_url, s.timezone_override,
+    select b.id, b.starts_at, b.guest_name, b.guest_phone, b.routed_via,
+           s.first_name, s.photo_url, s.timezone_override, s.email as staff_email,
            et.name as event_type_name,
            br.name as brand_name, br.scheduling_timezone
     from booking.booking b
@@ -73,7 +76,7 @@ async function loadWeek(): Promise<{ today: DashboardBooking[]; week: DashboardB
   const today: DashboardBooking[] = [];
   const week: DashboardBooking[] = [];
   for (const row of rows) {
-    const mapped = mapWeekBooking(row);
+    const mapped = mapWeekBooking(row, viewer);
     (mapped.isToday ? today : week).push(mapped.booking);
   }
   return { today, week };
@@ -184,7 +187,7 @@ export default async function BookingDashboardPage() {
 
   const [issues, weekData, recent, staff] = await Promise.all([
     getOpenCoverageIssues(),
-    loadWeek(),
+    loadWeek({ email: identity.email, canManage }),
     loadRecent(),
     getStaffWithBrands(),
   ]);

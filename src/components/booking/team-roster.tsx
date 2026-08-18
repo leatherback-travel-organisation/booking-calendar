@@ -34,14 +34,6 @@ function Presence({ present, label }: { present: boolean; label: string }) {
   );
 }
 
-function rowFlags(member: Staff): string[] {
-  const flags: string[] = [];
-  if (!member.photoUrl) flags.push("no photo");
-  if (member.brandIds.length === 0) flags.push("no brand mapping");
-  if (!member.helpscoutUserId) flags.push("no Help Scout id");
-  return flags;
-}
-
 type TeamRosterProps = {
   staff: Staff[];
   brands: Brand[];
@@ -49,9 +41,11 @@ type TeamRosterProps = {
   fetchedAt: Record<string, string | null>;
   /** Origin for guest-facing booking links, e.g. http://localhost:3000. */
   appUrl: string;
+  /** Guest-bookable call types — one copy link per type per BM. */
+  guestTypes: Array<{ key: string; name: string }>;
 };
 
-export function TeamRoster({ staff, brands, fetchedAt, appUrl }: TeamRosterProps) {
+export function TeamRoster({ staff, brands, fetchedAt, appUrl, guestTypes }: TeamRosterProps) {
   const brandById = new Map(brands.map((brand) => [brand.id, brand]));
   const active = staff.filter((member) => member.active).length;
 
@@ -83,21 +77,12 @@ export function TeamRoster({ staff, brands, fetchedAt, appUrl }: TeamRosterProps
                   Aircall
                 </th>
                 <th scope="col" className={styles.center}>
-                  Slack
-                </th>
-                <th scope="col" className={styles.center}>
                   Calendar
                 </th>
-                <th scope="col" className={styles.center}>
-                  Active
-                </th>
-                <th scope="col">Flags</th>
-                <th scope="col">Actions</th>
               </tr>
             </thead>
             <tbody>
               {staff.map((member) => {
-                const flags = rowFlags(member);
                 return (
                   <tr key={member.id} className={member.active ? undefined : styles.inactiveRow}>
                     <td>
@@ -111,17 +96,33 @@ export function TeamRoster({ staff, brands, fetchedAt, appUrl }: TeamRosterProps
                           </span>
                         )}
                         <div className={styles.personText}>
-                          <strong>{member.fullName}</strong>
-                          <span>
-                            {member.slug} · {member.email}
-                          </span>
+                          <div className={styles.nameRow}>
+                            <strong>{member.fullName}</strong>
+                            <Link
+                              href={`/booking/team/sessions?staff=${encodeURIComponent(member.slug)}`}
+                              className={styles.actionLink}
+                            >
+                              Create group session
+                            </Link>
+                            {!member.remindersEnabled ? <span className={styles.mutedChip}>Reminders off</span> : null}
+                          </div>
+                          <div className={styles.copyRow}>
+                            <span className={styles.copyLabel}>Copy link:</span>
+                            {guestTypes.map((type) => (
+                              <CopyButton
+                                key={type.key}
+                                value={`${appUrl}/book?bm=${encodeURIComponent(member.slug)}&type=${encodeURIComponent(type.key)}`}
+                                label={type.name.replace(/ Call$/, "")}
+                              />
+                            ))}
+                          </div>
                         </div>
                       </div>
                     </td>
                     <td>
                       <div className={styles.brandChips}>
                         {member.brandIds.length === 0 ? (
-                          <span className={styles.noneChip}>none</span>
+                          <span className={styles.noneChip}>no brand</span>
                         ) : (
                           member.brandIds.map((brandId) => (
                             <span key={brandId} className={styles.brandChip}>
@@ -138,45 +139,9 @@ export function TeamRoster({ staff, brands, fetchedAt, appUrl }: TeamRosterProps
                       <Presence present={Boolean(member.aircallUserId)} label="Aircall" />
                     </td>
                     <td className={styles.center}>
-                      <Presence present={Boolean(member.slackUserId)} label="Slack" />
-                    </td>
-                    <td className={styles.center}>
                       <span className={member.calendarOk ? styles.tick : styles.warnMark}>
                         {member.calendarOk ? "✓" : "✗"}
                       </span>
-                    </td>
-                    <td className={styles.center}>
-                      <span className={member.active ? styles.tick : styles.dash}>
-                        {member.active ? "✓" : "—"}
-                      </span>
-                    </td>
-                    <td>
-                      {flags.length === 0 && member.remindersEnabled ? (
-                        <span className={styles.dash}>{"—"}</span>
-                      ) : (
-                        <div className={styles.flagChips}>
-                          {flags.map((flag) => (
-                            <span key={flag} className={styles.flagChip}>
-                              {flag}
-                            </span>
-                          ))}
-                          {!member.remindersEnabled ? <span className={styles.mutedChip}>Reminders off</span> : null}
-                        </div>
-                      )}
-                    </td>
-                    <td>
-                      <div className={styles.actionsCell}>
-                        <CopyButton
-                          value={`${appUrl}/book?bm=${encodeURIComponent(member.slug)}&type=enquiry`}
-                          label="Copy 1:1 link"
-                        />
-                        <Link
-                          href={`/booking/team/sessions?staff=${encodeURIComponent(member.slug)}`}
-                          className={styles.actionLink}
-                        >
-                          Create group session
-                        </Link>
-                      </div>
                     </td>
                   </tr>
                 );

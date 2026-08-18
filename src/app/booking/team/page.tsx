@@ -3,7 +3,7 @@ import Link from "next/link";
 import { BookingShell } from "@/components/booking/booking-shell";
 import { TeamRoster } from "@/components/booking/team-roster";
 import { requireBookingAccess } from "@/lib/booking/access";
-import { databaseConfigured } from "@/lib/booking/db";
+import { databaseConfigured, getSql } from "@/lib/booking/db";
 import { getBrands, getDepartureStats, getStaffWithBrands } from "@/lib/booking/reference/queries";
 import shellStyles from "@/components/booking/booking-shell.module.css";
 
@@ -26,11 +26,18 @@ export default async function BookingTeamPage() {
 
   const [staff, brands, stats] = await Promise.all([getStaffWithBrands(), getBrands(), getDepartureStats()]);
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  // One copy link per guest-bookable call type, same set for every BM.
+  const sql = getSql();
+  const typeRows = await sql`
+    select key, min(name) as name, min(position) as position
+    from booking.event_type where guest_facing and active
+    group by key order by position`;
+  const guestTypes = typeRows.map((row) => ({ key: String(row.key), name: String(row.name) }));
 
   return (
     <BookingShell active="team" canManage={canManage}>
       <p style={{ margin: "0 0 14px", fontSize: "var(--text-small, 13px)" }}><Link href="/booking/team/sessions">Group sessions</Link> · <Link href="/booking/team/invitations">Invitations</Link></p>
-      <TeamRoster staff={staff} brands={brands} fetchedAt={stats.fetchedAt} appUrl={appUrl} />
+      <TeamRoster staff={staff} brands={brands} fetchedAt={stats.fetchedAt} appUrl={appUrl} guestTypes={guestTypes} />
     </BookingShell>
   );
 }

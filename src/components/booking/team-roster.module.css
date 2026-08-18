@@ -205,3 +205,27 @@
   color: var(--ink-soft);
   font-size: var(--text-small, 13px);
 }
+
+.nameRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.nameRow strong {
+  font-size: var(--text-body, 15px);
+}
+
+.copyRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.copyLabel {
+  font-size: var(--text-small, 13px);
+  color: var(--ink-soft);
+}

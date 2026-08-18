@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { CoverageIssueRow } from "@/lib/booking/reference/queries";
 import { CopySchedulingLinkButton } from "./copy-scheduling-link";
 import { formatRelative } from "./relative";
+import { CallButton } from "./call-button";
 import styles from "./dashboard.module.css";
 
 export type DashboardBooking = {
@@ -16,6 +17,8 @@ export type DashboardBooking = {
   eventTypeName: string;
   brandName: string;
   routedVia: string;
+  /** Show click-to-dial: guest left a phone AND the viewer may start it. */
+  canCall: boolean;
 };
 
 export type RecentBooking = {
@@ -94,6 +97,7 @@ function BookingList({ bookings, emptyLabel }: { bookings: DashboardBooking[]; e
           </span>
           <span className={styles.brandChip}>{booking.brandName}</span>
           {booking.routedVia !== "primary" ? <span className={styles.routedBadge}>{booking.routedVia}</span> : null}
+          {booking.canCall ? <CallButton bookingId={booking.id} /> : null}
           <BmAvatar name={booking.bmFirstName} photoUrl={booking.bmPhotoUrl} />
         </li>
       ))}
