@@ -8,6 +8,7 @@ import type { Brand, Departure, Staff } from "@/lib/booking/model";
 import {
   buildDepartureIndex,
   isUpcomingDeparture,
+  normalizeBookingManagers,
   type AirtableRecordLike,
   type BrandRef,
   type CoverageSeverity,
@@ -138,7 +139,16 @@ export async function getCachedDepartures(): Promise<Departure[]> {
   const [cache, brands] = await Promise.all([readCache(), getBrands()]);
   const trips = cache.get("airtable:trips")?.payload;
   if (!Array.isArray(trips)) return [];
-  return buildDepartureIndex(trips as AirtableRecordLike[], toBrandRefs(brands)).departures;
+  // Coordinator record ids only resolve to emails through the Booking
+  // Managers cache — without this map every trip routes to the brand pool.
+  const managerRecords = cache.get("airtable:booking-managers")?.payload;
+  const emailByCoordinatorId = new Map<string, string>();
+  if (Array.isArray(managerRecords)) {
+    for (const manager of normalizeBookingManagers(managerRecords as AirtableRecordLike[])) {
+      if (manager.email) emailByCoordinatorId.set(manager.id, manager.email);
+    }
+  }
+  return buildDepartureIndex(trips as AirtableRecordLike[], toBrandRefs(brands), emailByCoordinatorId).departures;
 }
 
 export type DepartureStats = {

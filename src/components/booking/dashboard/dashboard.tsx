@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import type { CoverageIssueRow } from "@/lib/booking/reference/queries";
+import { AvailabilityCalendar, type CalendarSection } from "./availability-calendar";
 import { CopySchedulingLinkButton } from "./copy-scheduling-link";
 import { formatRelative } from "./relative";
 import { CallButton } from "./call-button";
@@ -33,24 +34,6 @@ export type RecentBooking = {
   status: string;
 };
 
-export type HeatDay = {
-  key: string;
-  letter: string;
-  label: string;
-  count: number;
-};
-
-export type HeatRow = {
-  staffId: string;
-  name: string;
-  days: HeatDay[] | null;
-  note: string | null;
-};
-
-export type HeatStrip =
-  | { kind: "ready"; header: HeatDay[]; rows: HeatRow[] }
-  | { kind: "placeholder"; message: string };
-
 // booking.source_kind values: trip/contact/portal are guest self-booked
 // surfaces; bm/invite/session are BM-initiated.
 const SOURCE_LABEL: Record<string, string> = {
@@ -61,13 +44,6 @@ const SOURCE_LABEL: Record<string, string> = {
   invite: "BM shortlist",
   session: "group seat",
 };
-
-function heatLevel(count: number): number {
-  if (count <= 0) return 0;
-  if (count <= 2) return 1;
-  if (count <= 5) return 2;
-  return 3;
-}
 
 /** Small round BM avatar for booking rows, with an initial-circle fallback. */
 function BmAvatar({ name, photoUrl }: { name: string; photoUrl: string | null }) {
@@ -110,12 +86,12 @@ type DashboardProps = {
   today: DashboardBooking[];
   week: DashboardBooking[];
   recent: RecentBooking[];
-  heat: HeatStrip;
+  calendar: CalendarSection;
   /** The signed-in BM's own guest booking URL; null when they have no active staff row. */
   schedulingLinkUrl: string | null;
 };
 
-export function Dashboard({ issues, today, week, recent, heat, schedulingLinkUrl }: DashboardProps) {
+export function Dashboard({ issues, today, week, recent, calendar, schedulingLinkUrl }: DashboardProps) {
   const errors = issues.filter((issue) => issue.severity === "error");
   const warnings = issues.filter((issue) => issue.severity !== "error");
 
@@ -198,51 +174,11 @@ export function Dashboard({ issues, today, week, recent, heat, schedulingLinkUrl
         </section>
       </div>
 
-      <section className={styles.panel}>
-        <h2 className={styles.panelTitle}>Availability — next 14 days</h2>
-        {heat.kind === "placeholder" ? (
-          <p className={styles.emptyNote}>{heat.message}</p>
-        ) : (
-          <div className={styles.heatScroll}>
-            <table className={styles.heatTable}>
-              <thead>
-                <tr>
-                  <th className={styles.heatName} aria-label="Booking manager" />
-                  {heat.header.map((day) => (
-                    <th key={day.key} className={styles.heatHeader} title={day.label}>
-                      {day.letter}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {heat.rows.map((row) => (
-                  <tr key={row.staffId}>
-                    <th className={styles.heatName} scope="row">
-                      {row.name}
-                    </th>
-                    {row.days ? (
-                      row.days.map((day) => (
-                        <td key={day.key} className={styles.heatCell}>
-                          <span
-                            className={styles.heatSquare}
-                            data-level={heatLevel(day.count)}
-                            title={`${day.label}: ${day.count} open ${day.count === 1 ? "slot" : "slots"}`}
-                          />
-                        </td>
-                      ))
-                    ) : (
-                      <td className={styles.heatNote} colSpan={heat.header.length}>
-                        {row.note}
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+      <AvailabilityCalendar
+        options={calendar.options}
+        selectedSlug={calendar.selectedSlug}
+        view={calendar.view}
+      />
     </div>
   );
 }

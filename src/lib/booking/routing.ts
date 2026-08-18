@@ -77,6 +77,11 @@ async function resolveByTrip(tripSlug: string, host: string | null): Promise<Res
   if (matched.length === 0) {
     matched = upcoming.filter((d) => slugKey(d.tripName || d.titleAndCode) === wantedKey);
   }
+  // Tier 4: an unrecognised host (staging, localhost, a future rebrand)
+  // must not block a perfectly good slug — retry host-blind.
+  if (matched.length === 0 && host !== null) {
+    matched = upcoming.filter((d) => d.slug === wanted || (d.slug !== null && slugKey(d.slug) === wantedKey));
+  }
   if (matched.length === 0) {
     await recordUnresolvedSlug(tripSlug, host);
     return { kind: "unresolved" };

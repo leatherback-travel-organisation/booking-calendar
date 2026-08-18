@@ -1,0 +1,176 @@
+/* Week availability calendar on /booking. The grid is one CSS grid: a 52px
+   hour gutter plus seven day columns, header row on top and a fixed-height
+   body row (10 visible hours, 48px each). Blocks are absolutely positioned
+   inside each day column with percentage offsets computed server-side. */
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--density-2, 10px);
+}
+
+.bmSelect {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control, 7px);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: var(--text-small, 13px);
+  padding: 5px 8px;
+}
+
+.warningNote {
+  margin: 0;
+  border: 1px solid var(--terracotta);
+  border-left: 4px solid var(--terracotta);
+  border-radius: var(--radius-control, 7px);
+  background: color-mix(in srgb, var(--terracotta) 9%, var(--paper));
+  color: var(--ink);
+  font-size: var(--text-small, 13px);
+  padding: 7px 10px;
+}
+
+.subtleNote {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-small, 13px);
+}
+
+.zoneNote {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-label, 12px);
+}
+
+.scroll {
+  overflow-x: auto;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 52px repeat(7, minmax(92px, 1fr));
+  grid-template-rows: auto 480px;
+  min-width: 700px;
+}
+
+.corner {
+  border-bottom: 1px solid var(--line);
+}
+
+.dayHead {
+  border-bottom: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  padding: 3px 6px 5px;
+  display: grid;
+  gap: 1px;
+  text-align: center;
+}
+
+.dayName {
+  color: var(--ink-soft);
+  font-size: var(--text-label, 12px);
+}
+
+.dayDate {
+  color: var(--ink);
+  font-size: var(--text-small, 13px);
+}
+
+.dayHead[data-today] .dayName,
+.dayHead[data-today] .dayDate {
+  color: var(--pine);
+  font-weight: 500;
+}
+
+.gutter {
+  position: relative;
+}
+
+.hourLabel {
+  position: absolute;
+  right: 8px;
+  transform: translateY(-50%);
+  color: var(--ink-soft);
+  font-size: var(--text-micro, 11px);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+/* Hour lines every 48px; outside working hours stays the bare panel bg. */
+.dayCol {
+  position: relative;
+  border-left: 1px solid var(--line);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 47px,
+    var(--line) 47px,
+    var(--line) 48px
+  );
+}
+
+.dayCol[data-today] {
+  background-color: color-mix(in srgb, var(--pine) 4%, transparent);
+}
+
+/* Content flows inline so 30-minute blocks read "9:00 AM Name" on one line
+   instead of clipping a stacked layout. */
+.block {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  box-sizing: border-box;
+  min-height: 14px;
+  border-radius: 4px;
+  padding: 2px 5px;
+  overflow: hidden;
+  line-height: 1.25;
+}
+
+.block[data-kind="booked"] {
+  background: var(--pine);
+  color: #fdfbf5;
+  z-index: 2;
+}
+
+.block[data-kind="open"] {
+  background: color-mix(in srgb, var(--pine-bright, #1f5b4e) 16%, var(--paper));
+  border: 1px solid color-mix(in srgb, var(--pine-bright, #1f5b4e) 32%, transparent);
+  color: var(--pine);
+  z-index: 1;
+}
+
+.block[data-kind="busy"] {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--paper-deep) 0,
+    var(--paper-deep) 6px,
+    color-mix(in srgb, var(--ink-soft) 12%, var(--paper-deep)) 6px,
+    color-mix(in srgb, var(--ink-soft) 12%, var(--paper-deep)) 8px
+  );
+  color: var(--ink-soft);
+  z-index: 1;
+}
+
+.blockTime {
+  font-size: var(--text-micro, 11px);
+  font-variant-numeric: tabular-nums;
+}
+
+.blockTitle {
+  font-size: var(--text-label, 12px);
+  font-weight: 500;
+}
+
+.blockSub {
+  font-size: var(--text-micro, 11px);
+  opacity: 0.85;
+}
+
+.blockLabel {
+  font-size: var(--text-micro, 11px);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
