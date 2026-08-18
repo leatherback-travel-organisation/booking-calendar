@@ -6,13 +6,30 @@
 <title>Baltics Winter Trilogy — Camino Women (demo trip page)</title>
 <style>
   /* Stand-in for a Tourism Tiger trip page — deliberately NOT our styling. */
-  body { margin: 0; font-family: Georgia, serif; color: #2b2b2b; background: #fff; }
+  body { margin: 0; font-family: Georgia, serif; color: #2b2b2b; background: #faf7f3; }
   .hero { background: linear-gradient(120deg, #c96f2e, #8a3b12); color: #fff; padding: 90px 8% 70px; }
   .hero h1 { font-size: 44px; margin: 0 0 8px; }
   .hero p { font-size: 20px; opacity: .9; margin: 0; }
-  main { max-width: 760px; margin: 0 auto; padding: 40px 20px 120px; font-size: 18px; line-height: 1.7; }
+  .layout { max-width: 1080px; margin: 0 auto; padding: 40px 20px 60px; display: grid;
+    grid-template-columns: 1fr 320px; gap: 40px; align-items: start; }
+  .content { font-size: 18px; line-height: 1.7; min-width: 0; }
   h2 { font-size: 26px; margin-top: 36px; }
   .fact { display: inline-block; background: #f3e8dd; border-radius: 6px; padding: 6px 14px; margin: 4px 6px 4px 0; font-size: 15px; }
+  .sidebar { position: sticky; top: 20px; }
+  .enquiry-card { background: #fff; border: 1px solid #e8ddd1; border-radius: 10px;
+    padding: 22px; box-shadow: 0 2px 10px rgba(0,0,0,.06); }
+  .enquiry-card h3 { margin: 0 0 4px; font-size: 20px; }
+  .enquiry-card .price { font-size: 15px; color: #6b5d4f; margin: 0 0 16px; }
+  .enquiry-card .price strong { font-size: 22px; color: #2b2b2b; }
+  .enquire-btn { display: block; text-align: center; background: #e07020; color: #fff;
+    font-family: Helvetica, Arial, sans-serif; font-weight: 700; letter-spacing: .06em;
+    text-decoration: none; padding: 14px 18px; border-radius: 6px; font-size: 15px; }
+  .enquire-btn:hover { background: #c96018; }
+  .card-facts { margin: 16px 0 0; padding: 0; list-style: none; font-size: 14px; color: #5a4d3f; }
+  .card-facts li { padding: 4px 0; border-bottom: 1px dotted #eadfd2; }
+  .card-facts li:last-child { border-bottom: 0; }
+  .after { max-width: 1080px; margin: 0 auto; padding: 0 20px 140px; font-size: 18px; line-height: 1.7; }
+  @media (max-width: 800px) { .layout { grid-template-columns: 1fr; } .sidebar { position: static; } }
 </style>
 </head>
 <body>
@@ -20,14 +37,41 @@
   <h1>Baltics Winter Trilogy 13 Days</h1>
   <p>Three Baltic capitals, frozen forests and sauna nights — winter, the Camino Women way.</p>
 </div>
-<main>
-  <span class="fact">13 days</span><span class="fact">Women only</span><span class="fact">Vilnius → Tallinn</span>
-  <h2>The trip</h2>
-  <p>From Vilnius' old town to Tallinn's snow-dusted spires, this is the Baltics in their winter coat — quiet trails, warm saunas, and very good pastry. This page is a stand-in for the real Tourism Tiger trip page; the booking widget in the corner is the real thing.</p>
-  <h2>What's included</h2>
-  <p>All internal transport, hand-picked stays, local guides throughout, and most meals. International flights are up to you — our Booking Managers can point you to the best routes.</p>
-  <p>Lorem ipsum filler to make the page scroll: mountains, medinas, markets. Trakai's island castle, Riga's art nouveau, Lahemaa's frozen bogs. Scroll down and the widget stays with you.</p>
-</main>
+<div class="layout">
+  <div class="content">
+    <span class="fact">13 days</span><span class="fact">Women only</span><span class="fact">Vilnius → Tallinn</span>
+    <h2>The trip</h2>
+    <p>From Vilnius' old town to Tallinn's snow-dusted spires, this is the Baltics in their winter coat — quiet trails, warm saunas, and very good pastry. This page is a stand-in for the real Tourism Tiger trip page; the booking row in the sidebar card is the real thing.</p>
+    <h2>What's included</h2>
+    <p>All internal transport, hand-picked stays, local guides throughout, and most meals. International flights are up to you — our Booking Managers can point you to the best routes.</p>
+    <h2>Itinerary highlights</h2>
+    <p>Trakai's island castle across the ice, Riga's art nouveau quarter at golden hour, Lahemaa's frozen bogs under a low northern sun. Evenings alternate between smoke saunas and long dinners that go slightly too late.</p>
+    <p>Lorem ipsum filler to make the page scroll: mountains, medinas, markets. Snowshoes crunching through Gauja pines, mulled tea at a roadside farm stall, the ferry-less calm of a frozen lagoon.</p>
+    <p>More filler: the group settles into a rhythm by day three — walk, eat, sauna, repeat. Nobody checks the time. The guides know every shortcut and every bakery worth a detour.</p>
+  </div>
+  <aside class="sidebar">
+    <div class="enquiry-card">
+      <h3>Baltics Winter Trilogy</h3>
+      <p class="price">from <strong>$4,850</strong> AUD</p>
+      <a class="enquire-btn" href="#">ENQUIRE NOW</a>
+      <ul class="card-facts">
+        <li>Women Only</li>
+        <li>Max Group 14</li>
+        <li>13 Days · Vilnius → Tallinn</li>
+        <li>Departs Jan &amp; Feb</li>
+      </ul>
+    </div>
+  </aside>
+</div>
+<div class="after">
+  <h2>The long read</h2>
+  <p>Filler below the fold so the sidebar can scroll out of view and the floating card can take over. Winter in the Baltics is a study in blue hours: the light arrives late, lingers low, and leaves early, which makes every lit window look like an invitation.</p>
+  <p>In Vilnius we start slow — cobbles, coffee, and the university courtyards. The old town is compact enough that getting lost is a feature. By afternoon we're out at Trakai, where the castle sits on its island like a set piece nobody struck.</p>
+  <p>Riga is the architectural main course. Whole streets of art nouveau facades, each doorway more ornate than the last, and a central market housed in old Zeppelin hangars where the smoked fish counter deserves its own itinerary entry.</p>
+  <p>Then north, into Estonia. Lahemaa's bog boardwalks in winter are silent in a way cities never manage — just wind in the pines and the occasional crack of ice settling. The smoke sauna afterwards is not optional. Well, it is, but it shouldn't be.</p>
+  <p>Tallinn closes the trilogy: a walled medieval core with a skyline of spires and, in February, a dusting of snow that makes the whole thing look ridiculous, in a good way. Final dinner in a cellar restaurant, toasts all round, and promises to come back in summer to see what all this looks like in the green.</p>
+  <p>Still scrolling? Good — by now the sidebar card is long gone and the floating booking card should be keeping you company in the corner. That's the whole trick: docked when the enquiry card is on screen, floating when it isn't.</p>
+</div>
 <script src="/embed.js" data-brand="camino-women" data-trip="baltic-winter-adventure" defer></script>
 </body>
 </html>

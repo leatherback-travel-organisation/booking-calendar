@@ -23,6 +23,10 @@ test("listens for the overlay close message", () => {
   assert.ok(WIDGET_SOURCE.includes("leatherback-booking-close"));
 });
 
+test("gates the floating card on the docked row's visibility", () => {
+  assert.ok(WIDGET_SOURCE.includes("IntersectionObserver"));
+});
+
 test("is syntactically valid JavaScript", () => {
   assert.doesNotThrow(() => new Function(WIDGET_SOURCE));
 });

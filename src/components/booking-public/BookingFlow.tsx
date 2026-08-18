@@ -466,8 +466,9 @@ export function BookingFlow({
           <h1 className={styles.pageTitle}>{ctx.poolLabel ?? `Book a call with the ${ctx.brand.name} team`}</h1>
         )}
 
-        {/* Event type choice */}
-        {ctx.eventTypes.length > 1 && !selected && (
+        {/* Event type choice — hidden entirely when the entry link fixed the
+            type (e.g. the trip-page widget): straight to times. */}
+        {!typeParam && ctx.eventTypes.length > 1 && !selected && (
           <div>
             <p className={styles.sectionLabel}>What kind of call?</p>
             <div className={styles.typeGrid}>

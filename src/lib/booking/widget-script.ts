@@ -18,6 +18,17 @@ export const WIDGET_SOURCE = `(function () {
     debugged = true;
     try { console.debug('[leatherback-widget] ' + msg); } catch (e) { /* noop */ }
   }
+  function mk(tag, cls) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    return e;
+  }
+  function pic(cls, src) {
+    var i = mk('img', cls);
+    i.src = src;
+    i.alt = '';
+    return i;
+  }
   try {
     // 1. Find our own <script> tag (currentScript, else last matching src).
     var script = document.currentScript;
@@ -37,8 +48,7 @@ export const WIDGET_SOURCE = `(function () {
     var tripAttr = script.getAttribute('data-trip') || '';
     var typeAttr = script.getAttribute('data-type') || '';
 
-    // 2. Trip slug: data-trip wins; else Tourism Tiger URLs look like
-    // /tour/<slug>/ — take the segment after 'tour', else the last segment.
+    // 2. Trip slug: data-trip wins; else Tourism Tiger /tour/<slug>/ URLs.
     var trip = tripAttr;
     if (!trip) {
       var parts = window.location.pathname.split('/').filter(function (p) { return p.length > 0; });
@@ -50,7 +60,7 @@ export const WIDGET_SOURCE = `(function () {
 
     var bookUrl = origin + '/book?trip=' + encodeURIComponent(trip) +
       '&host=' + encodeURIComponent(pageHost) + '&embed=1' +
-      (typeAttr ? '&type=' + encodeURIComponent(typeAttr) : '');
+      '&type=' + encodeURIComponent(typeAttr || 'enquiry');
 
     function safeColor(value, fallback) {
       return (typeof value === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(value)) ? value : fallback;
@@ -71,9 +81,9 @@ export const WIDGET_SOURCE = `(function () {
     // 5. Full-screen overlay with the /book page in an iframe.
     function openOverlay() {
       if (overlayHost) return;
-      overlayHost = document.createElement('div');
+      overlayHost = mk('div');
       var sh = overlayHost.attachShadow({ mode: 'closed' });
-      var st = document.createElement('style');
+      var st = mk('style');
       st.textContent = [
         '.backdrop{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,.55);',
         'z-index:2147483001;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box}',
@@ -86,16 +96,12 @@ export const WIDGET_SOURCE = `(function () {
         '.frame{border-radius:0}.oclose{top:10px;right:10px;background:rgba(17,24,39,.7)}}'
       ].join('');
       sh.appendChild(st);
-      var backdrop = document.createElement('div');
-      backdrop.className = 'backdrop';
-      var panel = document.createElement('div');
-      panel.className = 'panel';
-      var frame = document.createElement('iframe');
-      frame.className = 'frame';
+      var backdrop = mk('div', 'backdrop');
+      var panel = mk('div', 'panel');
+      var frame = mk('iframe', 'frame');
       frame.src = bookUrl;
       frame.setAttribute('title', 'Book a call');
-      var oclose = document.createElement('button');
-      oclose.className = 'oclose';
+      var oclose = mk('button', 'oclose');
       oclose.setAttribute('aria-label', 'Close booking window');
       oclose.textContent = '×';
       oclose.addEventListener('click', closeOverlay);
@@ -110,7 +116,71 @@ export const WIDGET_SOURCE = `(function () {
       document.body.appendChild(overlayHost);
     }
 
-    // 4. The card itself, in a closed shadow root so host CSS can't leak in.
+    // 4a. The host page's enquiry control: an <a>/<button> whose visible
+    // text says enquire / book now / get in touch.
+    function findEnquiry() {
+      var re = /enquire|book now|get in touch/i;
+      var els = document.querySelectorAll('a,button');
+      for (var i = 0; i < els.length; i++) {
+        var el = els[i];
+        var text = (el.textContent || '').trim();
+        if (!text || text.length > 60 || !re.test(text)) continue;
+        if (el.offsetWidth > 0 || el.offsetHeight > 0) return el;
+      }
+      return null;
+    }
+
+    // 4b. Docked row: blends into the host card under the enquiry control —
+    // divider + one compact clickable row, no card chrome of its own.
+    function renderDocked(title, photo, color, initial) {
+      var target = findEnquiry();
+      if (!target || !target.parentNode) return null;
+      var hostEl = mk('div');
+      var sh = hostEl.attachShadow({ mode: 'closed' });
+      var st = mk('style');
+      st.textContent = [
+        '.drow{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;',
+        '-webkit-font-smoothing:antialiased;display:flex;align-items:center;gap:12px;width:100%;',
+        'margin:14px 0 0;padding:14px 0 0;border:0;border-top:1px solid rgba(0,0,0,.08);',
+        'background:transparent;cursor:pointer;text-align:left;box-sizing:border-box}',
+        '.dphoto{width:40px;height:40px;border-radius:50%;object-fit:cover;flex:none;background:#f3f4f6}',
+        '.dinitial{width:40px;height:40px;border-radius:50%;flex:none;background:' + color + ';',
+        'color:#fff;font-size:16px;font-weight:700;line-height:40px;text-align:center}',
+        '.dtext{flex:1;min-width:0}',
+        '.dsub{font-size:13px;line-height:1.3;color:#6b7280;margin:0 0 2px}',
+        '.dtitle{font-size:15px;line-height:1.3;font-weight:600;color:' + color + '}',
+        '.drow:hover .dtitle{text-decoration:underline}',
+        '.dchev{flex:none;font-size:20px;line-height:1;color:' + color + '}'
+      ].join('');
+      sh.appendChild(st);
+      var row = mk('button', 'drow');
+      row.setAttribute('aria-label', title);
+      if (photo) {
+        row.appendChild(pic('dphoto', photo));
+      } else {
+        var init = mk('div', 'dinitial');
+        init.textContent = initial;
+        row.appendChild(init);
+      }
+      var textWrap = mk('div', 'dtext');
+      var sub = mk('div', 'dsub');
+      sub.textContent = 'Prefer to talk it through?';
+      textWrap.appendChild(sub);
+      var dtitle = mk('div', 'dtitle');
+      dtitle.textContent = title;
+      textWrap.appendChild(dtitle);
+      row.appendChild(textWrap);
+      var chev = mk('span', 'dchev');
+      chev.textContent = '›';
+      row.appendChild(chev);
+      row.addEventListener('click', openOverlay);
+      sh.appendChild(row);
+      target.parentNode.insertBefore(hostEl, target.nextSibling);
+      return hostEl;
+    }
+
+    // 4c. Floating card (closed shadow root). With a docked row it only
+    // shows once that row scrolls out of view; else it floats always.
     function render(data) {
       var brand = data.brand || {};
       var staff = data.staff || {};
@@ -123,10 +193,18 @@ export const WIDGET_SOURCE = `(function () {
       var photo = isPrimary ? (staff.photoUrl || '') : (brand.logoUrl || '');
       var bio = isPrimary ? (staff.bio || '') : '';
       var phone = typeof data.phone === 'string' ? data.phone : '';
+      var initial = ((isPrimary ? staff.firstName : (brand.name || '')) + 'B').charAt(0).toUpperCase();
 
-      var hostEl = document.createElement('div');
+      var docked = null;
+      try { docked = renderDocked(title, photo, color, initial); } catch (e) { debug('dock failed'); }
+
+      var dismissed = false;
+      var expanded = false;
+      var floatHidden = !!docked;
+
+      var hostEl = mk('div');
       var sh = hostEl.attachShadow({ mode: 'closed' });
-      var st = document.createElement('style');
+      var st = mk('style');
       st.textContent = [
         '.root{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;',
         '-webkit-font-smoothing:antialiased;font-size:15px;line-height:1.45;color:#1f2937}',
@@ -160,94 +238,97 @@ export const WIDGET_SOURCE = `(function () {
         'border:0;width:100%;box-sizing:border-box;z-index:2147483000;text-align:left}',
         '.root.expanded .bar{display:none}',
         '.bar .photo{width:36px;height:36px}',
-        '.bar span{font-size:15px;font-weight:700;color:#111827}}'
+        '.bar span{font-size:15px;font-weight:700;color:#111827}}',
+        '.root.hidden .card,.root.hidden .bar,.root.hidden .reopen{display:none !important}'
       ].join('');
       sh.appendChild(st);
 
-      var root = document.createElement('div');
-      root.className = 'root';
+      var root = mk('div');
+      root.className = floatHidden ? 'root hidden' : 'root';
 
-      var card = document.createElement('div');
-      card.className = 'card';
-      var head = document.createElement('div');
-      head.className = 'head';
-      if (photo) {
-        var img = document.createElement('img');
-        img.className = 'photo';
-        img.src = photo;
-        img.alt = '';
-        head.appendChild(img);
+      function sync() {
+        var cls = 'root';
+        if (dismissed) cls += ' dismissed';
+        if (expanded) cls += ' expanded';
+        if (floatHidden) cls += ' hidden';
+        if (root.className !== cls) root.className = cls;
       }
-      var titleEl = document.createElement('div');
-      titleEl.className = 'title';
+
+      var card = mk('div', 'card');
+      var head = mk('div', 'head');
+      if (photo) head.appendChild(pic('photo', photo));
+      var titleEl = mk('div', 'title');
       titleEl.textContent = title;
       head.appendChild(titleEl);
       card.appendChild(head);
       if (bio) {
-        var bioEl = document.createElement('div');
-        bioEl.className = 'bio';
+        var bioEl = mk('div', 'bio');
         bioEl.textContent = bio;
         card.appendChild(bioEl);
       }
       if (phone) {
-        var tel = document.createElement('a');
-        tel.className = 'phone';
+        var tel = mk('a', 'phone');
         tel.href = 'tel:' + phone.replace(/[^0-9+]/g, '');
         tel.textContent = phone;
         card.appendChild(tel);
       }
-      var cta = document.createElement('button');
-      cta.className = 'cta';
+      var cta = mk('button', 'cta');
       cta.textContent = 'Book a call';
       cta.addEventListener('click', openOverlay);
       card.appendChild(cta);
-      var close = document.createElement('button');
-      close.className = 'close';
+      var close = mk('button', 'close');
       close.setAttribute('aria-label', 'Dismiss');
       close.textContent = '×';
       close.addEventListener('click', function () {
         // Session-only dismiss: in-memory state, nothing persisted.
-        root.className = 'root dismissed';
+        dismissed = true;
+        expanded = false;
+        sync();
       });
       card.appendChild(close);
       root.appendChild(card);
 
-      // 4b. Collapsed slim bar for small viewports; expands on tap.
-      var bar = document.createElement('button');
-      bar.className = 'bar';
-      if (photo) {
-        var bimg = document.createElement('img');
-        bimg.className = 'photo';
-        bimg.src = photo;
-        bimg.alt = '';
-        bar.appendChild(bimg);
-      }
-      var blabel = document.createElement('span');
+      // Collapsed slim bar for small viewports; expands on tap.
+      var bar = mk('button', 'bar');
+      if (photo) bar.appendChild(pic('photo', photo));
+      var blabel = mk('span');
       blabel.textContent = 'Book a call';
       bar.appendChild(blabel);
       bar.addEventListener('click', function () {
-        root.className = 'root expanded';
+        expanded = true;
+        sync();
       });
       root.appendChild(bar);
 
-      var reopen = document.createElement('button');
-      reopen.className = 'reopen';
+      var reopen = mk('button', 'reopen');
       reopen.setAttribute('aria-label', 'Book a call');
-      if (photo) {
-        var rimg = document.createElement('img');
-        rimg.src = photo;
-        rimg.alt = '';
-        reopen.appendChild(rimg);
-      } else {
-        reopen.textContent = '✆';
-      }
+      if (photo) reopen.appendChild(pic('', photo));
+      else reopen.textContent = '✆';
       reopen.addEventListener('click', function () {
-        root.className = 'root';
+        dismissed = false;
+        expanded = false;
+        sync();
       });
       root.appendChild(reopen);
 
       sh.appendChild(root);
       document.body.appendChild(hostEl);
+
+      // 4d. Floating UI appears only once the docked row is out of view
+      // and the page has actually been scrolled.
+      if (docked && typeof IntersectionObserver === 'function') {
+        var dockInView = true;
+        var update = function () {
+          floatHidden = dockInView || (window.scrollY || 0) <= 200;
+          sync();
+        };
+        var io = new IntersectionObserver(function (entries) {
+          dockInView = entries[entries.length - 1].isIntersecting;
+          update();
+        });
+        io.observe(docked);
+        window.addEventListener('scroll', update, { passive: true });
+      }
     }
 
     // 3. Ask the API who fronts this trip; anything unhappy renders nothing.
