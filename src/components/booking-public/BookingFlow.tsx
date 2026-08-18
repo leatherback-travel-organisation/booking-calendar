@@ -466,9 +466,10 @@ export function BookingFlow({
           <h1 className={styles.pageTitle}>{ctx.poolLabel ?? `Book a call with the ${ctx.brand.name} team`}</h1>
         )}
 
-        {/* Event type choice — hidden entirely when the entry link fixed the
-            type (e.g. the trip-page widget): straight to times. */}
-        {!typeParam && ctx.eventTypes.length > 1 && !selected && (
+        {/* Event type choice — hidden when the entry link fixed the type OR
+            we're inside the trip-page widget overlay: straight to times
+            (embed defaults to the 30-minute enquiry call). */}
+        {!typeParam && !embed && ctx.eventTypes.length > 1 && !selected && (
           <div>
             <p className={styles.sectionLabel}>What kind of call?</p>
             <div className={styles.typeGrid}>
