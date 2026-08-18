@@ -58,8 +58,8 @@ export async function saveWorkingHours(formData: FormData): Promise<void> {
   await auditAvailabilityChange(access.identity.email, staff.email, {
     workingHours: { from: before, to: next },
   });
-  revalidatePath("/booking/availability");
-  redirect(`/booking/availability?staff=${staff.id}&saved=hours`);
+  revalidatePath(`/booking/team/${staff.slug}`);
+  redirect(`/booking/team/${staff.slug}?saved=hours`);
 }
 
 export async function saveSettings(formData: FormData): Promise<void> {
@@ -75,13 +75,17 @@ export async function saveSettings(formData: FormData): Promise<void> {
   const bioRaw = formData.get("bio");
   const bio = typeof bioRaw === "string" && bioRaw.trim().length > 0 ? bioRaw.trim() : null;
 
-  // Checkbox: an unchecked box submits nothing, so the form carries a marker
+  // Checkboxes: an unchecked box submits nothing, so the form carries a marker
   // field — without it (e.g. an older form) the value is left unchanged. Like
-  // buffer and bio, a BM may toggle this on their own row.
-  const remindersEnabled =
+  // buffer and bio, a BM may toggle these on their own row.
+  const reminder24hEnabled =
     formData.get("remindersEnabledField") === null
-      ? staff.remindersEnabled
-      : formData.get("remindersEnabled") === "on";
+      ? staff.reminder24hEnabled
+      : formData.get("reminder24hEnabled") === "on";
+  const reminder1hEnabled =
+    formData.get("remindersEnabledField") === null
+      ? staff.reminder1hEnabled
+      : formData.get("reminder1hEnabled") === "on";
 
   // Restricted fields: disabled inputs are not submitted, so a missing value
   // means "unchanged". A submitted, changed value from a non-manager is an
@@ -117,8 +121,11 @@ export async function saveSettings(formData: FormData): Promise<void> {
   const diff: Record<string, { from: unknown; to: unknown }> = {};
   if (bufferMinutes !== staff.bufferMinutes) diff.bufferMinutes = { from: staff.bufferMinutes, to: bufferMinutes };
   if (bio !== staff.bio) diff.bio = { from: staff.bio, to: bio };
-  if (remindersEnabled !== staff.remindersEnabled) {
-    diff.remindersEnabled = { from: staff.remindersEnabled, to: remindersEnabled };
+  if (reminder24hEnabled !== staff.reminder24hEnabled) {
+    diff.reminder24hEnabled = { from: staff.reminder24hEnabled, to: reminder24hEnabled };
+  }
+  if (reminder1hEnabled !== staff.reminder1hEnabled) {
+    diff.reminder1hEnabled = { from: staff.reminder1hEnabled, to: reminder1hEnabled };
   }
   if (minNoticeHours !== staff.minNoticeHours) diff.minNoticeHours = { from: staff.minNoticeHours, to: minNoticeHours };
   if (bookingWindowDays !== staff.bookingWindowDays) {
@@ -137,10 +144,11 @@ export async function saveSettings(formData: FormData): Promise<void> {
              booking_window_days = ${bookingWindowDays},
              timezone_override = ${timezoneOverride},
              bio = ${bio},
-             reminders_enabled = ${remindersEnabled}
+             reminder_24h_enabled = ${reminder24hEnabled},
+             reminder_1h_enabled = ${reminder1hEnabled}
        where id = ${staff.id}`;
     await auditAvailabilityChange(access.identity.email, staff.email, diff);
   }
-  revalidatePath("/booking/availability");
-  redirect(`/booking/availability?staff=${staff.id}&saved=settings`);
+  revalidatePath(`/booking/team/${staff.slug}`);
+  redirect(`/booking/team/${staff.slug}?saved=settings`);
 }

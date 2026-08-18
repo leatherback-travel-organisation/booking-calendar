@@ -1,0 +1,66 @@
+.panel {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel, 10px);
+  background: var(--card);
+  padding: var(--density-3, 14px) var(--density-4, 18px);
+  display: grid;
+  gap: var(--density-2, 10px);
+}
+
+.header {
+  display: grid;
+  gap: 2px;
+}
+
+.title {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-body, 15px);
+  font-weight: 500;
+}
+
+.hint {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-small, 13px);
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.row:last-child {
+  border-bottom: 0;
+}
+
+.brand {
+  flex: 0 0 180px;
+  color: var(--ink);
+  font-size: var(--text-ui, 14px);
+  font-weight: 500;
+}
+
+.url {
+  /* width: 0 + grow keeps the long URL from inflating the page's intrinsic
+     width — the portal shell sizes to content, so an unbreakable string here
+     would push the whole page wider than the viewport. */
+  flex: 1 1 0;
+  width: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-soft);
+  font-size: var(--text-small, 13px);
+}

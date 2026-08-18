@@ -45,10 +45,6 @@
   padding: var(--density-3, 14px) var(--density-4, 18px);
 }
 
-.rowInfo {
-  background: var(--paper, #f3efe6);
-}
-
 .rowMain {
   display: grid;
   gap: 5px;

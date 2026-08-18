@@ -3,6 +3,7 @@ import { BookingShell } from "@/components/booking/booking-shell";
 import { SettingsSearch } from "@/components/booking/settings-search";
 import { formatRelative, minutesSince } from "@/components/booking/dashboard/relative";
 import { requireBookingAccess } from "@/lib/booking/access";
+import { aircallConfigured, aircallPing } from "@/lib/booking/aircall";
 import { databaseConfigured, getSql } from "@/lib/booking/db";
 import { calendarConfigured } from "@/lib/booking/google/auth";
 import { helpscoutConfigured } from "@/lib/booking/helpscout";
@@ -47,7 +48,7 @@ export default async function BookingIntegrationsPage() {
 
   const sql = getSql();
   const [staffRows, cacheRows] = await Promise.all([
-    sql`select id, email, full_name, calendar_ok, calendar_checked_at from booking.staff where active order by full_name`,
+    sql`select id, email, full_name, calendar_ok, calendar_checked_at, aircall_user_id from booking.staff where active order by full_name`,
     sql`
       select key, payload, fetched_at from booking.reference_cache
       where key in ('airtable:trips', 'notion:staff', 'cron:reminders-heartbeat') or key like 'calendar-check:%'`,
@@ -94,6 +95,16 @@ export default async function BookingIntegrationsPage() {
       : cronAge > 30
         ? `cron has not run for ${cronAge} minutes — reminders are not being sent.`
         : `Heartbeat healthy — last run ${formatRelative(cron?.fetchedAt ?? null)}.`;
+
+  const aircallOn = aircallConfigured();
+  const aircall = aircallOn ? await aircallPing() : null;
+  const aircallUserCount = staffRows.filter((row) => row.aircall_user_id != null && String(row.aircall_user_id).trim() !== "").length;
+  const aircallTone: Tone = !aircallOn ? "grey" : aircall?.ok ? "green" : "red";
+  const aircallStatus = !aircallOn
+    ? "Off — no API key; Call buttons record dial intents to the audit log."
+    : aircall?.ok
+      ? `Connected — dialing is live. ${aircallUserCount} of ${staffRows.length} active BMs have an Aircall user ID (synced from Airtable).`
+      : `API key set but the check failed: ${aircall?.detail ?? "unknown error"}.`;
 
   const resendLive = process.env.BOOKING_NOTIFIER === "live" && Boolean(process.env.RESEND_API_KEY);
   const slackOn = Boolean(process.env.BOOKING_SLACK_WEBHOOK_URL);
@@ -187,6 +198,16 @@ export default async function BookingIntegrationsPage() {
               </span>
             </div>
             {cron ? <span className={styles.when}>{formatRelative(cron.fetchedAt)}</span> : null}
+          </li>
+
+          <li className={styles.row}>
+            <div className={styles.rowMain}>
+              <i className={styles.dot} data-tone={aircallTone} />
+              <span className={styles.name}>Aircall</span>
+              <span className={styles.status} data-tone={aircallTone === "red" ? "red" : undefined}>
+                {aircallStatus}
+              </span>
+            </div>
           </li>
 
           <li className={styles.row}>

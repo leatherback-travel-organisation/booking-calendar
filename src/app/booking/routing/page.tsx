@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { revalidatePath } from "next/cache";
 import { BookingShell } from "@/components/booking/booking-shell";
+import { BrandLinks } from "@/components/booking/brand-links";
 import { CoverageMap } from "@/components/booking/coverage-map";
 import { requireBookingAccess } from "@/lib/booking/access";
 import { databaseConfigured } from "@/lib/booking/db";
-import { getDepartureStats, getOpenCoverageIssues } from "@/lib/booking/reference/queries";
+import { getBrands, getDepartureStats, getOpenCoverageIssues } from "@/lib/booking/reference/queries";
 import { runReferenceSync } from "@/lib/booking/reference/sync";
 import shellStyles from "@/components/booking/booking-shell.module.css";
 
@@ -33,10 +34,16 @@ export default async function BookingRoutingPage() {
     );
   }
 
-  const [issues, stats] = await Promise.all([getOpenCoverageIssues(), getDepartureStats()]);
+  const [issues, stats, brands] = await Promise.all([
+    getOpenCoverageIssues(),
+    getDepartureStats(),
+    getBrands(),
+  ]);
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
   return (
     <BookingShell active="routing" canManage={canManage}>
+      <BrandLinks brands={brands} appUrl={appUrl} />
       <CoverageMap issues={issues} stats={stats} canManage={canManage} runSyncAction={runSyncNow} />
     </BookingShell>
   );

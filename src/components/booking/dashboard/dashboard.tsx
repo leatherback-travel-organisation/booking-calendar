@@ -3,7 +3,6 @@
 
 import Link from "next/link";
 import type { CoverageIssueRow } from "@/lib/booking/reference/queries";
-import { AvailabilityCalendar, type CalendarSection } from "./availability-calendar";
 import { CopySchedulingLinkButton } from "./copy-scheduling-link";
 import { formatRelative } from "./relative";
 import { CallButton } from "./call-button";
@@ -20,6 +19,21 @@ export type DashboardBooking = {
   routedVia: string;
   /** Show click-to-dial: guest left a phone AND the viewer may start it. */
   canCall: boolean;
+};
+
+/** One day of the coming week's agenda. */
+export type DayGroup = {
+  key: string;
+  label: string;
+  bookings: DashboardBooking[];
+};
+
+/** Link chip to one BM's scheduling page (/booking/team/<slug>). */
+export type SchedulingPageLink = {
+  slug: string;
+  fullName: string;
+  photoUrl: string | null;
+  isSelf: boolean;
 };
 
 export type RecentBooking = {
@@ -58,7 +72,7 @@ function BmAvatar({ name, photoUrl }: { name: string; photoUrl: string | null })
   );
 }
 
-function BookingList({ bookings, emptyLabel }: { bookings: DashboardBooking[]; emptyLabel: string }) {
+export function BookingList({ bookings, emptyLabel }: { bookings: DashboardBooking[]; emptyLabel: string }) {
   if (bookings.length === 0) {
     return <p className={styles.emptyNote}>{emptyLabel}</p>;
   }
@@ -83,15 +97,16 @@ function BookingList({ bookings, emptyLabel }: { bookings: DashboardBooking[]; e
 
 type DashboardProps = {
   issues: CoverageIssueRow[];
-  today: DashboardBooking[];
-  week: DashboardBooking[];
+  /** Upcoming bookings for the next 7 days, grouped by day ("Today" first). */
+  days: DayGroup[];
   recent: RecentBooking[];
-  calendar: CalendarSection;
+  /** One link per active BM to their scheduling page. */
+  schedulingPages: SchedulingPageLink[];
   /** The signed-in BM's own guest booking URL; null when they have no active staff row. */
   schedulingLinkUrl: string | null;
 };
 
-export function Dashboard({ issues, today, week, recent, calendar, schedulingLinkUrl }: DashboardProps) {
+export function Dashboard({ issues, days, recent, schedulingPages, schedulingLinkUrl }: DashboardProps) {
   const errors = issues.filter((issue) => issue.severity === "error");
   const warnings = issues.filter((issue) => issue.severity !== "error");
 
@@ -140,10 +155,16 @@ export function Dashboard({ issues, today, week, recent, calendar, schedulingLin
 
       <div className={styles.columns}>
         <section className={styles.panel}>
-          <h2 className={styles.panelTitle}>Today</h2>
-          <BookingList bookings={today} emptyLabel="No confirmed calls today." />
-          <h2 className={styles.panelTitle}>Rest of this week</h2>
-          <BookingList bookings={week} emptyLabel="Nothing else confirmed this week." />
+          <h2 className={styles.panelTitle}>This week</h2>
+          {days.map((day) => (
+            <div key={day.key} className={styles.dayGroup}>
+              <h3 className={styles.dayHeading}>{day.label}</h3>
+              <BookingList
+                bookings={day.bookings}
+                emptyLabel={day.label === "Today" ? "No confirmed calls today." : "No confirmed calls."}
+              />
+            </div>
+          ))}
         </section>
 
         <section className={styles.panel}>
@@ -174,11 +195,32 @@ export function Dashboard({ issues, today, week, recent, calendar, schedulingLin
         </section>
       </div>
 
-      <AvailabilityCalendar
-        options={calendar.options}
-        selectedSlug={calendar.selectedSlug}
-        view={calendar.view}
-      />
+      <section className={styles.panel} aria-label="Scheduling pages">
+        <h2 className={styles.panelTitle}>Scheduling pages</h2>
+        <p className={styles.emptyNote}>
+          Each Booking Manager&rsquo;s availability, reminders and week calendar live on their own page.
+        </p>
+        <ul className={styles.bmLinkList}>
+          {schedulingPages.map((member) => (
+            <li key={member.slug}>
+              <Link href={`/booking/team/${encodeURIComponent(member.slug)}`} className={styles.bmLink}>
+                {member.photoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img className={styles.bmLinkAvatar} src={member.photoUrl} alt="" />
+                ) : (
+                  <span className={styles.bmLinkAvatar} data-fallback="true" aria-hidden="true">
+                    {member.fullName.trim().charAt(0).toUpperCase() || "?"}
+                  </span>
+                )}
+                <span>
+                  {member.fullName}
+                  {member.isSelf ? " (you)" : ""}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
     </div>
   );
 }

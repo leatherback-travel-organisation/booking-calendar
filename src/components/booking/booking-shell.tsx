@@ -4,7 +4,6 @@ import styles from "./booking-shell.module.css";
 
 export type BookingSection =
   | "dashboard"
-  | "availability"
   | "routing"
   | "communications"
   | "team"
@@ -12,10 +11,9 @@ export type BookingSection =
 
 const SECTIONS: Array<{ key: BookingSection; label: string; href: string }> = [
   { key: "dashboard", label: "Dashboard", href: "/booking" },
-  { key: "availability", label: "Availability", href: "/booking/availability" },
+  { key: "team", label: "Team", href: "/booking/team" },
   { key: "routing", label: "Routing", href: "/booking/routing" },
   { key: "communications", label: "Guest Communications", href: "/booking/communications" },
-  { key: "team", label: "Team", href: "/booking/team" },
   { key: "integrations", label: "Integrations", href: "/booking/integrations" },
 ];
 
@@ -35,7 +33,10 @@ export async function BookingShell({ active, canManage, children }: BookingShell
     <AppShell active="booking">
       <div className={styles.workspace}>
         <header className={styles.header}>
-          <h1 className={styles.title}>Calltime</h1>
+          <div className={styles.titleBlock}>
+            <span className={styles.eyebrow}>Call Scheduling · Internal</span>
+            <h1 className={styles.title}>Calltime</h1>
+          </div>
           <nav className={styles.nav} aria-label="Booking sections">
             {visible.map((section) => (
               <Link

@@ -39,8 +39,9 @@ export type Staff = {
   bufferMinutes: number;
   minNoticeHours: number;
   bookingWindowDays: number;
-  /** Guest reminder emails (24h and 1h) for this BM's bookings. */
-  remindersEnabled: boolean;
+  /** Guest reminder emails for this BM's bookings, one flag per moment. */
+  reminder24hEnabled: boolean;
+  reminder1hEnabled: boolean;
   active: boolean;
   calendarOk: boolean;
 };

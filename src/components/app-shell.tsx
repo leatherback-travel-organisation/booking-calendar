@@ -22,7 +22,7 @@ export async function AppShell({ active, adminSection = "people", systemsSection
   const systemsHref = systemsSection === "websites" ? "/systems?view=websites" : "/systems";
 
   return (
-    <div className={`cove-portal-shell ${active === "home" ? "cove-home-shell" : ""} ${active === "admin" || active === "systems" || active === "app-builder" ? "cove-admin-shell" : ""} ${active === "recruitment" ? "cove-recruitment-shell" : ""}`}>
+    <div className={`cove-portal-shell ${active === "home" ? "cove-home-shell" : ""} ${active === "admin" || active === "systems" || active === "app-builder" ? "cove-admin-shell" : ""} ${active === "recruitment" ? "cove-recruitment-shell" : ""} ${active === "booking" ? "cove-booking-shell" : ""}`}>
       <a className="skip-link" href="#main-content">Skip to main content</a>
       <header className="cove-topnav">
         <Link href="/" className="cove-logo" aria-label="Cove home">

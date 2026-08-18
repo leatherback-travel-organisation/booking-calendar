@@ -1,11 +1,11 @@
 "use client";
 
-// Per-BM scheduling controls. The permission split mirrors the server rules
-// (which are authoritative): Pod Leads edit everything for everyone; a
-// Booking Manager edits only their own buffer, bio and reminder toggle.
+// Per-BM scheduling controls, shown on each BM's own page. The permission
+// split mirrors the server rules (which are authoritative): Pod Leads edit
+// everything for everyone; a Booking Manager edits only their own buffer,
+// bio and reminder toggles.
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import styles from "./availability.module.css";
 
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
@@ -42,8 +42,6 @@ for (let m = 0; m < 1440; m += 30) START_OPTIONS.push(m);
 const END_OPTIONS: number[] = [];
 for (let m = 30; m <= 1440; m += 30) END_OPTIONS.push(m);
 
-export type StaffOption = { id: string; fullName: string; isSelf: boolean };
-
 export type SelectedStaffSettings = {
   id: string;
   fullName: string;
@@ -53,7 +51,8 @@ export type SelectedStaffSettings = {
   bookingWindowDays: number;
   timezoneOverride: string | null;
   bio: string | null;
-  remindersEnabled: boolean;
+  reminder24hEnabled: boolean;
+  reminder1hEnabled: boolean;
 };
 
 export type HoursRow = { dayOfWeek: number; startMin: number; endMin: number };
@@ -61,7 +60,6 @@ export type HoursRow = { dayOfWeek: number; startMin: number; endMin: number };
 type DayState = { on: boolean; startMin: number; endMin: number };
 
 type AvailabilityEditorProps = {
-  staffOptions: StaffOption[];
   selected: SelectedStaffSettings;
   hours: HoursRow[];
   zoneLabel: string;
@@ -73,7 +71,6 @@ type AvailabilityEditorProps = {
 };
 
 export function AvailabilityEditor({
-  staffOptions,
   selected,
   hours,
   zoneLabel,
@@ -83,7 +80,6 @@ export function AvailabilityEditor({
   saveWorkingHoursAction,
   saveSettingsAction,
 }: AvailabilityEditorProps) {
-  const router = useRouter();
   const canEditHours = canManage;
   const canEditOwnBits = canManage || isSelf;
 
@@ -102,22 +98,6 @@ export function AvailabilityEditor({
 
   return (
     <div className={styles.editor}>
-      <label className={styles.selectorLabel}>
-        Booking Manager
-        <select
-          className={styles.select}
-          value={selected.id}
-          onChange={(event) => router.replace(`/booking/availability?staff=${event.target.value}`)}
-        >
-          {staffOptions.map((option) => (
-            <option key={option.id} value={option.id}>
-              {option.fullName}
-              {option.isSelf ? " (you)" : ""}
-            </option>
-          ))}
-        </select>
-      </label>
-
       {savedFlag ? <p className={styles.savedNote}>Saved.</p> : null}
 
       <form action={saveWorkingHoursAction} className={styles.card}>
@@ -259,11 +239,20 @@ export function AvailabilityEditor({
         <label className={styles.checkboxField}>
           <input
             type="checkbox"
-            name="remindersEnabled"
-            defaultChecked={selected.remindersEnabled}
+            name="reminder24hEnabled"
+            defaultChecked={selected.reminder24hEnabled}
             disabled={!canEditOwnBits}
           />
-          Send guest reminder emails (24h and 1h)
+          Send the 24-hour reminder email
+        </label>
+        <label className={styles.checkboxField}>
+          <input
+            type="checkbox"
+            name="reminder1hEnabled"
+            defaultChecked={selected.reminder1hEnabled}
+            disabled={!canEditOwnBits}
+          />
+          Send the 1-hour reminder email
         </label>
 
         <label className={styles.field}>

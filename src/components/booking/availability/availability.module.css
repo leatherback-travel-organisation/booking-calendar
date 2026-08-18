@@ -1,27 +1,6 @@
-.layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(260px, 1fr);
-  gap: var(--density-4, 18px);
-  align-items: start;
-}
-
-@media (max-width: 860px) {
-  .layout {
-    grid-template-columns: 1fr;
-  }
-}
-
 .editor {
   display: grid;
   gap: var(--density-3, 14px);
-}
-
-.selectorLabel {
-  display: grid;
-  gap: 6px;
-  color: var(--ink-soft);
-  font-size: var(--text-small, 13px);
-  max-width: 340px;
 }
 
 .card {
@@ -181,51 +160,3 @@
   background: var(--pine-bright, #1f5b4e);
 }
 
-.preview {
-  border: 1px solid var(--line);
-  border-radius: var(--radius-panel, 10px);
-  background: var(--paper-deep);
-  padding: var(--density-3, 14px) var(--density-4, 18px);
-  display: grid;
-  gap: var(--density-2, 10px);
-  position: sticky;
-  top: 18px;
-}
-
-.previewTitle {
-  margin: 0;
-  color: var(--ink);
-  font-size: var(--text-ui, 14px);
-  font-weight: 500;
-  letter-spacing: 0.02em;
-}
-
-.previewNote {
-  margin: 0;
-  color: var(--ink-soft);
-  font-size: var(--text-small, 13px);
-  line-height: 1.45;
-}
-
-.previewList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 6px;
-}
-
-.previewSlot {
-  border: 1px solid var(--line);
-  border-radius: var(--radius-control, 7px);
-  background: var(--card);
-  color: var(--ink);
-  font-size: var(--text-small, 13px);
-  padding: 7px 10px;
-}
-
-.previewWarning {
-  margin: 0;
-  color: var(--terracotta);
-  font-size: var(--text-small, 13px);
-}

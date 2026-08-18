@@ -112,6 +112,15 @@
   color: var(--ink);
 }
 
+.personLink {
+  text-decoration: none;
+}
+
+.personLink:hover strong {
+  color: var(--pine);
+  text-decoration: underline;
+}
+
 .personText span {
   color: var(--ink-soft);
   font-size: var(--text-small, 13px);
@@ -218,14 +227,7 @@
 }
 
 .copyRow {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, max-content);
   gap: 6px;
-  margin-top: 6px;
-}
-
-.copyLabel {
-  font-size: var(--text-small, 13px);
-  color: var(--ink-soft);
 }

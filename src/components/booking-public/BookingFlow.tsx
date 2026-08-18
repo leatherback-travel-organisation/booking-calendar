@@ -68,12 +68,14 @@ export function BookingFlow({
   trip,
   host,
   bm,
+  brand,
   typeParam,
   embed,
 }: {
   trip: string | null;
   host: string | null;
   bm: string | null;
+  brand: string | null;
   typeParam: string | null;
   embed: boolean;
 }) {
@@ -86,6 +88,9 @@ export function BookingFlow({
   const [changeTripOpen, setChangeTripOpen] = useState(false);
   const [resolveState, setResolveState] = useState<"loading" | "error" | "ready">("loading");
   const [brands, setBrands] = useState<{ key: string; name: string }[] | null>(null);
+  // ?brand= contact-page links: the guest searches the brand's trips first.
+  const [tripPicker, setTripPicker] = useState<{ brand: PublicBrand; trips: PublicBrandTrip[] } | null>(null);
+  const [tripQuery, setTripQuery] = useState("");
   const [brandPickPending, setBrandPickPending] = useState(false);
   const [ctx, setCtx] = useState<Ctx | null>(null);
   const [eventTypeKey, setEventTypeKey] = useState<string | null>(null);
@@ -100,7 +105,7 @@ export function BookingFlow({
   const [booked, setBooked] = useState<BookedResult | null>(null);
 
   const applyResolved = useCallback(
-    (payload: Exclude<ResolvePayload, { kind: "brand-picker" }>) => {
+    (payload: Exclude<ResolvePayload, { kind: "brand-picker" } | { kind: "trip-picker" }>) => {
       const departures = sortDepartures(payload.departures);
       const primary = payload.kind === "primary" ? payload.staff : null;
       setCtx({
@@ -133,6 +138,8 @@ export function BookingFlow({
       if (host) params.set("host", host);
     } else if (bm) {
       params.set("bm", bm);
+    } else if (brand) {
+      params.set("brand", brand);
     }
     const query = params.toString();
     fetch(`/api/booking/public/resolve${query ? `?${query}` : ""}`, {
@@ -147,6 +154,9 @@ export function BookingFlow({
         if (payload.kind === "brand-picker") {
           setBrands(payload.brands);
           setResolveState("ready");
+        } else if (payload.kind === "trip-picker") {
+          setTripPicker({ brand: payload.brand, trips: payload.trips });
+          setResolveState("ready");
         } else {
           applyResolved(payload);
         }
@@ -155,7 +165,7 @@ export function BookingFlow({
         if (!controller.signal.aborted) setResolveState("error");
       });
     return () => controller.abort();
-  }, [tripSlug, host, bm, applyResolved]);
+  }, [tripSlug, host, bm, brand, applyResolved]);
 
   // 2. Availability: fetched once per BM + event type, paged client-side.
   const brandKey = ctx?.brand.key ?? null;
@@ -356,6 +366,56 @@ export function BookingFlow({
           <p className={styles.pageSub}>
             Something went wrong on our side. Please refresh the page to try again.
           </p>
+        </section>
+      </BrandFrame>
+    );
+  }
+
+  // Trip picker (?brand= contact-page links): the guest finds their trip, and
+  // the chosen trip resolves to its own coordinator — never a silent pool.
+  if (!ctx && tripPicker) {
+    const query = tripQuery.trim().toLowerCase();
+    const matches =
+      query.length >= 2
+        ? tripPicker.trips.filter((t) => t.title.toLowerCase().includes(query)).slice(0, 12)
+        : [];
+    return (
+      <BrandFrame brand={tripPicker.brand} embed={embed}>
+        <section className={styles.card}>
+          <h1 className={styles.pageTitle}>Book a call about your trip</h1>
+          <p className={styles.pageSub}>
+            Tell us which trip you&rsquo;re interested in and we&rsquo;ll connect you with the Booking Manager
+            who runs it.
+          </p>
+          <div className={styles.field}>
+            <label className={styles.fieldLabel} htmlFor="bp-trip-search">
+              Your trip or destination
+            </label>
+            <input
+              id="bp-trip-search"
+              className={styles.input}
+              type="search"
+              autoComplete="off"
+              placeholder="Start typing, e.g. Japan"
+              value={tripQuery}
+              onChange={(e) => setTripQuery(e.target.value)}
+            />
+          </div>
+          {query.length >= 2 && matches.length === 0 && (
+            <p className={styles.mutedText}>
+              No trips match &ldquo;{tripQuery.trim()}&rdquo; — try another word from the trip name.
+            </p>
+          )}
+          {matches.length > 0 && (
+            <div className={styles.typeGrid}>
+              {matches.map((t) => (
+                <button key={t.slug} type="button" className={styles.typeBtn} onClick={() => changeTrip(t.slug)}>
+                  <span className={styles.typeName}>{t.title}</span>
+                  {t.startDate && <span className={styles.typeMeta}>Departs {t.startDate}</span>}
+                </button>
+              ))}
+            </div>
+          )}
         </section>
       </BrandFrame>
     );

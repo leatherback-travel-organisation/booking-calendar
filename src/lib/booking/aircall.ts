@@ -14,6 +14,21 @@ export function aircallConfigured(): boolean {
   return Boolean(process.env.AIRCALL_API_ID && process.env.AIRCALL_API_TOKEN);
 }
 
+/** Live credential check for the Integrations board. */
+export async function aircallPing(): Promise<{ ok: boolean; detail: string | null }> {
+  if (!aircallConfigured()) return { ok: false, detail: "not configured" };
+  const auth = Buffer.from(`${process.env.AIRCALL_API_ID}:${process.env.AIRCALL_API_TOKEN}`).toString("base64");
+  try {
+    const response = await fetch("https://api.aircall.io/v1/ping", {
+      headers: { Authorization: `Basic ${auth}` },
+      cache: "no-store",
+    });
+    return response.ok ? { ok: true, detail: null } : { ok: false, detail: `Aircall returned ${response.status}` };
+  } catch {
+    return { ok: false, detail: "Aircall unreachable" };
+  }
+}
+
 type AircallNumber = { id: number; digits: string };
 let numbersCache: { numbers: AircallNumber[]; fetchedAtMs: number } | null = null;
 

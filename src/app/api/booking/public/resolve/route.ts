@@ -1,10 +1,12 @@
-// GET /api/booking/public/resolve?trip=<slug>[&host=<host>] | ?bm=<slug>
+// GET /api/booking/public/resolve?trip=<slug>[&host=<host>] | ?bm=<slug> | ?brand=<key>
 // The entry point for the /book page: who is the guest booking with?
+// ?brand= is the contact-page link: the guest searches the brand's trips and
+// the chosen trip re-resolves to its own coordinator — routing stays derived.
 
 import { resolveManager } from "@/lib/booking/routing";
 import { getBrands, getCachedDepartures } from "@/lib/booking/reference/queries";
 import type { Brand } from "@/lib/booking/model";
-import { getEventTypesForBrand } from "@/lib/booking/availability/service";
+import { getBrandByKey, getEventTypesForBrand } from "@/lib/booking/availability/service";
 import { jsonResponse, supportPhone } from "@/lib/booking/public-api";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +17,26 @@ export async function GET(request: Request): Promise<Response> {
   const trip = url.searchParams.get("trip");
   const bm = url.searchParams.get("bm");
   const host = url.searchParams.get("host");
+  const brandKey = url.searchParams.get("brand");
+
+  if (!trip && !bm && brandKey) {
+    const brand = await getBrandByKey(brandKey);
+    if (brand) {
+      return jsonResponse({
+        kind: "trip-picker",
+        brand: {
+          key: brand.key,
+          name: brand.name,
+          logoUrl: brand.logoUrl,
+          colorPrimary: brand.colorPrimary,
+          colorAccent: brand.colorAccent,
+          phone: supportPhone(brand, request),
+        },
+        trips: await upcomingTripsForBrand(brand, 200),
+      });
+    }
+    // Unknown brand key: fall through to the brand picker below.
+  }
 
   if (!trip && !bm) {
     // No slug at all: give the brand list so the page can show a picker.
@@ -84,6 +106,7 @@ export async function GET(request: Request): Promise<Response> {
 // sorted by title for a scannable dropdown.
 async function upcomingTripsForBrand(
   brand: Brand,
+  limit = 60,
 ): Promise<{ slug: string; title: string; startDate: string | null }[]> {
   const departures = await getCachedDepartures();
   const today = new Date().toISOString().slice(0, 10);
@@ -101,5 +124,5 @@ async function upcomingTripsForBrand(
   }
   return [...bySlug.values()]
     .sort((a, b) => a.title.localeCompare(b.title))
-    .slice(0, 60);
+    .slice(0, limit);
 }

@@ -73,20 +73,6 @@ export function CommunicationsList({ summaries, canManage }: CommunicationsListP
                 </li>
               );
             })}
-            {stage.key === "after-booking" ? (
-              <li className={`${styles.row} ${styles.rowInfo}`}>
-                <div className={styles.rowMain}>
-                  <p className={styles.rowName}>Calendar invitation</p>
-                  <p className={styles.rowDescription}>
-                    An .ics file attached to the confirmation, updated on reschedule and withdrawn on
-                    cancellation. Generated from the booking — nothing to edit here.
-                  </p>
-                </div>
-                <div className={styles.rowSide}>
-                  <span className={styles.edited}>Automatic</span>
-                </div>
-              </li>
-            ) : null}
           </ul>
         </section>
       ))}

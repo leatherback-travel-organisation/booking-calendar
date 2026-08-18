@@ -1,4 +1,4 @@
-// Public guest booking page: /book?trip=<slug>&host=<host> | ?bm=<slug>.
+// Public guest booking page: /book?trip=<slug>&host=<host> | ?bm=<slug> | ?brand=<key>.
 // Exempt from Clerk (route policy) — must never look like Cove admin.
 
 import type { Metadata } from "next";
@@ -29,6 +29,7 @@ export default async function BookPage({
       trip={first(params.trip)}
       host={first(params.host)}
       bm={first(params.bm)}
+      brand={first(params.brand)}
       typeParam={first(params.type)}
       embed={first(params.embed) === "1"}
     />

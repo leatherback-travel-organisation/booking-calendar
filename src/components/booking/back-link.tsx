@@ -7,7 +7,7 @@ import styles from "./back-link.module.css";
 export function BackLink({ href, label }: { href: string; label: string }) {
   return (
     <Link href={href} className={styles.backLink}>
-      <span aria-hidden="true">←</span> {label}
+      <span aria-hidden="true">←</span> Back to {label}
     </Link>
   );
 }

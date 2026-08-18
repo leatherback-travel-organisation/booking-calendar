@@ -36,7 +36,7 @@ async function claimDue(kind: ReminderKind): Promise<Array<Record<string, unknow
        where status = 'confirmed'
          and reminder_24h_sent_at is null
          and starts_at between now() + interval '23 hours' and now() + interval '25 hours'
-         and exists (select 1 from booking.staff s where s.id = booking.booking.staff_id and s.reminders_enabled)
+         and exists (select 1 from booking.staff s where s.id = booking.booking.staff_id and s.reminder_24h_enabled)
       returning *`;
   }
   return sql`
@@ -45,7 +45,7 @@ async function claimDue(kind: ReminderKind): Promise<Array<Record<string, unknow
      where status = 'confirmed'
        and reminder_1h_sent_at is null
        and starts_at between now() + interval '30 minutes' and now() + interval '75 minutes'
-       and exists (select 1 from booking.staff s where s.id = booking.booking.staff_id and s.reminders_enabled)
+       and exists (select 1 from booking.staff s where s.id = booking.booking.staff_id and s.reminder_1h_enabled)
     returning *`;
 }
 

@@ -19,7 +19,7 @@ const REGISTRY: RegistryEntry[] = [
   { label: "Dashboard", keywords: ["home", "overview", "today"], href: "/booking", section: "Booking" },
   { label: "Availability heat strip", keywords: ["heat", "open slots", "capacity"], href: "/booking", section: "Booking" },
   { label: "Recent bookings", keywords: ["recent", "self-booked", "source"], href: "/booking", section: "Booking" },
-  { label: "Availability & scheduling", keywords: ["schedule", "hours", "slots"], href: "/booking/availability", section: "Availability" },
+  { label: "My availability & scheduling", keywords: ["schedule", "hours", "slots", "my page"], href: "/booking/availability", section: "Availability" },
   { label: "Working hours", keywords: ["hours", "days", "week", "shift"], href: "/booking/availability", section: "Availability" },
   { label: "Buffer between calls", keywords: ["buffer", "gap", "break"], href: "/booking/availability", section: "Availability" },
   { label: "Minimum notice", keywords: ["notice", "lead time", "same day"], href: "/booking/availability", section: "Availability" },

@@ -69,6 +69,8 @@ export function TeamRoster({ staff, brands, fetchedAt, appUrl, guestTypes }: Tea
             <thead>
               <tr>
                 <th scope="col">Booking Manager</th>
+                <th scope="col">Copy links</th>
+                <th scope="col">Group session</th>
                 <th scope="col">Brands</th>
                 <th scope="col" className={styles.center}>
                   Help Scout
@@ -97,27 +99,38 @@ export function TeamRoster({ staff, brands, fetchedAt, appUrl, guestTypes }: Tea
                         )}
                         <div className={styles.personText}>
                           <div className={styles.nameRow}>
-                            <strong>{member.fullName}</strong>
-                            <Link
-                              href={`/booking/team/sessions?staff=${encodeURIComponent(member.slug)}`}
-                              className={styles.actionLink}
-                            >
-                              Create group session
+                            <Link href={`/booking/team/${encodeURIComponent(member.slug)}`} className={styles.personLink}>
+                              <strong>{member.fullName}</strong>
                             </Link>
-                            {!member.remindersEnabled ? <span className={styles.mutedChip}>Reminders off</span> : null}
-                          </div>
-                          <div className={styles.copyRow}>
-                            <span className={styles.copyLabel}>Copy link:</span>
-                            {guestTypes.map((type) => (
-                              <CopyButton
-                                key={type.key}
-                                value={`${appUrl}/book?bm=${encodeURIComponent(member.slug)}&type=${encodeURIComponent(type.key)}`}
-                                label={type.name.replace(/ Call$/, "")}
-                              />
-                            ))}
+                            {!member.reminder24hEnabled && !member.reminder1hEnabled ? (
+                              <span className={styles.mutedChip}>Reminders off</span>
+                            ) : !member.reminder24hEnabled ? (
+                              <span className={styles.mutedChip}>24h reminder off</span>
+                            ) : !member.reminder1hEnabled ? (
+                              <span className={styles.mutedChip}>1h reminder off</span>
+                            ) : null}
                           </div>
                         </div>
                       </div>
+                    </td>
+                    <td>
+                      <div className={styles.copyRow}>
+                        {guestTypes.map((type) => (
+                          <CopyButton
+                            key={type.key}
+                            value={`${appUrl}/book?bm=${encodeURIComponent(member.slug)}&type=${encodeURIComponent(type.key)}`}
+                            label={type.name.replace(/ Call$/, "")}
+                          />
+                        ))}
+                      </div>
+                    </td>
+                    <td>
+                      <Link
+                        href={`/booking/team/sessions?staff=${encodeURIComponent(member.slug)}`}
+                        className={styles.actionLink}
+                      >
+                        Create
+                      </Link>
                     </td>
                     <td>
                       <div className={styles.brandChips}>

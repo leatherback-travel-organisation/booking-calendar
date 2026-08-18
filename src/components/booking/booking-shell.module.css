@@ -1,30 +1,61 @@
+/* Calltime's own branding: the deep-teal + white palette shared with TRTL
+   and Recruitment, scoped to the booking workspace by overriding the Cove
+   design tokens every booking component already consumes. */
+:global(.cove-booking-shell) {
+  background: #f5f8f7;
+}
+
 .workspace {
+  --ink: #12312a;
+  --ink-soft: #587068;
+  --paper: #eef4f2;
+  --paper-deep: #ddebe6;
+  --card: #ffffff;
+  --pine: #0f766e;
+  --pine-bright: #0d9488;
+  --line: rgba(13, 60, 50, 0.16);
+  --shadow: 0 22px 65px rgba(10, 54, 46, 0.09);
   max-width: 1180px;
   margin: 0 auto;
   padding: var(--density-4, 24px) var(--density-3, 16px) 64px;
+  color: var(--ink);
 }
 
+/* Title sits on its own line above the tabs so it never reads as a tab. */
 .header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--density-3, 16px);
+  display: grid;
+  gap: var(--density-2, 10px);
   border-bottom: 1px solid var(--line);
   padding-bottom: var(--density-2, 12px);
   margin-bottom: var(--density-4, 24px);
 }
 
-.title {
-  font-size: var(--text-lead, 17px);
+.eyebrow {
+  color: var(--pine);
+  font-size: var(--text-label, 12px);
   font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
   color: var(--ink);
   margin: 0;
+}
+
+.titleBlock {
+  display: grid;
+  gap: 2px;
 }
 
 .nav {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
+  margin-left: -10px; /* optically align the first tab's label with the title */
 }
 
 .navLink {
@@ -41,7 +72,7 @@
 }
 
 .navLinkActive {
-  color: var(--ink);
+  color: var(--pine);
   background: var(--paper-deep);
   font-weight: 500;
 }
