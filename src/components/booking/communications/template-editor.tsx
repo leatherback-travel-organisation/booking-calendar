@@ -6,12 +6,12 @@
 // Saving validates against the registry first — typos surface here, never in
 // a guest's inbox.
 
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { applyToMany, previewRender, saveTemplate } from "@/app/booking/communications/actions";
+import { BackLink } from "@/components/booking/back-link";
 import { renderTemplate, UnknownVariableError, validateTemplate } from "@/lib/booking/notify/render.ts";
 import { sampleValues } from "@/lib/booking/notify/variables";
 import {
@@ -256,9 +256,7 @@ export function TemplateEditor(props: TemplateEditorProps) {
     <div className={styles.editor}>
       <header className={styles.header}>
         <div>
-          <Link href="/booking/communications" className={styles.backLink}>
-            ← Guest Communications
-          </Link>
+          <BackLink href="/booking/communications" label="Guest Communications" />
           <h2 className={styles.title}>{props.momentLabel}</h2>
           <p className={styles.description}>{props.momentDescription}</p>
         </div>

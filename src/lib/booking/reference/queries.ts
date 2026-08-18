@@ -73,6 +73,7 @@ export async function getStaffWithBrands(): Promise<Staff[]> {
     bufferMinutes: Number(row.buffer_minutes ?? 0),
     minNoticeHours: Number(row.min_notice_hours ?? 0),
     bookingWindowDays: Number(row.booking_window_days ?? 0),
+    remindersEnabled: row.reminders_enabled === undefined ? true : Boolean(row.reminders_enabled),
     active: row.active as boolean,
     calendarOk: row.calendar_ok as boolean,
   }));

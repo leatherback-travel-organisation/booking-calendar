@@ -115,6 +115,7 @@ export default async function BookingAvailabilityPage({ searchParams }: PageProp
             bookingWindowDays: selected.bookingWindowDays,
             timezoneOverride: selected.timezoneOverride,
             bio: selected.bio,
+            remindersEnabled: selected.remindersEnabled,
           }}
           hours={hours}
           zoneLabel={zoneLabel}

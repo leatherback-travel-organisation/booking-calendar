@@ -129,6 +129,14 @@
   align-content: start;
 }
 
+.checkboxField {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  font-size: var(--text-small, 13px);
+}
+
 .textarea {
   border: 1px solid var(--line);
   border-radius: var(--radius-control, 7px);

@@ -45,6 +45,7 @@ function mapWeekBooking(row: WeekRow): { booking: DashboardBooking; isToday: boo
       timeLabel: isToday ? dt.toFormat("h:mm a") : dt.toFormat("ccc d · h:mm a"),
       guestName: String(row.guest_name),
       bmFirstName: String(row.first_name),
+      bmPhotoUrl: (row.photo_url as string | null) ?? null,
       eventTypeName: String(row.event_type_name),
       brandName: String(row.brand_name),
       routedVia: String(row.routed_via),
@@ -57,7 +58,7 @@ async function loadWeek(): Promise<{ today: DashboardBooking[]; week: DashboardB
   const sql = getSql();
   const rows = await sql`
     select b.id, b.starts_at, b.guest_name, b.routed_via,
-           s.first_name, s.timezone_override,
+           s.first_name, s.photo_url, s.timezone_override,
            et.name as event_type_name,
            br.name as brand_name, br.scheduling_timezone
     from booking.booking b
@@ -82,7 +83,7 @@ async function loadRecent(): Promise<RecentBooking[]> {
   const sql = getSql();
   const rows = await sql`
     select b.id, b.created_at, b.guest_name, b.source_kind, b.status,
-           s.first_name, et.name as event_type_name, br.name as brand_name
+           s.first_name, s.photo_url, et.name as event_type_name, br.name as brand_name
     from booking.booking b
     join booking.staff s on s.id = b.staff_id
     join booking.event_type et on et.id = b.event_type_id
@@ -94,6 +95,7 @@ async function loadRecent(): Promise<RecentBooking[]> {
     createdAtIso: new Date(row.created_at as string).toISOString(),
     guestName: String(row.guest_name),
     bmFirstName: String(row.first_name),
+    bmPhotoUrl: (row.photo_url as string | null) ?? null,
     eventTypeName: String(row.event_type_name),
     brandName: String(row.brand_name),
     sourceKind: String(row.source_kind),
@@ -170,7 +172,7 @@ async function buildHeatStrip(activeStaff: Staff[]): Promise<HeatStrip> {
 }
 
 export default async function BookingDashboardPage() {
-  const { canManage } = await requireBookingAccess("booking.read");
+  const { identity, canManage } = await requireBookingAccess("booking.read");
 
   if (!databaseConfigured()) {
     return (
@@ -188,9 +190,24 @@ export default async function BookingDashboardPage() {
   ]);
   const heat = await buildHeatStrip(staff.filter((member) => member.active));
 
+  // "Copy scheduling link" copies the signed-in BM's own guest booking URL;
+  // anyone without an active staff row is pointed at the per-BM buttons on
+  // the Team page instead.
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const selfEmail = identity.email.toLowerCase();
+  const self = staff.find((member) => member.active && member.email.toLowerCase() === selfEmail) ?? null;
+  const schedulingLinkUrl = self ? `${appUrl}/book?bm=${encodeURIComponent(self.slug)}&type=enquiry` : null;
+
   return (
     <BookingShell active="dashboard" canManage={canManage}>
-      <Dashboard issues={issues} today={weekData.today} week={weekData.week} recent={recent} heat={heat} />
+      <Dashboard
+        issues={issues}
+        today={weekData.today}
+        week={weekData.week}
+        recent={recent}
+        heat={heat}
+        schedulingLinkUrl={schedulingLinkUrl}
+      />
       <SettingsSearch />
     </BookingShell>
   );

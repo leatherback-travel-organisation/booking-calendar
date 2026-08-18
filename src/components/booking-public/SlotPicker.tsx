@@ -6,6 +6,7 @@
 import { useMemo, useState } from "react";
 import styles from "./bp.module.css";
 import {
+  firstPageWithSlot,
   formatDayHeading,
   formatDayShort,
   formatTime,
@@ -24,7 +25,18 @@ export function SlotPicker({
   timeZone: string;
   onPick: (slot: PublicSlot) => void;
 }) {
-  const [page, setPage] = useState(0);
+  // Open on the first week that actually contains a slot (in the guest's
+  // zone) instead of a possibly-empty current week; prev/next still walk
+  // week by week from today.
+  const [page, setPage] = useState(() => firstPageWithSlot(slots, timeZone));
+
+  // When a new set of slots loads (event type or BM changed), land on that
+  // set's first available week again.
+  const [seenSlots, setSeenSlots] = useState(slots);
+  if (slots !== seenSlots) {
+    setSeenSlots(slots);
+    setPage(firstPageWithSlot(slots, timeZone));
+  }
 
   const groups = useMemo(() => groupSlotsByDay(slots, timeZone), [slots, timeZone]);
   const window = useMemo(() => weekDayKeys(page, timeZone), [page, timeZone]);

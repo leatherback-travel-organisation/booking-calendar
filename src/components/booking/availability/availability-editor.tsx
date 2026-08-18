@@ -2,7 +2,7 @@
 
 // Per-BM scheduling controls. The permission split mirrors the server rules
 // (which are authoritative): Pod Leads edit everything for everyone; a
-// Booking Manager edits only their own buffer and bio.
+// Booking Manager edits only their own buffer, bio and reminder toggle.
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -53,6 +53,7 @@ export type SelectedStaffSettings = {
   bookingWindowDays: number;
   timezoneOverride: string | null;
   bio: string | null;
+  remindersEnabled: boolean;
 };
 
 export type HoursRow = { dayOfWeek: number; startMin: number; endMin: number };
@@ -253,6 +254,18 @@ export function AvailabilityEditor({
           </p>
         ) : null}
 
+        {/* Marker so the server action can tell "unchecked" from "not submitted". */}
+        <input type="hidden" name="remindersEnabledField" value="1" />
+        <label className={styles.checkboxField}>
+          <input
+            type="checkbox"
+            name="remindersEnabled"
+            defaultChecked={selected.remindersEnabled}
+            disabled={!canEditOwnBits}
+          />
+          Send guest reminder emails (24h and 1h)
+        </label>
+
         <label className={styles.field}>
           Bio
           <textarea
@@ -270,7 +283,7 @@ export function AvailabilityEditor({
             <button type="submit" className={styles.saveButton}>
               Save settings
             </button>
-            {!canManage ? <span className={styles.cardHint}>You can change your buffer and bio.</span> : null}
+            {!canManage ? <span className={styles.cardHint}>You can change your buffer, bio and reminder emails.</span> : null}
           </div>
         ) : null}
       </form>

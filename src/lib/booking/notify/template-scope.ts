@@ -14,7 +14,6 @@ export const MOMENTS: readonly Moment[] = [
   "reminder_1h",
   "cancellation",
   "reschedule",
-  "followup",
 ];
 
 export function isMoment(value: string): value is Moment {
@@ -42,10 +41,6 @@ export const MOMENT_META: Record<Moment, { label: string; description: string }>
     label: "Cancellation notice",
     description: "Confirms the cancellation and removes the event from the guest's calendar.",
   },
-  followup: {
-    label: "Follow-up email",
-    description: "A thank-you after the call. Optional — set it up when a brand wants one.",
-  },
 };
 
 export type JourneyStage = {
@@ -59,7 +54,6 @@ export const JOURNEY_STAGES: readonly JourneyStage[] = [
   { key: "after-booking", title: "After booking", moments: ["confirmation"] },
   { key: "before-call", title: "Before the call", moments: ["reminder_24h", "reminder_1h"] },
   { key: "plans-change", title: "If plans change", moments: ["reschedule", "cancellation"] },
-  { key: "after-call", title: "After the call", moments: ["followup"] },
 ];
 
 // --- chip <-> token serialization ------------------------------------------

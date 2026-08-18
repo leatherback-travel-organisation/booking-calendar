@@ -14,10 +14,11 @@ import {
 
 // --- moments ----------------------------------------------------------------
 
-test("the six moments validate and unknown segments do not", () => {
+test("the five moments validate and unknown segments do not", () => {
   for (const moment of MOMENTS) assert.equal(isMoment(moment), true);
   assert.equal(isMoment("confirmation "), false);
   assert.equal(isMoment("welcome"), false);
+  assert.equal(isMoment("followup"), false);
   assert.equal(isMoment(""), false);
 });
 
@@ -111,7 +112,7 @@ test("summarizeMoment reports custom default, brand overrides and the latest edi
 });
 
 test("a moment with no rows summarizes as running on the built-in default", () => {
-  const summary = summarizeMoment("followup", ROWS, BRANDS);
+  const summary = summarizeMoment("cancellation", ROWS, BRANDS);
   assert.equal(summary.hasCustomDefault, false);
   assert.deepEqual(summary.overrides, []);
   assert.equal(summary.lastEdited, null);
@@ -148,13 +149,13 @@ test("computeApplyDiff marks existing custom scopes as replace with editor and d
 
 test("computeApplyDiff on an untouched moment says built-in default for every target", () => {
   const diff = computeApplyDiff(
-    "followup",
+    "reschedule",
     [{ brandKey: "patch", eventTypeKey: "lead-up" }],
     ROWS,
     BRANDS,
   );
   assert.equal(diff[0].action, "create");
-  assert.ok(diff[0].summary.includes("Patch Adventures (lead-up) / Follow-up email"));
+  assert.ok(diff[0].summary.includes("Patch Adventures (lead-up) / Reschedule confirmation"));
   assert.ok(diff[0].summary.includes("built-in default"));
 });
 

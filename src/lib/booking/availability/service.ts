@@ -34,6 +34,8 @@ function mapStaff(row: StaffRow, brandIds: string[]): Staff {
     bufferMinutes: Number(row.buffer_minutes),
     minNoticeHours: Number(row.min_notice_hours),
     bookingWindowDays: Number(row.booking_window_days),
+    // Default true so an un-migrated database behaves like the schema default.
+    remindersEnabled: row.reminders_enabled === undefined ? true : Boolean(row.reminders_enabled),
     active: Boolean(row.active),
     calendarOk: Boolean(row.calendar_ok),
   };

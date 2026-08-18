@@ -2,7 +2,8 @@
 
 // Server actions for per-BM scheduling controls. Permission rules are
 // enforced HERE, not in the UI: a Booking Manager (no booking.manage) may
-// change only their own buffer and bio; everything else is Pod Lead only.
+// change only their own buffer, bio and guest-reminder toggle; everything
+// else is Pod Lead only.
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -74,6 +75,14 @@ export async function saveSettings(formData: FormData): Promise<void> {
   const bioRaw = formData.get("bio");
   const bio = typeof bioRaw === "string" && bioRaw.trim().length > 0 ? bioRaw.trim() : null;
 
+  // Checkbox: an unchecked box submits nothing, so the form carries a marker
+  // field — without it (e.g. an older form) the value is left unchanged. Like
+  // buffer and bio, a BM may toggle this on their own row.
+  const remindersEnabled =
+    formData.get("remindersEnabledField") === null
+      ? staff.remindersEnabled
+      : formData.get("remindersEnabled") === "on";
+
   // Restricted fields: disabled inputs are not submitted, so a missing value
   // means "unchanged". A submitted, changed value from a non-manager is an
   // attempt to escalate — refuse it.
@@ -108,6 +117,9 @@ export async function saveSettings(formData: FormData): Promise<void> {
   const diff: Record<string, { from: unknown; to: unknown }> = {};
   if (bufferMinutes !== staff.bufferMinutes) diff.bufferMinutes = { from: staff.bufferMinutes, to: bufferMinutes };
   if (bio !== staff.bio) diff.bio = { from: staff.bio, to: bio };
+  if (remindersEnabled !== staff.remindersEnabled) {
+    diff.remindersEnabled = { from: staff.remindersEnabled, to: remindersEnabled };
+  }
   if (minNoticeHours !== staff.minNoticeHours) diff.minNoticeHours = { from: staff.minNoticeHours, to: minNoticeHours };
   if (bookingWindowDays !== staff.bookingWindowDays) {
     diff.bookingWindowDays = { from: staff.bookingWindowDays, to: bookingWindowDays };
@@ -124,7 +136,8 @@ export async function saveSettings(formData: FormData): Promise<void> {
              min_notice_hours = ${minNoticeHours},
              booking_window_days = ${bookingWindowDays},
              timezone_override = ${timezoneOverride},
-             bio = ${bio}
+             bio = ${bio},
+             reminders_enabled = ${remindersEnabled}
        where id = ${staff.id}`;
     await auditAvailabilityChange(access.identity.email, staff.email, diff);
   }

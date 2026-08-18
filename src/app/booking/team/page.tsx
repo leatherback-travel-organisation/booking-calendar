@@ -25,11 +25,12 @@ export default async function BookingTeamPage() {
   }
 
   const [staff, brands, stats] = await Promise.all([getStaffWithBrands(), getBrands(), getDepartureStats()]);
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
   return (
     <BookingShell active="team" canManage={canManage}>
       <p style={{ margin: "0 0 14px", fontSize: "var(--text-small, 13px)" }}><Link href="/booking/team/sessions">Group sessions</Link> · <Link href="/booking/team/invitations">Invitations</Link></p>
-      <TeamRoster staff={staff} brands={brands} fetchedAt={stats.fetchedAt} />
+      <TeamRoster staff={staff} brands={brands} fetchedAt={stats.fetchedAt} appUrl={appUrl} />
     </BookingShell>
   );
 }

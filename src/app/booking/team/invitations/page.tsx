@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { DateTime } from "luxon";
+import { BackLink } from "@/components/booking/back-link";
 import { BookingShell } from "@/components/booking/booking-shell";
 import { SettingsSearch } from "@/components/booking/settings-search";
 import {
@@ -143,9 +144,7 @@ export default async function InvitationsPage({ searchParams }: PageProps) {
         <div className={styles.pageHead}>
           <h2 className={styles.pageTitle}>Invitations</h2>
           <nav className={styles.crumbs} aria-label="Team tools">
-            <Link href="/booking/team" className={styles.crumbLink}>
-              ← Team roster
-            </Link>
+            <BackLink href="/booking/team" label="Team roster" />
             <Link href="/booking/team/sessions" className={styles.crumbLink}>
               Group sessions
             </Link>

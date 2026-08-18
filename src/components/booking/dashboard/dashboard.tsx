@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import type { CoverageIssueRow } from "@/lib/booking/reference/queries";
+import { CopySchedulingLinkButton } from "./copy-scheduling-link";
 import { formatRelative } from "./relative";
 import styles from "./dashboard.module.css";
 
@@ -11,6 +12,7 @@ export type DashboardBooking = {
   timeLabel: string;
   guestName: string;
   bmFirstName: string;
+  bmPhotoUrl: string | null;
   eventTypeName: string;
   brandName: string;
   routedVia: string;
@@ -21,6 +23,7 @@ export type RecentBooking = {
   createdAtIso: string;
   guestName: string;
   bmFirstName: string;
+  bmPhotoUrl: string | null;
   eventTypeName: string;
   brandName: string;
   sourceKind: string;
@@ -63,6 +66,19 @@ function heatLevel(count: number): number {
   return 3;
 }
 
+/** Small round BM avatar for booking rows, with an initial-circle fallback. */
+function BmAvatar({ name, photoUrl }: { name: string; photoUrl: string | null }) {
+  if (photoUrl) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img className={styles.rowAvatar} src={photoUrl} alt="" title={name} />;
+  }
+  return (
+    <span className={styles.rowAvatar} data-fallback="true" title={name} aria-hidden="true">
+      {name.trim().charAt(0).toUpperCase() || "?"}
+    </span>
+  );
+}
+
 function BookingList({ bookings, emptyLabel }: { bookings: DashboardBooking[]; emptyLabel: string }) {
   if (bookings.length === 0) {
     return <p className={styles.emptyNote}>{emptyLabel}</p>;
@@ -78,6 +94,7 @@ function BookingList({ bookings, emptyLabel }: { bookings: DashboardBooking[]; e
           </span>
           <span className={styles.brandChip}>{booking.brandName}</span>
           {booking.routedVia !== "primary" ? <span className={styles.routedBadge}>{booking.routedVia}</span> : null}
+          <BmAvatar name={booking.bmFirstName} photoUrl={booking.bmPhotoUrl} />
         </li>
       ))}
     </ul>
@@ -90,9 +107,11 @@ type DashboardProps = {
   week: DashboardBooking[];
   recent: RecentBooking[];
   heat: HeatStrip;
+  /** The signed-in BM's own guest booking URL; null when they have no active staff row. */
+  schedulingLinkUrl: string | null;
 };
 
-export function Dashboard({ issues, today, week, recent, heat }: DashboardProps) {
+export function Dashboard({ issues, today, week, recent, heat, schedulingLinkUrl }: DashboardProps) {
   const errors = issues.filter((issue) => issue.severity === "error");
   const warnings = issues.filter((issue) => issue.severity !== "error");
 
@@ -128,11 +147,15 @@ export function Dashboard({ issues, today, week, recent, heat }: DashboardProps)
 
       <div className={styles.actionsRow}>
         <Link href="/booking/team/sessions" className={styles.primaryAction}>
-          New group session
+          Create group session
         </Link>
-        <Link href="/booking/team/invitations" className={styles.secondaryAction}>
-          Propose times
-        </Link>
+        {schedulingLinkUrl ? (
+          <CopySchedulingLinkButton url={schedulingLinkUrl} />
+        ) : (
+          <Link href="/booking/team" className={styles.secondaryAction} title="Per-BM copy buttons live on the Team page">
+            Copy scheduling link
+          </Link>
+        )}
       </div>
 
       <div className={styles.columns}>
@@ -151,6 +174,7 @@ export function Dashboard({ issues, today, week, recent, heat }: DashboardProps)
             <ul className={styles.recentList}>
               {recent.map((booking) => (
                 <li key={booking.id} className={styles.recentRow}>
+                  <BmAvatar name={booking.bmFirstName} photoUrl={booking.bmPhotoUrl} />
                   <div className={styles.recentMain}>
                     <span className={styles.bookingGuest}>{booking.guestName}</span>
                     <span className={styles.bookingMeta}>

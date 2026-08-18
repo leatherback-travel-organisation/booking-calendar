@@ -1,4 +1,6 @@
+import Link from "next/link";
 import type { Brand, Staff } from "@/lib/booking/model";
+import { CopyButton } from "./team-tools/copy-button";
 import styles from "./team-roster.module.css";
 
 function formatRelative(iso: string | null): string {
@@ -45,9 +47,11 @@ type TeamRosterProps = {
   brands: Brand[];
   /** Last fetch time per reference cache key. */
   fetchedAt: Record<string, string | null>;
+  /** Origin for guest-facing booking links, e.g. http://localhost:3000. */
+  appUrl: string;
 };
 
-export function TeamRoster({ staff, brands, fetchedAt }: TeamRosterProps) {
+export function TeamRoster({ staff, brands, fetchedAt, appUrl }: TeamRosterProps) {
   const brandById = new Map(brands.map((brand) => [brand.id, brand]));
   const active = staff.filter((member) => member.active).length;
 
@@ -88,6 +92,7 @@ export function TeamRoster({ staff, brands, fetchedAt }: TeamRosterProps) {
                   Active
                 </th>
                 <th scope="col">Flags</th>
+                <th scope="col">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -146,7 +151,7 @@ export function TeamRoster({ staff, brands, fetchedAt }: TeamRosterProps) {
                       </span>
                     </td>
                     <td>
-                      {flags.length === 0 ? (
+                      {flags.length === 0 && member.remindersEnabled ? (
                         <span className={styles.dash}>{"—"}</span>
                       ) : (
                         <div className={styles.flagChips}>
@@ -155,8 +160,23 @@ export function TeamRoster({ staff, brands, fetchedAt }: TeamRosterProps) {
                               {flag}
                             </span>
                           ))}
+                          {!member.remindersEnabled ? <span className={styles.mutedChip}>Reminders off</span> : null}
                         </div>
                       )}
+                    </td>
+                    <td>
+                      <div className={styles.actionsCell}>
+                        <CopyButton
+                          value={`${appUrl}/book?bm=${encodeURIComponent(member.slug)}&type=enquiry`}
+                          label="Copy 1:1 link"
+                        />
+                        <Link
+                          href={`/booking/team/sessions?staff=${encodeURIComponent(member.slug)}`}
+                          className={styles.actionLink}
+                        >
+                          Create group session
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -167,8 +187,8 @@ export function TeamRoster({ staff, brands, fetchedAt }: TeamRosterProps) {
       )}
 
       <p className={styles.footnote}>
-        Read-only: this roster mirrors the Notion Team Directory and Airtable Booking Managers. Edit those sources,
-        then re-run the reference sync.
+        Roster details mirror the Notion Team Directory and Airtable Booking Managers — edit those sources, then
+        re-run the reference sync.
       </p>
     </div>
   );

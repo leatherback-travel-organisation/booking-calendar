@@ -88,6 +88,7 @@
   background: var(--pine-bright, #1f5b4e);
 }
 
+/* Used as both a link and a button (Copy scheduling link). */
 .secondaryAction {
   border: 1px solid var(--line);
   border-radius: var(--radius-control, 7px);
@@ -95,8 +96,10 @@
   color: var(--pine);
   font-size: var(--text-small, 13px);
   font-weight: 500;
+  font-family: inherit;
   text-decoration: none;
   padding: 8px 14px;
+  cursor: pointer;
 }
 
 .secondaryAction:hover {
@@ -141,11 +144,12 @@
 }
 
 .bookingRow {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   gap: 8px;
-  padding: 7px 0;
+  padding: 7px 38px 7px 0;
   border-bottom: 1px solid var(--line);
 }
 
@@ -202,12 +206,13 @@
 }
 
 .recentRow {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
-  padding: 7px 0;
+  padding: 7px 38px 7px 0;
   border-bottom: 1px solid var(--line);
 }
 
@@ -251,6 +256,27 @@
 .recentWhen {
   color: var(--ink-soft);
   font-size: var(--text-label, 12px);
+}
+
+/* BM avatar pinned to the top-right of a booking row. */
+.rowAvatar {
+  position: absolute;
+  top: 7px;
+  right: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  object-fit: cover;
+  background: var(--paper-deep);
+}
+
+.rowAvatar[data-fallback] {
+  display: grid;
+  place-items: center;
+  color: var(--ink-soft);
+  font-size: var(--text-label, 12px);
+  font-weight: 500;
 }
 
 .heatScroll {

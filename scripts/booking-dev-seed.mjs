@@ -44,13 +44,16 @@ const STAFF = [
   ["louise-zacharia", "louise@fencox.com.au", "Louise Zacharia", "Louise", "fencox", "670830", "Louise has been crafting Fencox journeys for years and answers every question honestly."],
   ["jacqueline-lancaster", "jacqueline@carexdesign.com", "Jacqueline Lancaster", "Jacqueline", "carex", "823556", "Jacqueline lives among the gardens of Colombia and books our US garden tours."],
   ["janie-welsh", "janie@leatherbacktravel.com", "Janie Welsh", "Janie", "harriet", "899958", "Janie looks after the Harriet Adventures community from the United States."],
+  ["nicola-noviello", "nicola@leatherbacktravel.com", "Nicola Noviello", "Nicola", "patch", "762406", "Nicola builds the systems behind Leatherback's trips - and takes the odd call too."],
 ];
 
+import { existsSync } from "node:fs";
 for (const [slug, email, fullName, firstName, brandKey, hsId, bio] of STAFF) {
+  const photo = existsSync(`${process.cwd()}/public/demo-staff/${slug}.jpg`) ? `/demo-staff/${slug}.jpg` : null;
   const rows = await db.query(
-    `insert into booking.staff (email, full_name, first_name, slug, primary_brand_id, helpscout_user_id, bio)
-     select $1, $2, $3, $4, b.id, $6, $7 from booking.brand b where b.key = $5 returning id`,
-    [email, fullName, firstName, slug, brandKey, hsId, bio],
+    `insert into booking.staff (email, full_name, first_name, slug, primary_brand_id, helpscout_user_id, bio, photo_url)
+     select $1, $2, $3, $4, b.id, $6, $7, $8 from booking.brand b where b.key = $5 returning id`,
+    [email, fullName, firstName, slug, brandKey, hsId, bio, photo],
   );
   const staffId = rows.rows[0].id;
   await db.query(

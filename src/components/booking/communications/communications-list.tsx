@@ -35,8 +35,6 @@ export function CommunicationsList({ summaries, canManage }: CommunicationsListP
             {stage.moments.map((moment) => {
               const summary = byMoment.get(moment);
               const meta = MOMENT_META[moment];
-              const untouched = !summary || summary.lastEdited === null;
-              const setUp = moment === "followup" && untouched;
               return (
                 <li key={moment} className={styles.row}>
                   <div className={styles.rowMain}>
@@ -64,12 +62,8 @@ export function CommunicationsList({ summaries, canManage }: CommunicationsListP
                         : "Built-in default"}
                     </span>
                     <div className={styles.rowActions}>
-                      <Link
-                        href={`/booking/communications/${moment}`}
-                        className={styles.actionButton}
-                        data-primary={setUp || undefined}
-                      >
-                        {setUp ? "Set up" : canManage ? "Edit" : "View"}
+                      <Link href={`/booking/communications/${moment}`} className={styles.actionButton}>
+                        {canManage ? "Edit" : "View"}
                       </Link>
                       <Link href={`/booking/communications/${moment}?preview=1`} className={styles.actionButton}>
                         Preview

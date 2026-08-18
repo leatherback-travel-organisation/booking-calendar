@@ -140,6 +140,9 @@ create table booking.staff (
   slack_user_id     text,
   airtable_record_id text,
   buffer_minutes    integer not null default 0 check (buffer_minutes between 0 and 120),
+  -- Per-BM opt-out for guest reminder emails (24h/1h). Confirmations,
+  -- reschedules and cancellations always send.
+  reminders_enabled boolean not null default true,
   min_notice_hours  integer not null default 4 check (min_notice_hours between 0 and 336),
   booking_window_days integer not null default 28 check (booking_window_days between 1 and 365),
   active            boolean not null default true,

@@ -128,3 +128,25 @@ export function weekDayKeys(page: number, timeZone: string, now = Date.now()): s
   }
   return keys;
 }
+
+/**
+ * The week page (see weekDayKeys) containing the earliest slot, so the picker
+ * can open on the first week that actually has availability. 0 when there are
+ * no slots. Slots arrive sorted, so only the first one matters; week windows
+ * are consecutive 7-day blocks, so the first window whose last day reaches the
+ * slot's day is the one containing it.
+ */
+export function firstPageWithSlot(
+  slots: readonly { start: string }[],
+  timeZone: string,
+  now = Date.now(),
+): number {
+  const first = slots[0];
+  if (!first) return 0;
+  const firstKey = dayKey(first.start, timeZone);
+  for (let page = 0; page < 54; page += 1) {
+    const keys = weekDayKeys(page, timeZone, now);
+    if (keys[keys.length - 1] >= firstKey) return page;
+  }
+  return 0;
+}

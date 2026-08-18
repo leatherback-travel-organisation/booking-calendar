@@ -13,7 +13,7 @@ import { htmlToText, renderBrandEmail, renderTemplate } from "./render.ts";
 import type { VariableName } from "./variables.ts";
 import { getNotifier, type OutboundMessage, type SendResult } from "./notifier";
 
-export type Moment = "confirmation" | "reminder_24h" | "reminder_1h" | "cancellation" | "reschedule" | "followup";
+export type Moment = "confirmation" | "reminder_24h" | "reminder_1h" | "cancellation" | "reschedule";
 
 export const DEFAULT_TEMPLATES: Record<Moment, { subject: string; bodyHtml: string }> = {
   confirmation: {
@@ -54,12 +54,6 @@ export const DEFAULT_TEMPLATES: Record<Moment, { subject: string; bodyHtml: stri
       "<p>Your call with {{host.first_name}} has moved to <strong>{{booking.meeting_date}}</strong> at <strong>{{booking.meeting_time}}</strong> ({{booking.timezone}}).</p>" +
       "<p>The same join link still works: <a href=\"{{booking.meet_link}}\">{{booking.meet_link}}</a></p>" +
       "<p><a href=\"{{booking.reschedule_link}}\">Reschedule again</a> · <a href=\"{{booking.cancel_link}}\">Cancel</a></p>",
-  },
-  followup: {
-    subject: "Great to talk, {{guest.first_name}}",
-    bodyHtml:
-      "<p>Hi {{guest.first_name}},</p>" +
-      "<p>Thanks for making the time to speak with {{host.first_name}}. If anything else comes to mind, just reply to this email or call us on {{brand.phone}}.</p>",
   },
 };
 

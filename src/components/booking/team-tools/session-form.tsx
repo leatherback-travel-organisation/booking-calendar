@@ -25,11 +25,15 @@ type SessionFormProps = {
   staffOptions: SessionStaffOption[];
   eventTypes: SessionEventTypeOption[];
   zoneByStaffId: Record<string, string>;
+  /** Preselect this BM (must be one of staffOptions); null = first option. */
+  defaultStaffId?: string | null;
   action: (formData: FormData) => Promise<void>;
 };
 
-export function SessionForm({ staffOptions, eventTypes, zoneByStaffId, action }: SessionFormProps) {
-  const [staffId, setStaffId] = useState(staffOptions[0]?.id ?? "");
+export function SessionForm({ staffOptions, eventTypes, zoneByStaffId, defaultStaffId, action }: SessionFormProps) {
+  const [staffId, setStaffId] = useState(
+    () => staffOptions.find((option) => option.id === defaultStaffId)?.id ?? staffOptions[0]?.id ?? "",
+  );
   const selectedStaff = staffOptions.find((option) => option.id === staffId) ?? null;
 
   const typeOptions = useMemo(

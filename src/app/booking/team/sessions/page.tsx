@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { DateTime } from "luxon";
+import { BackLink } from "@/components/booking/back-link";
 import { BookingShell } from "@/components/booking/booking-shell";
 import { SettingsSearch } from "@/components/booking/settings-search";
 import { CancelSessionButton } from "@/components/booking/team-tools/cancel-session-button";
@@ -51,6 +52,7 @@ export default async function GroupSessionsPage({ searchParams }: PageProps) {
   const createdId = typeof sp.created === "string" ? sp.created : null;
   const errorCode = typeof sp.error === "string" ? sp.error : null;
   const cancelled = sp.cancelled === "1";
+  const staffSlugParam = typeof sp.staff === "string" ? sp.staff : null;
 
   const [sessions, staff, brands] = await Promise.all([listOpenSessions(), getStaffWithBrands(), getBrands()]);
   const sql = getSql();
@@ -85,6 +87,12 @@ export default async function GroupSessionsPage({ searchParams }: PageProps) {
     isSelf: member.email.toLowerCase() === selfEmail,
   }));
 
+  // ?staff=<slug> (from the team roster's "Create group session") preselects
+  // that BM — only when they are actually offered in the form.
+  const preselected = staffSlugParam ? activeStaff.find((member) => member.slug === staffSlugParam) : undefined;
+  const defaultStaffId =
+    preselected && formStaff.some((option) => option.id === preselected.id) ? preselected.id : null;
+
   const groupEventTypes: SessionEventTypeOption[] = [...eventTypeById.values()]
     .filter((eventType) => eventType.supportsGroup && eventType.active)
     .map(({ id, brandId, name, durationMin }) => ({ id, brandId, name, durationMin }));
@@ -101,9 +109,7 @@ export default async function GroupSessionsPage({ searchParams }: PageProps) {
         <div className={styles.pageHead}>
           <h2 className={styles.pageTitle}>Group sessions</h2>
           <nav className={styles.crumbs} aria-label="Team tools">
-            <Link href="/booking/team" className={styles.crumbLink}>
-              ← Team roster
-            </Link>
+            <BackLink href="/booking/team" label="Team roster" />
             <Link href="/booking/team/invitations" className={styles.crumbLink}>
               Invitations
             </Link>
@@ -178,6 +184,7 @@ export default async function GroupSessionsPage({ searchParams }: PageProps) {
               staffOptions={formStaff}
               eventTypes={groupEventTypes}
               zoneByStaffId={zoneByStaffId}
+              defaultStaffId={defaultStaffId}
               action={createSessionAction}
             />
           )}
