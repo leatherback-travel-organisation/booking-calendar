@@ -35,7 +35,7 @@ export async function BookingShell({ active, canManage, children }: BookingShell
     <AppShell active="booking">
       <div className={styles.workspace}>
         <header className={styles.header}>
-          <h1 className={styles.title}>Booking</h1>
+          <h1 className={styles.title}>Calltime</h1>
           <nav className={styles.nav} aria-label="Booking sections">
             {visible.map((section) => (
               <Link

@@ -21,8 +21,8 @@ type PageProps = {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { moment } = await params;
-  if (!isMoment(moment)) return { title: "Communications · Booking · Cove" };
-  return { title: `${MOMENT_META[moment].label} · Communications · Booking · Cove` };
+  if (!isMoment(moment)) return { title: "Communications · Calltime · Cove" };
+  return { title: `${MOMENT_META[moment].label} · Communications · Calltime · Cove` };
 }
 
 export default async function TemplateEditorPage({ params, searchParams }: PageProps) {

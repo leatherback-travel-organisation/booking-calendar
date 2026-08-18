@@ -11,7 +11,7 @@ import shellStyles from "@/components/booking/booking-shell.module.css";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Communications · Booking · Cove",
+  title: "Communications · Calltime · Cove",
 };
 
 export default async function BookingCommunicationsPage() {

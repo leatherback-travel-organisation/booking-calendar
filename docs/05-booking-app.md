@@ -1,4 +1,4 @@
-# Leatherback Booking
+# Calltime (Leatherback Booking)
 
 Calendly replacement for Booking Managers, living inside Cove at
 `cove.leatherbacktravel.com`. Guests book calls with the BM who actually

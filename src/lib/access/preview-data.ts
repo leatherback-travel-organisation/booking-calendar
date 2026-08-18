@@ -116,7 +116,7 @@ export const previewAccessSnapshot: AccessSnapshot = {
     {
       id: "app-booking",
       slug: "booking",
-      name: "Booking",
+      name: "Calltime",
       description: "Guest call scheduling for Booking Managers — availability, routing, reminders and the trip-page widget",
       launchUrl: "https://cove.leatherbacktravel.com/booking",
       owner: "Booking Operations",

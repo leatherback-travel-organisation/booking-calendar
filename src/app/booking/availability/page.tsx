@@ -22,7 +22,7 @@ import styles from "@/components/booking/availability/availability.module.css";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Availability · Booking · Cove",
+  title: "Availability · Calltime · Cove",
 };
 
 type Preview =
