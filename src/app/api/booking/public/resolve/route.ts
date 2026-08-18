@@ -2,7 +2,8 @@
 // The entry point for the /book page: who is the guest booking with?
 
 import { resolveManager } from "@/lib/booking/routing";
-import { getBrands } from "@/lib/booking/reference/queries";
+import { getBrands, getCachedDepartures } from "@/lib/booking/reference/queries";
+import type { Brand } from "@/lib/booking/model";
 import { getEventTypesForBrand } from "@/lib/booking/availability/service";
 import { jsonResponse, supportPhone } from "@/lib/booking/public-api";
 
@@ -39,6 +40,7 @@ export async function GET(request: Request): Promise<Response> {
   const eventTypes = (await getEventTypesForBrand(resolved.brand.id)).filter((t) => t.guestFacing && t.active);
   const phone = supportPhone(resolved.brand, request);
   const common = {
+    brandTrips: await upcomingTripsForBrand(resolved.brand),
     brand: {
       key: resolved.brand.key,
       name: resolved.brand.name,
@@ -75,4 +77,29 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   return jsonResponse({ kind: "pool", ...common, poolLabel: `Book a call with the ${resolved.brand.name} team` });
+}
+
+// Upcoming trips for the same brand, so the guest page can offer "Not the
+// right trip? Change it". One entry per trip slug (soonest departure wins),
+// sorted by title for a scannable dropdown.
+async function upcomingTripsForBrand(
+  brand: Brand,
+): Promise<{ slug: string; title: string; startDate: string | null }[]> {
+  const departures = await getCachedDepartures();
+  const today = new Date().toISOString().slice(0, 10);
+  const bySlug = new Map<string, { slug: string; title: string; startDate: string | null }>();
+  for (const d of departures) {
+    if (d.status !== "Published" && d.status !== "Marketing Ready") continue;
+    if (d.startDate === null || d.startDate < today) continue;
+    if (d.slug === null) continue;
+    if (d.brandName === null) continue;
+    if (d.brandName !== brand.name && !brand.aliases.includes(d.brandName)) continue;
+    const existing = bySlug.get(d.slug);
+    if (!existing || existing.startDate === null || (d.startDate < existing.startDate)) {
+      bySlug.set(d.slug, { slug: d.slug, title: d.niceName ?? d.tripName, startDate: d.startDate });
+    }
+  }
+  return [...bySlug.values()]
+    .sort((a, b) => a.title.localeCompare(b.title))
+    .slice(0, 60);
 }

@@ -16,6 +16,7 @@ import type {
   AvailabilityPayload,
   BackupEntry,
   PublicBrand,
+  PublicBrandTrip,
   PublicDeparture,
   PublicEventType,
   PublicSlot,
@@ -28,6 +29,7 @@ type Ctx = {
   brand: PublicBrand;
   eventTypes: PublicEventType[];
   departures: PublicDeparture[];
+  brandTrips: PublicBrandTrip[];
   primary: PublicStaff | null;
   poolLabel: string | null;
 };
@@ -78,6 +80,10 @@ export function BookingFlow({
   // SSR only ever renders the loading card (resolution is a client fetch), so
   // a lazy client-side init never produces a hydration mismatch.
   const [tz] = useState(() => (typeof window === "undefined" ? "UTC" : guestTimeZone()));
+  // The trip the guest is enquiring about. Starts as the ?trip= slug and can
+  // be swapped via "Not the right trip?" — a swap re-runs the whole resolve.
+  const [tripSlug, setTripSlug] = useState(trip);
+  const [changeTripOpen, setChangeTripOpen] = useState(false);
   const [resolveState, setResolveState] = useState<"loading" | "error" | "ready">("loading");
   const [brands, setBrands] = useState<{ key: string; name: string }[] | null>(null);
   const [brandPickPending, setBrandPickPending] = useState(false);
@@ -102,14 +108,17 @@ export function BookingFlow({
         brand: payload.brand,
         eventTypes: payload.eventTypes,
         departures,
+        brandTrips: payload.brandTrips ?? [],
         primary,
         poolLabel: payload.kind === "pool" ? payload.poolLabel : null,
       });
       setEventTypeKey(defaultEventTypeKey(payload.eventTypes, typeParam));
       setDepartureId(departures[0]?.airtableId ?? null);
-      if (primary) {
-        setActive({ ...primary, routedVia: "primary", routedReason: null });
-      }
+      // A trip swap can move between primary and pool — always replace the
+      // active BM rather than only setting it when a primary exists.
+      setActive(primary ? { ...primary, routedVia: "primary", routedReason: null } : null);
+      setSelected(null);
+      setShowBackups(false);
       setResolveState("ready");
     },
     [typeParam],
@@ -119,8 +128,8 @@ export function BookingFlow({
   useEffect(() => {
     const controller = new AbortController();
     const params = new URLSearchParams();
-    if (trip) {
-      params.set("trip", trip);
+    if (tripSlug) {
+      params.set("trip", tripSlug);
       if (host) params.set("host", host);
     } else if (bm) {
       params.set("bm", bm);
@@ -146,7 +155,7 @@ export function BookingFlow({
         if (!controller.signal.aborted) setResolveState("error");
       });
     return () => controller.abort();
-  }, [trip, host, bm, applyResolved]);
+  }, [tripSlug, host, bm, applyResolved]);
 
   // 2. Availability: fetched once per BM + event type, paged client-side.
   const brandKey = ctx?.brand.key ?? null;
@@ -253,6 +262,19 @@ export function BookingFlow({
     setShowBackups(true);
   };
 
+  const changeTrip = (slug: string) => {
+    if (!slug || slug === tripSlug) return;
+    // Replace the whole resolution context: back to the loading card, then the
+    // resolve effect re-runs with the new slug (same host) and applyResolved
+    // swaps in the new BM, departures and slots.
+    setChangeTripOpen(false);
+    setNotice(null);
+    setSelected(null);
+    setShowBackups(false);
+    setResolveState("loading");
+    setTripSlug(slug);
+  };
+
   const pickBrand = async (key: string) => {
     setBrandPickPending(true);
     try {
@@ -266,6 +288,7 @@ export function BookingFlow({
         brand: resolution.brand,
         eventTypes: resolution.eventTypes,
         departures: [],
+        brandTrips: [],
         primary: null,
         poolLabel: resolution.poolLabel,
       });
@@ -297,8 +320,8 @@ export function BookingFlow({
           staffSlug: active.slug,
           brandKey: ctx.brand.key,
           eventTypeKey,
-          sourceKind: trip ? "trip" : "bm",
-          sourceSlug: trip ?? bm ?? null,
+          sourceKind: tripSlug ? "trip" : "bm",
+          sourceSlug: tripSlug ?? bm ?? null,
           routedVia: active.routedVia,
           routedReason: active.routedReason,
           tripName: selectedDeparture?.title ?? null,
@@ -488,23 +511,61 @@ export function BookingFlow({
           </div>
         )}
 
-        {/* Departure context (informational — same calendar either way) */}
-        {ctx.departures.length > 1 && !selected && (
+        {/* Trip context (trip-entry links only — never for ?bm= links) */}
+        {tripSlug && ctx.departures.length > 0 && !selected && (
           <div className={styles.selectWrap}>
-            <label className={styles.fieldLabel} htmlFor="bp-departure">Which departure are you interested in?</label>
-            <select
-              id="bp-departure"
-              className={styles.select}
-              value={selectedDeparture?.airtableId ?? ""}
-              onChange={(e) => setDepartureId(e.target.value)}
-            >
-              {ctx.departures.map((d) => (
-                <option key={d.airtableId} value={d.airtableId}>
-                  {d.title}
-                  {d.startDate ? ` — departs ${d.startDate}` : ""}
-                </option>
-              ))}
-            </select>
+            <p className={styles.pageSub}>
+              You&rsquo;re enquiring about <strong>{ctx.departures[0].title}</strong>.
+            </p>
+            {ctx.brandTrips.length > 1 && (
+              <button
+                type="button"
+                className={styles.linkBtn}
+                onClick={() => setChangeTripOpen((open) => !open)}
+              >
+                Not the right trip? Change it
+              </button>
+            )}
+            {changeTripOpen && (
+              <select
+                className={styles.select}
+                aria-label="Choose a different trip"
+                value={ctx.brandTrips.some((t) => t.slug === tripSlug) ? tripSlug : ""}
+                onChange={(e) => changeTrip(e.target.value)}
+              >
+                {!ctx.brandTrips.some((t) => t.slug === tripSlug) && (
+                  <option value="" disabled>
+                    Choose a trip…
+                  </option>
+                )}
+                {ctx.brandTrips.map((t) => (
+                  <option key={t.slug} value={t.slug}>
+                    {t.title}
+                    {t.startDate ? ` — departs ${t.startDate}` : ""}
+                  </option>
+                ))}
+              </select>
+            )}
+            {/* Departure choice, only when this trip runs more than once
+                (informational — same calendar either way). */}
+            {ctx.departures.length > 1 && (
+              <>
+                <label className={styles.fieldLabel} htmlFor="bp-departure">Which departure are you interested in?</label>
+                <select
+                  id="bp-departure"
+                  className={styles.select}
+                  value={selectedDeparture?.airtableId ?? ""}
+                  onChange={(e) => setDepartureId(e.target.value)}
+                >
+                  {ctx.departures.map((d) => (
+                    <option key={d.airtableId} value={d.airtableId}>
+                      {d.title}
+                      {d.startDate ? ` — departs ${d.startDate}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
           </div>
         )}
 

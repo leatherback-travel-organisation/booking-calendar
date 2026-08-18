@@ -31,6 +31,13 @@ export type PublicDeparture = {
   url: string | null;
 };
 
+/** An upcoming trip of the resolved brand, for "Not the right trip?". */
+export type PublicBrandTrip = {
+  slug: string;
+  title: string;
+  startDate: string | null;
+};
+
 export type ResolvePayload =
   | { kind: "brand-picker"; brands: { key: string; name: string }[] }
   | {
@@ -39,6 +46,7 @@ export type ResolvePayload =
       staff: PublicStaff;
       eventTypes: PublicEventType[];
       departures: PublicDeparture[];
+      brandTrips?: PublicBrandTrip[];
     }
   | {
       kind: "pool";
@@ -46,6 +54,7 @@ export type ResolvePayload =
       poolLabel: string;
       eventTypes: PublicEventType[];
       departures: PublicDeparture[];
+      brandTrips?: PublicBrandTrip[];
     };
 
 export type PublicSlot = { start: string; end: string };
