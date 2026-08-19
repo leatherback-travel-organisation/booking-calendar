@@ -133,31 +133,3 @@
   font-size: var(--text-label, 12px);
 }
 
-.rowActions {
-  display: flex;
-  gap: var(--density-1, 6px);
-}
-
-.actionButton {
-  border: 1px solid var(--line);
-  border-radius: var(--radius-control, 7px);
-  background: var(--card);
-  color: var(--ink);
-  font-size: var(--text-small, 13px);
-  padding: 6px 12px;
-  text-decoration: none;
-}
-
-.actionButton:hover {
-  background: var(--paper-deep);
-}
-
-.actionButton[data-primary] {
-  background: var(--pine);
-  border-color: var(--pine);
-  color: #fdfbf5;
-}
-
-.actionButton[data-primary]:hover {
-  background: var(--pine-bright, #1f5b4e);
-}

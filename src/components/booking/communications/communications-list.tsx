@@ -15,17 +15,16 @@ import styles from "./communications-list.module.css";
 type CommunicationsListProps = {
   summaries: MomentSummary[];
   brands: Array<{ key: string; name: string; colorPrimary: string | null }>;
-  canManage: boolean;
 };
 
-export function CommunicationsList({ summaries, brands, canManage }: CommunicationsListProps) {
+export function CommunicationsList({ summaries, brands }: CommunicationsListProps) {
   const byMoment = new Map(summaries.map((summary) => [summary.moment, summary]));
 
   return (
     <div className={styles.journey}>
       <p className={styles.intro}>
-        Every email a guest receives, in the order they receive it. Edit the default once, or tailor a message
-        for a single brand or call type.
+        Every email a guest receives, in the order they receive it. Click a brand to edit its version of a
+        message — previews live in the editor.
       </p>
       {JOURNEY_STAGES.map((stage) => (
         <section key={stage.key} className={styles.stage}>
@@ -40,13 +39,6 @@ export function CommunicationsList({ summaries, brands, canManage }: Communicati
                     <p className={styles.rowName}>{meta.label}</p>
                     <p className={styles.rowDescription}>{meta.description}</p>
                     <div className={styles.chips}>
-                      <Link
-                        href={`/booking/communications/${moment}`}
-                        className={styles.chip}
-                        data-kind={summary?.hasCustomDefault ? "custom" : "builtin"}
-                      >
-                        Default
-                      </Link>
                       {brands.map((brand) => {
                         const overrides = summary?.overrides.filter((o) => o.brandKey === brand.key) ?? [];
                         const tailored = overrides.length > 0;
@@ -75,14 +67,6 @@ export function CommunicationsList({ summaries, brands, canManage }: Communicati
                         ? `Edited ${formatDiffDate(summary.lastEdited.at)}${summary.lastEdited.by ? ` by ${summary.lastEdited.by}` : ""}`
                         : "Built-in default"}
                     </span>
-                    <div className={styles.rowActions}>
-                      <Link href={`/booking/communications/${moment}`} className={styles.actionButton}>
-                        {canManage ? "Edit" : "View"}
-                      </Link>
-                      <Link href={`/booking/communications/${moment}?preview=1`} className={styles.actionButton}>
-                        Preview
-                      </Link>
-                    </div>
                   </div>
                 </li>
               );
