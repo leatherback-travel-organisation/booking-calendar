@@ -2,6 +2,6 @@
   "crons": [
     { "path": "/api/app-builder/cron", "schedule": "*/5 * * * *" },
     { "path": "/api/booking/cron/reminders", "schedule": "*/5 * * * *" },
-    { "path": "/api/booking/cron/sync-reference-data", "schedule": "*/15 * * * *" }
+    { "path": "/api/booking/cron/sync-reference-data", "schedule": "0 0,6,12,18 * * *" }
   ]
 }

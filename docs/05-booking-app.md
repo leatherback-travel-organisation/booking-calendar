@@ -33,7 +33,7 @@ field, so there are no routing rules to maintain and no checklist.
 | Guest UI | `src/app/book`, `/manage/[token]`, `/invite/[token]`, `/session/[id]` |
 | Widget | `src/app/embed.js`, `src/app/api/booking/widget`, `src/lib/booking/widget-script.ts` |
 | Public APIs | `src/app/api/booking/public/*` |
-| Crons | `/api/booking/cron/reminders` (*/5), `/api/booking/cron/sync-reference-data` (*/15) |
+| Crons | `/api/booking/cron/reminders` (*/5), `/api/booking/cron/sync-reference-data` (4×/day: 00:00/06:00/12:00/18:00 UTC) |
 
 Phase 0 findings (verified Airtable schema, divergences from the original
 brief, credential inventory) are in `DISCOVERY.md` at the Hackathon
