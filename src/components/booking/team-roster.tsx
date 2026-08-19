@@ -22,18 +22,6 @@ function initials(fullName: string): string {
   return `${first}${last}`.toUpperCase();
 }
 
-function Presence({ present, label }: { present: boolean; label: string }) {
-  return (
-    <span
-      className={present ? styles.tick : styles.dash}
-      title={present ? `${label} id present` : `${label} id missing`}
-      aria-label={present ? `${label} id present` : `${label} id missing`}
-    >
-      {present ? "✓" : "—"}
-    </span>
-  );
-}
-
 type TeamRosterProps = {
   staff: Staff[];
   brands: Brand[];
@@ -72,15 +60,6 @@ export function TeamRoster({ staff, brands, fetchedAt, appUrl, guestTypes }: Tea
                 <th scope="col">Copy links</th>
                 <th scope="col">Group session</th>
                 <th scope="col">Brands</th>
-                <th scope="col" className={styles.center}>
-                  Help Scout
-                </th>
-                <th scope="col" className={styles.center}>
-                  Aircall
-                </th>
-                <th scope="col" className={styles.center}>
-                  Calendar
-                </th>
               </tr>
             </thead>
             <tbody>
@@ -144,17 +123,6 @@ export function TeamRoster({ staff, brands, fetchedAt, appUrl, guestTypes }: Tea
                           ))
                         )}
                       </div>
-                    </td>
-                    <td className={styles.center}>
-                      <Presence present={Boolean(member.helpscoutUserId)} label="Help Scout" />
-                    </td>
-                    <td className={styles.center}>
-                      <Presence present={Boolean(member.aircallUserId)} label="Aircall" />
-                    </td>
-                    <td className={styles.center}>
-                      <span className={member.calendarOk ? styles.tick : styles.warnMark}>
-                        {member.calendarOk ? "✓" : "✗"}
-                      </span>
                     </td>
                   </tr>
                 );

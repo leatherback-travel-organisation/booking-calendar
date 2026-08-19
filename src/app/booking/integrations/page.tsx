@@ -30,6 +30,8 @@ type StaffCheck = {
   id: string;
   fullName: string;
   email: string;
+  helpscoutOk: boolean;
+  aircallOk: boolean;
   calendarOk: boolean;
   checkedAt: string | null;
   error: string | null;
@@ -48,7 +50,7 @@ export default async function BookingIntegrationsPage() {
 
   const sql = getSql();
   const [staffRows, cacheRows] = await Promise.all([
-    sql`select id, email, full_name, calendar_ok, calendar_checked_at, aircall_user_id from booking.staff where active order by full_name`,
+    sql`select id, email, full_name, calendar_ok, calendar_checked_at, aircall_user_id, helpscout_user_id from booking.staff where active order by full_name`,
     sql`
       select key, payload, fetched_at from booking.reference_cache
       where key in ('airtable:trips', 'notion:staff', 'cron:reminders-heartbeat') or key like 'calendar-check:%'`,
@@ -70,6 +72,8 @@ export default async function BookingIntegrationsPage() {
       id: String(row.id),
       fullName: String(row.full_name),
       email,
+      helpscoutOk: row.helpscout_user_id != null && String(row.helpscout_user_id).trim() !== "",
+      aircallOk: row.aircall_user_id != null && String(row.aircall_user_id).trim() !== "",
       calendarOk: Boolean(row.calendar_ok),
       checkedAt: row.calendar_checked_at ? new Date(row.calendar_checked_at as string).toISOString() : null,
       error: payloadError,
@@ -136,33 +140,6 @@ export default async function BookingIntegrationsPage() {
               </form>
             ) : null}
           </li>
-          {googleConfigured && staffChecks.length > 0 ? (
-            <li className={styles.row}>
-              <div className={styles.staffTableWrap}>
-                <table className={styles.staffTable}>
-                  <tbody>
-                    {staffChecks.map((check) => (
-                      <tr key={check.id}>
-                        <td>
-                          <span className={styles.rowMain}>
-                            <i className={styles.dot} data-tone={check.calendarOk ? "green" : "red"} />
-                            {check.fullName}
-                          </span>
-                        </td>
-                        <td>
-                          <span className={styles.staffWhen}>
-                            {check.checkedAt ? `checked ${formatRelative(check.checkedAt)}` : "never checked"}
-                          </span>
-                        </td>
-                        <td>{!check.calendarOk && check.error ? <span className={styles.staffError}>{check.error}</span> : null}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </li>
-          ) : null}
-
           <li className={styles.row}>
             <div className={styles.rowMain}>
               <i className={styles.dot} data-tone={toneForAge(airtableAge, 30, 120)} />
@@ -250,6 +227,56 @@ export default async function BookingIntegrationsPage() {
             </div>
           </li>
         </ul>
+
+        <section className={styles.connections} aria-label="Per-BM connections">
+          <h2 className={styles.connectionsTitle}>Who&rsquo;s connected to what</h2>
+          <p className={styles.connectionsHint}>
+            Help Scout and Aircall come from each BM&rsquo;s user ID in Airtable (fix there, then re-sync);
+            Calendar is the result of the last calendar test.
+          </p>
+          <div className={styles.staffTableWrap}>
+            <table className={styles.staffTable}>
+              <thead>
+                <tr>
+                  <th scope="col">Booking Manager</th>
+                  <th scope="col">Help Scout</th>
+                  <th scope="col">Aircall</th>
+                  <th scope="col">Calendar</th>
+                </tr>
+              </thead>
+              <tbody>
+                {staffChecks.map((check) => (
+                  <tr key={check.id}>
+                    <td>{check.fullName}</td>
+                    <td>
+                      <span className={check.helpscoutOk ? styles.tick : styles.dash}>
+                        {check.helpscoutOk ? "✓" : "—"}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={check.aircallOk ? styles.tick : styles.dash}>
+                        {check.aircallOk ? "✓" : "—"}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={styles.rowMain}>
+                        <span className={check.calendarOk ? styles.tick : styles.cross}>
+                          {check.calendarOk ? "✓" : "✗"}
+                        </span>
+                        <span className={styles.staffWhen}>
+                          {check.checkedAt ? `checked ${formatRelative(check.checkedAt)}` : "never checked"}
+                        </span>
+                        {!check.calendarOk && check.error ? (
+                          <span className={styles.staffError}>{check.error}</span>
+                        ) : null}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
       </div>
       <SettingsSearch />
     </BookingShell>
