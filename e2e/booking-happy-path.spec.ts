@@ -34,6 +34,8 @@ test("a guest books a call end to end", async ({ page }) => {
 
 test("an unknown trip slug degrades to the picker, never an error page", async ({ page }) => {
   await page.goto("/book?trip=this-slug-does-not-exist-e2e");
-  await expect(page.getByText(/choose|pick|find/i).first()).toBeVisible({ timeout: 20_000 });
+  await expect(
+    page.getByText(/which of our travel brands|choose|pick|find/i).first(),
+  ).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText(/500|error/i)).toHaveCount(0);
 });
