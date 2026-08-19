@@ -29,7 +29,7 @@ const DEFAULT_TABLE_ID = "tblCcyoxyILhAjZsP";
 const RECRUITMENT_CANDIDATES_CACHE_TAG = "recruitment-candidates";
 const RECRUITMENT_CANDIDATES_CACHE_SECONDS = 3_600;
 const ACTIVE_PIPELINE_STATUSES = new Set<RecruitmentStatus>(["Unreviewed", "Review Later", "Shortlist", "Interview", "Challenge", "2nd Interview", "Final Round", "Reference Checks", "Next opening", "Other Role"]);
-const CANDIDATE_FIELDS = ["Name", "Job Title", "Notes", "Status", "High Potential", "Email", "Assignee", "Cover Letter", "Resumé", "Interviewer", "First Interview Notes", "Second Interview Notes", "Schedule", "Scenario Challenge", "Samples", "Attachments", "Location:", "Last Updated", "Created"];
+const CANDIDATE_FIELDS = ["Name", "Surname", "Job Title", "Notes", "Status", "High Potential", "Email", "Assignee", "Cover Letter", "Resumé", "Interviewer", "First Interview Notes", "Second Interview Notes", "Schedule", "Scenario Challenge", "Samples", "Attachments", "Location:", "Years of Experience", "Most Recent Role / Employer", "Key Skills", "Education Level", "Referral Source", "Last Updated", "Created"];
 
 const defaultEmailTemplates: RecruitmentEmailTemplate[] = [
   { key: "interview", stage: "Interview", label: "Interview invitation", subject: "Let’s find a time to talk", body: "Hi {{candidate_name}},\n\nThank you for your application for {{role_name}}. We’d love to invite you to a first conversation. Please use the link below to choose a time that works for you.\n\n{{scheduling_link}}\n\nKind regards,\nLeatherback Recruitment", enabled: false },
@@ -66,11 +66,16 @@ function settings() {
 }
 
 function text(value: unknown) {
-  return typeof value === "string" ? value.trim() : "";
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  if (value && typeof value === "object" && "name" in value) return text((value as Record<string, unknown>).name);
+  return "";
 }
 
 function texts(value: unknown) {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && Boolean(item.trim())).map((item) => item.trim()) : [];
+  if (Array.isArray(value)) return value.map(text).filter(Boolean);
+  const single = text(value);
+  return single ? [single] : [];
 }
 
 function collaboratorName(value: unknown) {
@@ -134,6 +139,12 @@ function parseCandidate(record: AirtableRecord): RecruitmentCandidate | null {
     roles: texts(record.fields["Job Title"]),
     status: status(record.fields.Status),
     location: text(record.fields["Location:"]) || undefined,
+    surname: text(record.fields.Surname) || undefined,
+    yearsOfExperience: text(record.fields["Years of Experience"]) || undefined,
+    mostRecentRoleEmployer: text(record.fields["Most Recent Role / Employer"]) || undefined,
+    keySkills: texts(record.fields["Key Skills"]),
+    educationLevel: text(record.fields["Education Level"]) || undefined,
+    referralSource: text(record.fields["Referral Source"]) || undefined,
     schedule: texts(record.fields.Schedule),
     assignee: collaboratorName(record.fields.Assignee),
     interviewer: text(record.fields.Interviewer) || undefined,

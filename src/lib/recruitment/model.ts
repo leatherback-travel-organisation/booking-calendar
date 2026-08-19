@@ -45,6 +45,12 @@ export type RecruitmentCandidate = {
   roles: string[];
   status: RecruitmentStatus;
   location?: string;
+  surname?: string;
+  yearsOfExperience?: string;
+  mostRecentRoleEmployer?: string;
+  keySkills?: string[];
+  educationLevel?: string;
+  referralSource?: string;
   schedule: string[];
   assignee?: string;
   interviewer?: string;
