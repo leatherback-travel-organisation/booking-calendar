@@ -97,6 +97,13 @@ export function BookingList({ bookings, emptyLabel }: { bookings: DashboardBooki
   );
 }
 
+export type DashboardFilters = {
+  brands: Array<{ key: string; name: string; colorPrimary: string | null }>;
+  pods: Array<{ key: string; name: string }>;
+  activeBrandKey: string | null;
+  activePodKey: string | null;
+};
+
 type DashboardProps = {
   issues: CoverageIssueRow[];
   /** Upcoming bookings for the next 7 days, grouped by day ("Today" first). */
@@ -106,14 +113,50 @@ type DashboardProps = {
   schedulingPages: SchedulingPageLink[];
   /** The signed-in BM's own guest booking URL; null when they have no active staff row. */
   schedulingLinkUrl: string | null;
+  /** Brand/pod scoping; chips are plain links so the filter lives in the URL. */
+  filters?: DashboardFilters;
 };
 
-export function Dashboard({ issues, days, recent, schedulingPages, schedulingLinkUrl }: DashboardProps) {
+function FilterBar({ filters }: { filters: DashboardFilters }) {
+  const anyActive = filters.activeBrandKey !== null || filters.activePodKey !== null;
+  return (
+    <nav className={styles.filterBar} aria-label="Filter bookings by brand or pod">
+      <Link href="/booking" className={styles.filterChip} data-active={!anyActive || undefined}>
+        All
+      </Link>
+      {filters.pods.map((pod) => (
+        <Link
+          key={pod.key}
+          href={`/booking?pod=${encodeURIComponent(pod.key)}`}
+          className={styles.filterChip}
+          data-active={filters.activePodKey === pod.key || undefined}
+        >
+          {pod.name}
+        </Link>
+      ))}
+      <span className={styles.filterDivider} aria-hidden="true" />
+      {filters.brands.map((brand) => (
+        <Link
+          key={brand.key}
+          href={`/booking?brand=${encodeURIComponent(brand.key)}`}
+          className={styles.filterChip}
+          data-active={filters.activeBrandKey === brand.key || undefined}
+          style={brand.colorPrimary ? ({ "--tag": brand.colorPrimary } as React.CSSProperties) : undefined}
+        >
+          {brand.name}
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
+export function Dashboard({ issues, days, recent, schedulingPages, schedulingLinkUrl, filters }: DashboardProps) {
   const errors = issues.filter((issue) => issue.severity === "error");
   const warnings = issues.filter((issue) => issue.severity !== "error");
 
   return (
     <div className={styles.dashboard}>
+      {filters ? <FilterBar filters={filters} /> : null}
       {errors.length > 0 ? (
         <section className={styles.alertBanner} aria-label="Coverage issues needing attention">
           <div className={styles.alertHead}>

@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 };
 
 export default async function BookingTeamPage() {
-  const { canManage } = await requireBookingAccess("booking.read");
+  const { identity, canManage } = await requireBookingAccess("booking.read");
 
   if (!databaseConfigured()) {
     return (
@@ -37,7 +37,15 @@ export default async function BookingTeamPage() {
   return (
     <BookingShell active="team" canManage={canManage}>
       <p style={{ margin: "0 0 14px", fontSize: "var(--text-small, 13px)" }}><Link href="/booking/team/sessions">Group sessions</Link> · <Link href="/booking/team/invitations">Invitations</Link></p>
-      <TeamRoster staff={staff} brands={brands} fetchedAt={stats.fetchedAt} appUrl={appUrl} guestTypes={guestTypes} />
+      <TeamRoster
+        staff={staff}
+        brands={brands}
+        fetchedAt={stats.fetchedAt}
+        appUrl={appUrl}
+        guestTypes={guestTypes}
+        canManage={canManage}
+        viewerEmail={identity.email}
+      />
     </BookingShell>
   );
 }

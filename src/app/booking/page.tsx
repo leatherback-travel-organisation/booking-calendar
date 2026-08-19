@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { DateTime } from "luxon";
 import { BookingShell } from "@/components/booking/booking-shell";
 import {
@@ -11,7 +12,7 @@ import {
 import { SettingsSearch } from "@/components/booking/settings-search";
 import { requireBookingAccess } from "@/lib/booking/access";
 import { databaseConfigured, getSql } from "@/lib/booking/db";
-import { getOpenCoverageIssues, getStaffWithBrands } from "@/lib/booking/reference/queries";
+import { getBrands, getOpenCoverageIssues, getPods, getStaffWithBrands } from "@/lib/booking/reference/queries";
 import shellStyles from "@/components/booking/booking-shell.module.css";
 
 export const dynamic = "force-dynamic";
@@ -51,7 +52,10 @@ function mapWeekBooking(
 }
 
 /** Upcoming confirmed bookings for the next 7 days, grouped by day. */
-async function loadWeekByDay(viewer: { email: string; canManage: boolean }): Promise<DayGroup[]> {
+async function loadWeekByDay(
+  viewer: { email: string; canManage: boolean },
+  brandIds: string[] | null,
+): Promise<DayGroup[]> {
   const sql = getSql();
   const rows = await sql`
     select b.id, b.starts_at, b.guest_name, b.guest_phone, b.routed_via,
@@ -65,6 +69,7 @@ async function loadWeekByDay(viewer: { email: string; canManage: boolean }): Pro
     where b.status = 'confirmed'
       and b.starts_at >= date_trunc('day', now())
       and b.starts_at < date_trunc('day', now()) + interval '7 days'
+      and (${brandIds === null} or b.brand_id = any(${brandIds ?? []}))
     order by b.starts_at
     limit 80`;
   // "Today" always leads, even with no calls, so the empty state is explicit.
@@ -79,7 +84,7 @@ async function loadWeekByDay(viewer: { email: string; canManage: boolean }): Pro
   return [...groups.values()].sort((a, b) => a.key.localeCompare(b.key));
 }
 
-async function loadRecent(): Promise<RecentBooking[]> {
+async function loadRecent(brandIds: string[] | null): Promise<RecentBooking[]> {
   const sql = getSql();
   const rows = await sql`
     select b.id, b.created_at, b.guest_name, b.source_kind, b.status,
@@ -88,6 +93,7 @@ async function loadRecent(): Promise<RecentBooking[]> {
     join booking.staff s on s.id = b.staff_id
     join booking.event_type et on et.id = b.event_type_id
     join booking.brand br on br.id = b.brand_id
+    where (${brandIds === null} or b.brand_id = any(${brandIds ?? []}))
     order by b.created_at desc
     limit 10`;
   return rows.map((row) => ({
@@ -103,7 +109,11 @@ async function loadRecent(): Promise<RecentBooking[]> {
   }));
 }
 
-export default async function BookingDashboardPage() {
+export default async function BookingDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { identity, canManage } = await requireBookingAccess("booking.read");
 
   if (!databaseConfigured()) {
@@ -114,10 +124,27 @@ export default async function BookingDashboardPage() {
     );
   }
 
+  // The dashboard is a Pod Lead surface; BMs land on their own team page.
+  if (!canManage) {
+    const own = (await getStaffWithBrands()).find(
+      (member) => member.active && member.email.toLowerCase() === identity.email.toLowerCase(),
+    );
+    redirect(own ? `/booking/team/${own.slug}` : "/booking/team");
+  }
+
+  const sp = await searchParams;
+  const brandParam = typeof sp.brand === "string" ? sp.brand : null;
+  const podParam = typeof sp.pod === "string" ? sp.pod : null;
+
+  const [brands, pods] = await Promise.all([getBrands(), getPods()]);
+  const activeBrand = brandParam ? (brands.find((b) => b.active && b.key === brandParam) ?? null) : null;
+  const activePod = !activeBrand && podParam ? (pods.find((p) => p.key === podParam) ?? null) : null;
+  const filterBrandIds = activeBrand ? [activeBrand.id] : activePod ? activePod.brandIds : null;
+
   const [issues, days, recent, staff] = await Promise.all([
     getOpenCoverageIssues(),
-    loadWeekByDay({ email: identity.email, canManage }),
-    loadRecent(),
+    loadWeekByDay({ email: identity.email, canManage }, filterBrandIds),
+    loadRecent(filterBrandIds),
     getStaffWithBrands(),
   ]);
 
@@ -148,6 +175,14 @@ export default async function BookingDashboardPage() {
         recent={recent}
         schedulingPages={schedulingPages}
         schedulingLinkUrl={schedulingLinkUrl}
+        filters={{
+          brands: brands
+            .filter((brand) => brand.active)
+            .map((brand) => ({ key: brand.key, name: brand.name, colorPrimary: brand.colorPrimary })),
+          pods: pods.map((pod) => ({ key: pod.key, name: pod.name })),
+          activeBrandKey: activeBrand?.key ?? null,
+          activePodKey: activePod?.key ?? null,
+        }}
       />
       <SettingsSearch />
     </BookingShell>

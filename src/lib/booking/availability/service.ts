@@ -8,7 +8,7 @@ import { getSql } from "../db";
 import { calendarConfigured } from "../google/auth";
 import { freeBusy, GoogleCalendarError } from "../google/calendar";
 import { GoogleDelegationError } from "../google/auth";
-import type { Brand, EventType, Interval, Slot, Staff, WorkingHours } from "../model";
+import { isSeniorTitle, type Brand, type EventType, type Interval, type Slot, type Staff, type WorkingHours } from "../model";
 import { computeSlots, rankByOpenSlots, resolveSchedulingZone } from "./engine";
 
 const FREEBUSY_CACHE_SECONDS = 60;
@@ -37,7 +37,8 @@ function mapStaff(row: StaffRow, brandIds: string[]): Staff {
     // Default true so an un-migrated database behaves like the schema default.
     reminder24hEnabled: row.reminder_24h_enabled === undefined ? true : Boolean(row.reminder_24h_enabled),
     reminder1hEnabled: row.reminder_1h_enabled === undefined ? true : Boolean(row.reminder_1h_enabled),
-    canEditCommunications: Boolean(row.can_edit_communications),
+    jobTitle: (row.job_title as string | null) ?? null,
+    isSenior: isSeniorTitle((row.job_title as string | null) ?? null),
     active: Boolean(row.active),
     calendarOk: Boolean(row.calendar_ok),
   };
@@ -61,6 +62,7 @@ export function mapBrand(row: Record<string, unknown>): Brand {
     fromEmail: String(row.from_email),
     fromName: String(row.from_name),
     replyTo: (row.reply_to as string | null) ?? null,
+    smsRemindersEnabled: Boolean(row.sms_reminders_enabled),
     active: Boolean(row.active),
   };
 }

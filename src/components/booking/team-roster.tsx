@@ -32,9 +32,12 @@ type TeamRosterProps = {
   appUrl: string;
   /** Guest-bookable call types — one copy link per type per BM. */
   guestTypes: Array<{ key: string; name: string }>;
+  /** Pod Leads may open any BM's page; BMs only their own. */
+  canManage: boolean;
+  viewerEmail: string;
 };
 
-export function TeamRoster({ staff, brands, fetchedAt, appUrl, guestTypes }: TeamRosterProps) {
+export function TeamRoster({ staff, brands, fetchedAt, appUrl, guestTypes, canManage, viewerEmail }: TeamRosterProps) {
   const brandById = new Map(brands.map((brand) => [brand.id, brand]));
   const active = staff.filter((member) => member.active).length;
 
@@ -79,9 +82,13 @@ export function TeamRoster({ staff, brands, fetchedAt, appUrl, guestTypes }: Tea
                         )}
                         <div className={styles.personText}>
                           <div className={styles.nameRow}>
-                            <Link href={`/booking/team/${encodeURIComponent(member.slug)}`} className={styles.personLink}>
+                            {canManage || member.email.toLowerCase() === viewerEmail.toLowerCase() ? (
+                              <Link href={`/booking/team/${encodeURIComponent(member.slug)}`} className={styles.personLink}>
+                                <strong>{member.fullName}</strong>
+                              </Link>
+                            ) : (
                               <strong>{member.fullName}</strong>
-                            </Link>
+                            )}
                             {!member.reminder24hEnabled && !member.reminder1hEnabled ? (
                               <span className={styles.mutedChip}>Reminders off</span>
                             ) : !member.reminder24hEnabled ? (

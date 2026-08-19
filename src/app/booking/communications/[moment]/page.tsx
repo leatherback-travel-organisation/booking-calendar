@@ -40,8 +40,8 @@ export default async function TemplateEditorPage({ params, searchParams }: PageP
     );
   }
 
-  // Editing: Pod Leads, plus BMs a Pod Lead has toggled on.
-  const canEdit = canManage || Boolean((await getStaffByEmail(identity.email))?.canEditCommunications);
+  // Editing: Pod Leads and Senior Booking Managers (title synced from Notion).
+  const canEdit = canManage || Boolean((await getStaffByEmail(identity.email))?.isSenior);
 
   const query = await searchParams;
   const requestedBrand = typeof query.brand === "string" ? query.brand : "";

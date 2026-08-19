@@ -18,6 +18,8 @@ export type Brand = {
   fromEmail: string;
   fromName: string;
   replyTo: string | null;
+  /** Bookings with a guest phone also get SMS reminders when true. */
+  smsRemindersEnabled: boolean;
   active: boolean;
 };
 
@@ -42,11 +44,18 @@ export type Staff = {
   /** Guest reminder emails for this BM's bookings, one flag per moment. */
   reminder24hEnabled: boolean;
   reminder1hEnabled: boolean;
-  /** Pod-Lead-granted permission to edit Guest Communications templates. */
-  canEditCommunications: boolean;
+  /** Synced from Notion's Job Title. */
+  jobTitle: string | null;
+  /** Senior Booking Manager — may edit Guest Communications (with Pod Leads). */
+  isSenior: boolean;
   active: boolean;
   calendarOk: boolean;
 };
+
+/** "Senior Booking Manager" in Notion grants comms editing; matched loosely. */
+export function isSeniorTitle(jobTitle: string | null): boolean {
+  return /senior booking manager/i.test(jobTitle ?? "");
+}
 
 /** day_of_week: 0 = Sunday. Minutes from midnight in the scheduling zone. */
 export type WorkingHours = {

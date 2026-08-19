@@ -8,7 +8,7 @@ import { createHash } from "node:crypto";
 import { put } from "@vercel/blob";
 import { getSql } from "@/lib/booking/db";
 import { AIRTABLE_BOOKING_BASE_ID, AIRTABLE_HR_BASE_ID, listAll } from "./airtable.ts";
-import { fetchBookingManagerRoster } from "./notion.ts";
+import { fetchBookingManagerRoster, fetchPodLeads } from "./notion.ts";
 import {
   brandIdsForNames,
   buildApprovedLeave,
@@ -151,6 +151,7 @@ export async function runReferenceSync(): Promise<ReferenceSyncSummary> {
     listAll(AIRTABLE_HR_BASE_ID, "Team Members", TEAM_MEMBER_FIELDS),
   );
   const notionRoster = await attempt("notion:staff", () => fetchBookingManagerRoster());
+  const podLeads = await attempt("notion:pod-leads", () => fetchPodLeads());
 
   // ---- cache raw payloads -------------------------------------------------
   const cacheWrites: Array<[string, unknown]> = [];
@@ -210,6 +211,7 @@ export async function runReferenceSync(): Promise<ReferenceSyncSummary> {
             email = ${email},
             full_name = ${fullName},
             first_name = ${firstName},
+            job_title = ${row.jobTitle ?? null},
             notion_page_id = ${row.notionPageId},
             helpscout_user_id = coalesce(${manager?.helpscoutUserId ?? null}, helpscout_user_id),
             aircall_user_id = coalesce(${manager?.aircallUserId ?? null}, aircall_user_id),
@@ -225,10 +227,10 @@ export async function runReferenceSync(): Promise<ReferenceSyncSummary> {
         const slug = staffSlug(fullName, takenSlugs);
         const inserted = await sql`
           insert into booking.staff
-            (email, full_name, first_name, slug, notion_page_id, helpscout_user_id,
+            (email, full_name, first_name, slug, job_title, notion_page_id, helpscout_user_id,
              aircall_user_id, slack_user_id, airtable_record_id, active)
           values
-            (${email}, ${fullName}, ${firstName}, ${slug}, ${row.notionPageId},
+            (${email}, ${fullName}, ${firstName}, ${slug}, ${row.jobTitle ?? null}, ${row.notionPageId},
              ${manager?.helpscoutUserId ?? null}, ${manager?.aircallUserId ?? null},
              ${manager?.slackUserId ?? row.slackId ?? null}, ${manager?.id ?? null}, true)
           returning id
@@ -257,6 +259,38 @@ export async function runReferenceSync(): Promise<ReferenceSyncSummary> {
         return true;
       });
     }
+  }
+
+  // ---- pods: each Pod Lead's brand set, from Notion Leadership ------------
+  // Leads with identical brand sets share one pod (Olivia & Courtney both
+  // cover Camino + Patch). Stored as derived reference data, not schema.
+  if (podLeads && brands.length > 0) {
+    const byBrandSet = new Map<string, { names: string[]; brandIds: string[] }>();
+    for (const lead of podLeads) {
+      const ids = [...new Set(brandIdsForNames(lead.brands, brands).ids)].sort();
+      if (ids.length === 0) continue;
+      const setKey = ids.join("|");
+      const entry = byBrandSet.get(setKey) ?? { names: [], brandIds: ids };
+      entry.names.push(lead.name.trim().split(/\s+/)[0] ?? lead.name);
+      byBrandSet.set(setKey, entry);
+    }
+    const pods = [...byBrandSet.values()]
+      .map((entry) => {
+        const names = [...new Set(entry.names)].sort();
+        return {
+          key: names.join("-").toLowerCase().replace(/[^a-z0-9-]/g, ""),
+          name: `${names.join(" & ")}'s pod`,
+          brandIds: entry.brandIds,
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+    await attempt("pods:cache", async () => {
+      await sql`
+        insert into booking.reference_cache (key, payload, fetched_at)
+        values ('booking:pods', ${JSON.stringify({ pods })}::jsonb, now())
+        on conflict (key) do update set payload = excluded.payload, fetched_at = excluded.fetched_at`;
+      return true;
+    });
   }
 
   // ---- deactivate staff who left the roster (never delete) ---------------

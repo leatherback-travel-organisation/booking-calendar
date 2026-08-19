@@ -9,7 +9,7 @@ import { NextResponse } from "next/server";
 import { getSql } from "@/lib/booking/db";
 import { sendBookingAlert } from "@/lib/booking/alerts";
 import { getBrandById, getEventTypeById, getStaffById } from "@/lib/booking/availability/service";
-import { sendBookingEmail, type Moment } from "@/lib/booking/notify/messages";
+import { sendBookingEmail, sendBookingSms, type BookingEmailContext, type Moment } from "@/lib/booking/notify/messages";
 import { derivedManageToken, manageTokenSecret } from "@/lib/booking/tokens";
 import { appUrl } from "@/lib/booking/public-api";
 
@@ -75,7 +75,7 @@ async function sendReminders(kind: ReminderKind): Promise<{ sent: number; failed
       const manageUrlRaw = secret
         ? `${appUrl()}/manage/${derivedManageToken(bookingId, secret)}`
         : `${appUrl()}/book`;
-      const result = await sendBookingEmail(kind.moment, {
+      const ctx: BookingEmailContext = {
         bookingId,
         guestName: String(row.guest_name),
         guestEmail: String(row.guest_email),
@@ -91,9 +91,25 @@ async function sendReminders(kind: ReminderKind): Promise<{ sent: number; failed
         staff,
         eventType,
         icalSequence: Number(row.ical_sequence ?? 0),
-      });
+      };
+      const result = await sendBookingEmail(kind.moment, ctx);
       if (!result.ok) throw new Error(result.error);
       sent += 1;
+
+      // SMS rides along when the brand opts in and the guest left a phone.
+      // The email already went, so an SMS failure alerts but never resets
+      // the claim (that would re-send the email every five minutes).
+      if (brand.smsRemindersEnabled && ctx.guestPhone?.trim()) {
+        try {
+          const sms = await sendBookingSms(kind.moment, ctx);
+          if (!sms.ok) throw new Error(sms.error);
+        } catch (smsError) {
+          await sendBookingAlert(
+            `sms-reminder-failed:${bookingId}:${kind.moment}`,
+            `SMS reminder ${kind.moment} for booking ${bookingId} failed (email was sent): ${smsError instanceof Error ? smsError.message : "unknown"}`,
+          );
+        }
+      }
     } catch (error) {
       failed += 1;
       await resetClaim(kind, bookingId);
