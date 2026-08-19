@@ -17,6 +17,7 @@ import {
 } from "./model";
 import { previewRecruitmentCandidates, previewRecruitmentRoles } from "./preview-data";
 import { lakeConfigured, readLakeCandidates, writeLakeCreate, writeLakeUpdate } from "./lake";
+import { CV_PARSE_FAILED, isSupportedCv, parseCvAttachment } from "./cv-parsing";
 import {
   collectAllRecruitmentRecords,
   recruitmentPageQuery,
@@ -27,7 +28,8 @@ import {
 const DEFAULT_BASE_ID = "appWWdP7HWzwyMw82";
 const DEFAULT_TABLE_ID = "tblCcyoxyILhAjZsP";
 const RECRUITMENT_CANDIDATES_CACHE_TAG = "recruitment-candidates";
-const RECRUITMENT_CANDIDATES_CACHE_SECONDS = 3_600;
+const RECRUITMENT_CANDIDATES_CACHE_SECONDS = 60;
+const CV_PARSE_BATCH_SIZE = 5;
 const ACTIVE_PIPELINE_STATUSES = new Set<RecruitmentStatus>(["Unreviewed", "Review Later", "Shortlist", "Interview", "Challenge", "2nd Interview", "Final Round", "Reference Checks", "Next opening", "Other Role"]);
 const CANDIDATE_FIELDS = ["Name", "Surname", "Job Title", "Notes", "Status", "High Potential", "Email", "Assignee", "Cover Letter", "Resumé", "Interviewer", "First Interview Notes", "Second Interview Notes", "Schedule", "Scenario Challenge", "Samples", "Attachments", "Location:", "Years of Experience", "Most Recent Role / Employer", "Key Skills", "Education Level", "Referral Source", "Last Updated", "Created"];
 
@@ -120,6 +122,35 @@ function safeAttachment(value: unknown): RecruitmentAttachment[] {
 function status(value: unknown): RecruitmentStatus {
   const candidate = text(value);
   return recruitmentStatuses.includes(candidate as RecruitmentStatus) ? candidate as RecruitmentStatus : "Unreviewed";
+}
+
+function cvAttachment(record: AirtableRecord) {
+  const resumeFiles = safeAttachment(record.fields["Resumé"]);
+  const generalFiles = safeAttachment(record.fields.Attachments).filter((attachment) => /(?:^|[\s_.-])(cv|resume|résumé)(?:[\s_.-]|$)/i.test(attachment.filename));
+  return [...resumeFiles, ...generalFiles].find((attachment) => isSupportedCv(attachment.filename, attachment.type));
+}
+
+async function populateMissingCvFields(records: AirtableRecord[]) {
+  if (!process.env.OPENAI_API_KEY?.trim()) return;
+  const pending = records.filter((record) => record.id && cvAttachment(record) && (!text(record.fields["Years of Experience"]) || !text(record.fields["Most Recent Role / Employer"]))).slice(0, CV_PARSE_BATCH_SIZE);
+  await Promise.all(pending.map(async (record) => {
+    const attachment = cvAttachment(record);
+    if (!attachment) return;
+    try {
+      const parsed = await parseCvAttachment(attachment);
+      const patch: Record<string, unknown> = {};
+      if (!text(record.fields["Years of Experience"])) patch["Years of Experience"] = parsed.readable && parsed.yearsOfExperience !== null ? `${parsed.yearsOfExperience} years` : CV_PARSE_FAILED;
+      if (!text(record.fields["Most Recent Role / Employer"])) patch["Most Recent Role / Employer"] = parsed.readable && parsed.mostRecentRoleEmployer ? parsed.mostRecentRoleEmployer : CV_PARSE_FAILED;
+      if (!Object.keys(patch).length) return;
+      Object.assign(record.fields, patch);
+      if (lakeConfigured()) await writeLakeUpdate(record.id, patch);
+      else await airtableWrite("PATCH", `/${encodeURIComponent(record.id)}`, { typecast: true, fields: patch });
+    } catch (error) {
+      // Transport and provider failures are retried on a later source refresh;
+      // only a completed parse is allowed to mark a field as unparseable.
+      console.error("[recruitment] CV parse failed", { candidateId: record.id, attachmentId: attachment.id, message: error instanceof Error ? error.message : String(error) });
+    }
+  }));
 }
 
 function parseCandidate(record: AirtableRecord): RecruitmentCandidate | null {
@@ -317,6 +348,7 @@ export async function getRecruitmentWorkspace(): Promise<RecruitmentWorkspace> {
 
   if (!source) return { candidates: [], roles: mergedRoles([], configuredRoles), origin: "unavailable", integrityIssues: 0, writesEnabled: false, truncated: false, emailTemplates };
 
+  await populateMissingCvFields(source.records);
   let integrityIssues = 0;
   const candidates = source.records.flatMap((record) => {
     const parsed = parseCandidate(record);
