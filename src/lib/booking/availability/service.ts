@@ -37,6 +37,7 @@ function mapStaff(row: StaffRow, brandIds: string[]): Staff {
     // Default true so an un-migrated database behaves like the schema default.
     reminder24hEnabled: row.reminder_24h_enabled === undefined ? true : Boolean(row.reminder_24h_enabled),
     reminder1hEnabled: row.reminder_1h_enabled === undefined ? true : Boolean(row.reminder_1h_enabled),
+    canEditCommunications: Boolean(row.can_edit_communications),
     active: Boolean(row.active),
     calendarOk: Boolean(row.calendar_ok),
   };

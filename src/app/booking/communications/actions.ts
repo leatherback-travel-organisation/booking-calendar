@@ -1,13 +1,15 @@
 "use server";
 
 // Server actions for the Guest Communications editor. Saves and bulk-applies
-// require booking.manage; preview only needs booking.read. Every save is
+// require booking.manage OR the BM's can_edit_communications toggle (granted
+// per person by a Pod Lead); preview only needs booking.read. Every save is
 // validated against the variable registry BEFORE it touches the database —
 // a typo'd {{first_nmae}} is rejected here with the exact bad names — and
 // every save is audited.
 
 import { revalidatePath } from "next/cache";
 import { requireBookingAccess } from "@/lib/booking/access";
+import { getStaffByEmail } from "@/lib/booking/availability/service";
 import { databaseConfigured, getSql } from "@/lib/booking/db";
 import { renderBrandEmail, renderTemplate, UnknownVariableError, validateTemplate } from "@/lib/booking/notify/render.ts";
 import { sampleValues } from "@/lib/booking/notify/variables.ts";
@@ -106,8 +108,20 @@ function revalidateCommunications(moment: Moment): void {
   revalidatePath(`/booking/communications/${moment}`);
 }
 
+/**
+ * Editing is open to Pod Leads and to BMs whose can_edit_communications
+ * toggle a Pod Lead has switched on. Throws for everyone else.
+ */
+async function requireCommsEditor(): Promise<{ email: string }> {
+  const access = await requireBookingAccess("booking.read");
+  if (access.canManage) return { email: access.identity.email };
+  const staff = await getStaffByEmail(access.identity.email);
+  if (staff?.canEditCommunications) return { email: access.identity.email };
+  throw new Error("Guest Communications editing is limited to toggled team members.");
+}
+
 export async function saveTemplate(input: SaveInput): Promise<TemplateActionResult> {
-  const { identity } = await requireBookingAccess("booking.manage");
+  const identity = await requireCommsEditor();
   if (!databaseConfigured()) return { ok: false, error: "The booking database is not configured." };
   if (!isMoment(input.moment)) return { ok: false, error: "Unknown message moment." };
   const invalid = validateContent(input.subject, input.bodyHtml);
@@ -139,7 +153,7 @@ export async function applyToMany(input: {
   bodyHtml: string;
   targets: Array<{ brandKey: string; typeKey: string }>;
 }): Promise<TemplateActionResult> {
-  const { identity } = await requireBookingAccess("booking.manage");
+  const identity = await requireCommsEditor();
   if (!databaseConfigured()) return { ok: false, error: "The booking database is not configured." };
   if (!isMoment(input.moment)) return { ok: false, error: "Unknown message moment." };
   if (input.targets.length === 0) return { ok: false, error: "No brands selected." };

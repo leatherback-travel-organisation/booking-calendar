@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import type { CoverageIssueRow } from "@/lib/booking/reference/queries";
+import { BrandTag } from "../brand-tag";
 import { CopySchedulingLinkButton } from "./copy-scheduling-link";
 import { formatRelative } from "./relative";
 import { CallButton } from "./call-button";
@@ -16,6 +17,7 @@ export type DashboardBooking = {
   bmPhotoUrl: string | null;
   eventTypeName: string;
   brandName: string;
+  brandColor: string | null;
   routedVia: string;
   /** Show click-to-dial: guest left a phone AND the viewer may start it. */
   canCall: boolean;
@@ -80,15 +82,15 @@ export function BookingList({ bookings, emptyLabel }: { bookings: DashboardBooki
     <ul className={styles.bookingList}>
       {bookings.map((booking) => (
         <li key={booking.id} className={styles.bookingRow}>
+          <BmAvatar name={booking.bmFirstName} photoUrl={booking.bmPhotoUrl} />
           <span className={styles.bookingTime}>{booking.timeLabel}</span>
           <span className={styles.bookingGuest}>{booking.guestName}</span>
           <span className={styles.bookingMeta}>
             {booking.bmFirstName} · {booking.eventTypeName}
           </span>
-          <span className={styles.brandChip}>{booking.brandName}</span>
+          <BrandTag name={booking.brandName} color={booking.brandColor} />
           {booking.routedVia !== "primary" ? <span className={styles.routedBadge}>{booking.routedVia}</span> : null}
           {booking.canCall ? <CallButton bookingId={booking.id} /> : null}
-          <BmAvatar name={booking.bmFirstName} photoUrl={booking.bmPhotoUrl} />
         </li>
       ))}
     </ul>

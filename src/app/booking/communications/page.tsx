@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { BookingShell } from "@/components/booking/booking-shell";
 import { CommunicationsList } from "@/components/booking/communications/communications-list";
 import { requireBookingAccess } from "@/lib/booking/access";
+import { getStaffByEmail } from "@/lib/booking/availability/service";
 import { databaseConfigured } from "@/lib/booking/db";
 import { MOMENTS, summarizeMoment } from "@/lib/booking/notify/template-scope.ts";
 import { getBrands } from "@/lib/booking/reference/queries";
@@ -15,7 +16,7 @@ export const metadata: Metadata = {
 };
 
 export default async function BookingCommunicationsPage() {
-  const { canManage } = await requireBookingAccess("booking.read");
+  const { identity, canManage } = await requireBookingAccess("booking.read");
 
   if (!databaseConfigured()) {
     return (
@@ -25,6 +26,9 @@ export default async function BookingCommunicationsPage() {
     );
   }
 
+  // Editing: Pod Leads, plus BMs a Pod Lead has toggled on.
+  const canEdit = canManage || Boolean((await getStaffByEmail(identity.email))?.canEditCommunications);
+
   const brands = await getBrands();
   const rows = await getActiveTemplateRows(brands);
   const brandLites = brands.map((brand) => ({ key: brand.key, name: brand.name }));
@@ -32,7 +36,7 @@ export default async function BookingCommunicationsPage() {
 
   return (
     <BookingShell active="communications" canManage={canManage}>
-      <CommunicationsList summaries={summaries} canManage={canManage} />
+      <CommunicationsList summaries={summaries} canManage={canEdit} />
     </BookingShell>
   );
 }

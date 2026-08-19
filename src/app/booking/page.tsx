@@ -41,6 +41,7 @@ function mapWeekBooking(
       bmPhotoUrl: (row.photo_url as string | null) ?? null,
       eventTypeName: String(row.event_type_name),
       brandName: String(row.brand_name),
+      brandColor: (row.brand_color as string | null) ?? null,
       routedVia: String(row.routed_via),
       canCall: hasPhone && (ownBooking || viewer.canManage),
     },
@@ -56,7 +57,7 @@ async function loadWeekByDay(viewer: { email: string; canManage: boolean }): Pro
     select b.id, b.starts_at, b.guest_name, b.guest_phone, b.routed_via,
            s.first_name, s.photo_url, s.timezone_override, s.email as staff_email,
            et.name as event_type_name,
-           br.name as brand_name, br.scheduling_timezone
+           br.name as brand_name, br.color_primary as brand_color, br.scheduling_timezone
     from booking.booking b
     join booking.staff s on s.id = b.staff_id
     join booking.event_type et on et.id = b.event_type_id

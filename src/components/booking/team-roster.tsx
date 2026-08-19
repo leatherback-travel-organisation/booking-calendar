@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Brand, Staff } from "@/lib/booking/model";
+import { BrandTag } from "./brand-tag";
 import { CopyButton } from "./team-tools/copy-button";
 import styles from "./team-roster.module.css";
 
@@ -117,9 +118,11 @@ export function TeamRoster({ staff, brands, fetchedAt, appUrl, guestTypes }: Tea
                           <span className={styles.noneChip}>no brand</span>
                         ) : (
                           member.brandIds.map((brandId) => (
-                            <span key={brandId} className={styles.brandChip}>
-                              {brandById.get(brandId)?.name ?? brandId}
-                            </span>
+                            <BrandTag
+                              key={brandId}
+                              name={brandById.get(brandId)?.name ?? brandId}
+                              color={brandById.get(brandId)?.colorPrimary ?? null}
+                            />
                           ))
                         )}
                       </div>

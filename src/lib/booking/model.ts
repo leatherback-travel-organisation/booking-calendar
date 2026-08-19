@@ -42,6 +42,8 @@ export type Staff = {
   /** Guest reminder emails for this BM's bookings, one flag per moment. */
   reminder24hEnabled: boolean;
   reminder1hEnabled: boolean;
+  /** Pod-Lead-granted permission to edit Guest Communications templates. */
+  canEditCommunications: boolean;
   active: boolean;
   calendarOk: boolean;
 };

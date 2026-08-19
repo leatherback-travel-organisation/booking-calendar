@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { BookingShell } from "@/components/booking/booking-shell";
 import { TemplateEditor } from "@/components/booking/communications/template-editor";
 import { requireBookingAccess } from "@/lib/booking/access";
+import { getStaffByEmail } from "@/lib/booking/availability/service";
 import { databaseConfigured } from "@/lib/booking/db";
 import { resolveTemplate } from "@/lib/booking/notify/messages";
 import { displaySource, isMoment, MOMENT_META } from "@/lib/booking/notify/template-scope.ts";
@@ -29,7 +30,7 @@ export default async function TemplateEditorPage({ params, searchParams }: PageP
   const { moment } = await params;
   if (!isMoment(moment)) notFound();
 
-  const { canManage } = await requireBookingAccess("booking.read");
+  const { identity, canManage } = await requireBookingAccess("booking.read");
 
   if (!databaseConfigured()) {
     return (
@@ -38,6 +39,9 @@ export default async function TemplateEditorPage({ params, searchParams }: PageP
       </BookingShell>
     );
   }
+
+  // Editing: Pod Leads, plus BMs a Pod Lead has toggled on.
+  const canEdit = canManage || Boolean((await getStaffByEmail(identity.email))?.canEditCommunications);
 
   const query = await searchParams;
   const requestedBrand = typeof query.brand === "string" ? query.brand : "";
@@ -72,7 +76,7 @@ export default async function TemplateEditorPage({ params, searchParams }: PageP
         initial={{ subject: resolved.subject, bodyHtml: resolved.bodyHtml }}
         source={source}
         momentRows={momentRows}
-        canManage={canManage}
+        canManage={canEdit}
         startInPreview={startInPreview}
       />
     </BookingShell>

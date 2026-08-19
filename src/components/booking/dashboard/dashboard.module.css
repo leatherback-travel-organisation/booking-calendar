@@ -202,12 +202,11 @@ span.bmLinkAvatar[data-fallback] {
 }
 
 .bookingRow {
-  position: relative;
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
-  padding: 7px 38px 7px 0;
+  padding: 7px 0;
   border-bottom: 1px solid var(--line);
 }
 
@@ -264,13 +263,12 @@ span.bmLinkAvatar[data-fallback] {
 }
 
 .recentRow {
-  position: relative;
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 7px 38px 7px 0;
+  padding: 7px 0;
   border-bottom: 1px solid var(--line);
 }
 
@@ -316,11 +314,9 @@ span.bmLinkAvatar[data-fallback] {
   font-size: var(--text-label, 12px);
 }
 
-/* BM avatar pinned to the top-right of a booking row. */
+/* BM avatar leading a booking row. */
 .rowAvatar {
-  position: absolute;
-  top: 7px;
-  right: 0;
+  flex: 0 0 auto;
   width: 28px;
   height: 28px;
   border-radius: 50%;

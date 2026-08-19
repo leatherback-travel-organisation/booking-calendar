@@ -294,7 +294,9 @@ export function TemplateEditor(props: TemplateEditorProps) {
             ))}
           </select>
         </label>
-        {!props.canManage ? <span className={styles.readOnlyNote}>Read-only — Pod Leads can edit templates.</span> : null}
+        {!props.canManage ? (
+          <span className={styles.readOnlyNote}>Read-only — ask a Pod Lead to toggle on editing for you.</span>
+        ) : null}
       </div>
 
       <section className={styles.panel}>

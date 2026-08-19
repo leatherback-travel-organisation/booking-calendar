@@ -76,6 +76,7 @@ export async function getStaffWithBrands(): Promise<Staff[]> {
     bookingWindowDays: Number(row.booking_window_days ?? 0),
     reminder24hEnabled: row.reminder_24h_enabled === undefined ? true : Boolean(row.reminder_24h_enabled),
     reminder1hEnabled: row.reminder_1h_enabled === undefined ? true : Boolean(row.reminder_1h_enabled),
+    canEditCommunications: Boolean(row.can_edit_communications),
     active: row.active as boolean,
     calendarOk: row.calendar_ok as boolean,
   }));

@@ -144,6 +144,8 @@ create table booking.staff (
   -- Confirmations, reschedules and cancellations always send.
   reminder_24h_enabled boolean not null default true,
   reminder_1h_enabled boolean not null default true,
+  -- Pod-Lead-granted permission to edit Guest Communications templates.
+  can_edit_communications boolean not null default false,
   min_notice_hours  integer not null default 4 check (min_notice_hours between 0 and 336),
   booking_window_days integer not null default 28 check (booking_window_days between 1 and 365),
   active            boolean not null default true,
@@ -360,20 +362,23 @@ create table booking.rate_limit (
 -- (open item #10) — the notifier stays in stub mode until then.
 -- ---------------------------------------------------------------------------
 
-insert into booking.brand (id, key, name, aliases, scheduling_timezone, market, helpscout_mailbox_id, from_email, from_name, phone_default) values
-  ('b1000000-0000-4000-8000-000000000001', 'patch', 'Patch Adventures', array['Patch Adventures'], 'Australia/Melbourne', 'AU', '281761', 'bookings@patchadventures.com.au', 'Patch Adventures', null),
-  ('b1000000-0000-4000-8000-000000000002', 'camino-women', 'Camino Women', array['Camino Women'], 'Australia/Melbourne', 'AU', '293574', 'bookings@caminowomen.com.au', 'Camino Women', null),
-  ('b1000000-0000-4000-8000-000000000003', 'magnificent-explorers', 'Magnificent Explorers', array['Magnificent Explorers', 'Magnificent Rail'], 'Australia/Melbourne', 'AU', '288706', 'bookings@magnificentexplorers.com.au', 'Magnificent Explorers', null),
-  ('b1000000-0000-4000-8000-000000000004', 'fencox', 'Fencox', array['Fencox', 'Fencox Travel'], 'Australia/Melbourne', 'AU', '310122', 'bookings@fencox.com.au', 'Fencox', null),
-  ('b1000000-0000-4000-8000-000000000005', 'carex', 'Carex Garden Tours', array['Carex', 'Carex Tours', 'Carex Garden Tours'], 'America/Los_Angeles', 'US', '334973', 'bookings@carexdesign.com', 'Carex Garden Tours', null),
-  ('b1000000-0000-4000-8000-000000000006', 'salt-caravan', 'Salt Caravan', array['Salt Caravan'], 'America/Los_Angeles', 'US', '351173', 'bookings@saltcaravan.com', 'Salt Caravan', null),
-  ('b1000000-0000-4000-8000-000000000007', 'harriet', 'Harriet Adventures', array['Harriet Adventures'], 'America/Los_Angeles', 'US', '359421', 'bookings@harrietadventures.com', 'Harriet Adventures', null)
+-- color_primary comes from each brand's live site (dominant logo/button
+-- colour); Salt Caravan's plum is from its landing-page build.
+insert into booking.brand (id, key, name, aliases, scheduling_timezone, market, helpscout_mailbox_id, from_email, from_name, phone_default, color_primary) values
+  ('b1000000-0000-4000-8000-000000000001', 'patch', 'Patch Adventures', array['Patch Adventures'], 'Australia/Melbourne', 'AU', '281761', 'bookings@patchadventures.com.au', 'Patch Adventures', null, '#ad5046'),
+  ('b1000000-0000-4000-8000-000000000002', 'camino-women', 'Camino Women', array['Camino Women'], 'Australia/Melbourne', 'AU', '293574', 'bookings@caminowomen.com.au', 'Camino Women', null, '#295244'),
+  ('b1000000-0000-4000-8000-000000000003', 'magnificent-explorers', 'Magnificent Explorers', array['Magnificent Explorers', 'Magnificent Rail'], 'Australia/Melbourne', 'AU', '288706', 'bookings@magnificentexplorers.com.au', 'Magnificent Explorers', null, '#1d283b'),
+  ('b1000000-0000-4000-8000-000000000004', 'fencox', 'Fencox', array['Fencox', 'Fencox Travel'], 'Australia/Melbourne', 'AU', '310122', 'bookings@fencox.com.au', 'Fencox', null, '#004c7a'),
+  ('b1000000-0000-4000-8000-000000000005', 'carex', 'Carex Garden Tours', array['Carex', 'Carex Tours', 'Carex Garden Tours'], 'America/Los_Angeles', 'US', '334973', 'bookings@carexdesign.com', 'Carex Garden Tours', null, '#005857'),
+  ('b1000000-0000-4000-8000-000000000006', 'salt-caravan', 'Salt Caravan', array['Salt Caravan'], 'America/Los_Angeles', 'US', '351173', 'bookings@saltcaravan.com', 'Salt Caravan', null, '#7a3163'),
+  ('b1000000-0000-4000-8000-000000000007', 'harriet', 'Harriet Adventures', array['Harriet Adventures'], 'America/Los_Angeles', 'US', '359421', 'bookings@harrietadventures.com', 'Harriet Adventures', null, '#e0594f')
 on conflict (id) do update set
   name = excluded.name,
   aliases = excluded.aliases,
   scheduling_timezone = excluded.scheduling_timezone,
   market = excluded.market,
-  helpscout_mailbox_id = excluded.helpscout_mailbox_id;
+  helpscout_mailbox_id = excluded.helpscout_mailbox_id,
+  color_primary = excluded.color_primary;
 
 insert into booking.brand_domain (brand_id, host) values
   ('b1000000-0000-4000-8000-000000000001', 'patchadventures.com.au'),
