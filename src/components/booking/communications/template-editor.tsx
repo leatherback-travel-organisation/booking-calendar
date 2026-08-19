@@ -17,7 +17,6 @@ import { sampleValues } from "@/lib/booking/notify/variables";
 import {
   chipHtmlToTokens,
   computeApplyDiff,
-  SOURCE_LABEL,
   tokensToChipHtml,
   type Moment,
   type ScopeSource,
@@ -251,9 +250,6 @@ export function TemplateEditor(props: TemplateEditorProps) {
           <h2 className={styles.title}>{props.momentLabel}</h2>
           <p className={styles.description}>{props.momentDescription}</p>
         </div>
-        <span className={styles.sourceBadge} data-source={props.source}>
-          {SOURCE_LABEL[props.source]}
-        </span>
       </header>
 
       <div className={styles.scopeBar}>
@@ -271,16 +267,81 @@ export function TemplateEditor(props: TemplateEditorProps) {
       </div>
 
       <section className={styles.panel}>
-        <label className={styles.subjectField}>
-          <span>Subject</span>
-          <input
-            type="text"
-            value={subject}
-            readOnly={!props.canManage}
-            onChange={(event) => setSubject(event.target.value)}
-            placeholder="Subject line — {{variables}} work here too"
-          />
-        </label>
+        <div className={styles.subjectRow}>
+          <span className={styles.subjectLabel}>Subject</span>
+          {props.canManage ? (
+            <div className={styles.copyTo}>
+              <button type="button" className={styles.quietButton} onClick={() => setApplyOpen((open) => !open)}>
+                Copy to other brands {applyOpen ? "▴" : "▾"}
+              </button>
+              {applyOpen ? (
+                <div className={styles.copyMenu}>
+                  <p className={styles.mutedNote}>
+                    Copies this subject and body
+                    {props.scope.typeKey ? ` for ${typeLabel(props.scope.typeKey)} calls` : ""}.
+                    {props.scope.brandKey
+                      ? ` Mentions of ${props.brands.find((b) => b.key === props.scope.brandKey)?.name ?? "this brand"} switch to the {{brand.name}} variable automatically.`
+                      : ""}
+                  </p>
+                  <div className={styles.applyBrands}>
+                    {props.brands
+                      .filter((brand) => brand.key !== props.scope.brandKey)
+                      .map((brand) => (
+                        <label key={brand.key} className={styles.applyBrand}>
+                          <input
+                            type="checkbox"
+                            checked={selectedBrands.includes(brand.key)}
+                            onChange={() => toggleBrand(brand.key)}
+                          />
+                          <span>{brand.name}</span>
+                        </label>
+                      ))}
+                  </div>
+                  {applyDiff.length > 0 ? (
+                    <>
+                      <ul className={styles.diffList}>
+                        {applyDiff.map((row) => (
+                          <li key={`${row.brandKey}:${row.eventTypeKey ?? ""}`} data-action={row.action}>
+                            {row.summary}
+                          </li>
+                        ))}
+                      </ul>
+                      <label className={styles.confirmRow}>
+                        <input
+                          type="checkbox"
+                          checked={confirmChecked}
+                          onChange={(event) => setConfirmChecked(event.target.checked)}
+                        />
+                        <span>
+                          Replace the {applyDiff.length} template{applyDiff.length === 1 ? "" : "s"} listed above
+                        </span>
+                      </label>
+                      <button
+                        type="button"
+                        className={styles.saveButton}
+                        onClick={handleApply}
+                        disabled={!confirmChecked || applying}
+                      >
+                        {applying ? "Copying…" : `Copy to ${applyDiff.length} brand${applyDiff.length === 1 ? "" : "s"}`}
+                      </button>
+                    </>
+                  ) : (
+                    <p className={styles.mutedNote}>Tick at least one brand.</p>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+        <input
+          type="text"
+          aria-label="Subject"
+          className={styles.subjectInput}
+          value={subject}
+          readOnly={!props.canManage}
+          onChange={(event) => setSubject(event.target.value)}
+          placeholder="Subject line — {{variables}} work here too"
+        />
 
         <div className={styles.bodyToolbar}>
           <div className={styles.modeToggle} role="group" aria-label="Body preview mode">
@@ -392,74 +453,6 @@ export function TemplateEditor(props: TemplateEditorProps) {
           <p className={styles.mutedNote}>See the exact branded email a guest receives, with sample details filled in.</p>
         )}
       </section>
-
-      {props.canManage ? (
-        <section className={styles.panel}>
-          <div className={styles.panelHeader}>
-            <h3>Copy to other brands</h3>
-            <button type="button" className={styles.quietButton} onClick={() => setApplyOpen((open) => !open)}>
-              {applyOpen ? "Hide" : "Show"}
-            </button>
-          </div>
-          {applyOpen ? (
-            <div className={styles.applyPanel}>
-              <p className={styles.mutedNote}>
-                Copies the subject and body above to the selected brands
-                {props.scope.typeKey ? ` for ${typeLabel(props.scope.typeKey)} calls` : ""}.
-                {props.scope.brandKey
-                  ? ` Mentions of ${props.brands.find((b) => b.key === props.scope.brandKey)?.name ?? "this brand"} switch to the {{brand.name}} variable automatically, so each copy greets guests as its own brand.`
-                  : ""}{" "}
-                Nothing is copied silently — review the list, then confirm.
-              </p>
-              <div className={styles.applyBrands}>
-                {props.brands
-                  .filter((brand) => brand.key !== props.scope.brandKey)
-                  .map((brand) => (
-                    <label key={brand.key} className={styles.applyBrand}>
-                      <input
-                        type="checkbox"
-                        checked={selectedBrands.includes(brand.key)}
-                        onChange={() => toggleBrand(brand.key)}
-                      />
-                      <span>{brand.name}</span>
-                    </label>
-                  ))}
-              </div>
-              {applyDiff.length > 0 ? (
-                <>
-                  <ul className={styles.diffList}>
-                    {applyDiff.map((row) => (
-                      <li key={`${row.brandKey}:${row.eventTypeKey ?? ""}`} data-action={row.action}>
-                        {row.summary}
-                      </li>
-                    ))}
-                  </ul>
-                  <label className={styles.confirmRow}>
-                    <input
-                      type="checkbox"
-                      checked={confirmChecked}
-                      onChange={(event) => setConfirmChecked(event.target.checked)}
-                    />
-                    <span>
-                      Replace the {applyDiff.length} template{applyDiff.length === 1 ? "" : "s"} listed above
-                    </span>
-                  </label>
-                  <button
-                    type="button"
-                    className={styles.saveButton}
-                    onClick={handleApply}
-                    disabled={!confirmChecked || applying}
-                  >
-                    {applying ? "Copying…" : `Copy to ${applyDiff.length} brand${applyDiff.length === 1 ? "" : "s"}`}
-                  </button>
-                </>
-              ) : (
-                <p className={styles.mutedNote}>Select at least one brand.</p>
-              )}
-            </div>
-          ) : null}
-        </section>
-      ) : null}
 
       {picker && props.canManage ? (
         <div className={styles.picker} style={{ left: picker.position.left, top: picker.position.top }}>

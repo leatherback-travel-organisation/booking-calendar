@@ -34,22 +34,20 @@
 }
 
 .row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--density-3, 14px);
-  flex-wrap: wrap;
+  display: grid;
+  gap: 7px;
   border: 1px solid var(--line);
   border-radius: var(--radius-panel, 10px);
   background: var(--card);
   padding: var(--density-3, 14px) var(--density-4, 18px);
 }
 
-.rowMain {
-  display: grid;
-  gap: 5px;
-  min-width: 260px;
-  flex: 1;
+.rowHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--density-3, 14px);
+  flex-wrap: wrap;
 }
 
 .rowName {
@@ -63,29 +61,14 @@
   margin: 0;
   color: var(--ink-soft);
   font-size: var(--text-small, 13px);
-  max-width: 60ch;
 }
 
+/* Brand buttons stretch shoulder-to-shoulder across the card. */
 .chips {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--density-1, 6px);
-  margin-top: 3px;
-}
-
-.chip {
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--paper-deep);
-  color: var(--ink-soft);
-  font-size: var(--text-label, 12px);
-  padding: 2px 9px;
-  white-space: nowrap;
-  text-decoration: none;
-}
-
-.chip:hover {
-  color: var(--ink);
+  gap: 8px;
+  margin-top: 4px;
 }
 
 /* One button per brand, straight into that brand's version of the message.
@@ -93,13 +76,15 @@
    ghosted while it still rides on the default. */
 .brandLink {
   --tag: var(--ink-soft);
+  flex: 1 1 auto;
+  text-align: center;
   border: 1px dashed color-mix(in srgb, var(--tag) 40%, transparent);
   border-radius: 999px;
   background: transparent;
   color: color-mix(in srgb, var(--tag) 72%, var(--ink));
-  font-size: var(--text-label, 12px);
+  font-size: var(--text-small, 13px);
   font-weight: 500;
-  padding: 2px 9px;
+  padding: 6px 14px;
   white-space: nowrap;
   text-decoration: none;
 }
@@ -111,21 +96,6 @@
 
 .brandLink:hover {
   background: color-mix(in srgb, var(--tag) 18%, var(--card));
-}
-
-.chip[data-kind="custom"] {
-  color: var(--pine);
-  background: var(--card);
-}
-
-.chip[data-kind="override"] {
-  color: var(--ink);
-}
-
-.rowSide {
-  display: grid;
-  gap: var(--density-1, 6px);
-  justify-items: end;
 }
 
 .edited {

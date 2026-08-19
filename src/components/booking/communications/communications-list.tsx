@@ -35,10 +35,16 @@ export function CommunicationsList({ summaries, brands }: CommunicationsListProp
               const meta = MOMENT_META[moment];
               return (
                 <li key={moment} className={styles.row}>
-                  <div className={styles.rowMain}>
+                  <div className={styles.rowHead}>
                     <p className={styles.rowName}>{meta.label}</p>
-                    <p className={styles.rowDescription}>{meta.description}</p>
-                    <div className={styles.chips}>
+                    <span className={styles.edited}>
+                      {summary?.lastEdited
+                        ? `Edited ${formatDiffDate(summary.lastEdited.at)}${summary.lastEdited.by ? ` by ${summary.lastEdited.by}` : ""}`
+                        : "Built-in default"}
+                    </span>
+                  </div>
+                  <p className={styles.rowDescription}>{meta.description}</p>
+                  <div className={styles.chips}>
                       {brands.map((brand) => {
                         const overrides = summary?.overrides.filter((o) => o.brandKey === brand.key) ?? [];
                         const tailored = overrides.length > 0;
@@ -59,14 +65,6 @@ export function CommunicationsList({ summaries, brands }: CommunicationsListProp
                           </Link>
                         );
                       })}
-                    </div>
-                  </div>
-                  <div className={styles.rowSide}>
-                    <span className={styles.edited}>
-                      {summary?.lastEdited
-                        ? `Edited ${formatDiffDate(summary.lastEdited.at)}${summary.lastEdited.by ? ` by ${summary.lastEdited.by}` : ""}`
-                        : "Built-in default"}
-                    </span>
                   </div>
                 </li>
               );
