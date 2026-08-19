@@ -269,6 +269,25 @@ function fixture() {
       Brand: ["Harriet Adventures"],
       "Website URL": ["https://harrietadventures.com/tour/iceland-circle/"],
     }),
+    // Operational test fixture ("Ceco" in the title) → never flagged, even
+    // with an unknown coordinator and no URL.
+    trip("recCeco", {
+      "Trip Title & Code": "Via Cecos Land XX Days 2030 TEESST",
+      "Trip Coordinator": ["bmGhost"],
+      "Start Date": ["2026-09-15"],
+      Status: ["Published"],
+      Brand: ["Fencox Travel"],
+    }),
+    // "Private Trip" departures are sold outside the public funnel → same
+    // exemption.
+    trip("recPrivate", {
+      "Trip Title & Code": "Private Trip Andes Crossing SMITH",
+      "Trip Coordinator": ["bmGhost"],
+      "Start Date": ["2026-09-16"],
+      Status: ["Published"],
+      Brand: ["Fencox Travel"],
+      "Website URL": ["www.na"],
+    }),
     // Past departure and cancelled departure → never flagged.
     trip("recPast", {
       "Trip Title & Code": "Old Trip - OLD1",
@@ -397,6 +416,10 @@ test("computeCoverageIssues exercises every kind", () => {
     ["recB:bmGhost", "recB:bmNoEmail"],
   );
   assert.ok(unknown.every((issue) => issue.severity === "error"));
+
+  // Call-routing-exempt trips (Ceco fixtures, Private Trips) never surface.
+  assert.ok(issues.every((issue) => !String(issue.subjectRef).includes("recCeco")));
+  assert.ok(issues.every((issue) => !String(issue.subjectRef).includes("recPrivate")));
 
   // staff-calendar-unreachable vs calendar-never-checked.
   assert.deepEqual(

@@ -136,6 +136,9 @@ function brandForDeparture(departure: Departure, brands: Brand[]): Brand | null 
 }
 
 async function recordUnresolvedSlug(tripSlug: string, host: string | null): Promise<void> {
+  // E2e probes request unresolvable slugs on purpose; recording them would
+  // fill the coverage map with operational noise.
+  if (/e2e/i.test(tripSlug)) return;
   const sql = getSql();
   const subjectRef = `${host ?? "any"}:${tripSlug}`.slice(0, 200);
   await sql`

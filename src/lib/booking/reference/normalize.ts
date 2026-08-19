@@ -336,6 +336,15 @@ export function staffSlug(fullName: string, taken: Set<string>): string {
 
 const ACTIONABLE_STATUSES = new Set(["Published", "Marketing Ready"]);
 
+// Ops conventions: trips with "Ceco" in the title are operational test
+// fixtures, and "Private Trip" departures are sold outside the public
+// funnel — neither ever needs call routing, so neither may raise coverage
+// issues.
+export function isCallRoutingExempt(titleAndCode: string | null): boolean {
+  const title = titleAndCode ?? "";
+  return /ceco/i.test(title) || /^\s*private trip\b/i.test(title);
+}
+
 export function isUpcomingDeparture(departure: Departure, today: string): boolean {
   return (
     departure.startDate !== null &&
@@ -364,7 +373,9 @@ export function computeCoverageIssues(inputs: CoverageInputs): CoverageIssueDraf
   const activeStaffEmails = new Set(activeStaff.map((row) => normalizeEmail(row.email)));
   const managerById = new Map(airtableManagers.map((manager) => [manager.id, manager]));
   const activeBrands = brands.filter((brand) => brand.active !== false);
-  const upcoming = departures.filter((departure) => isUpcomingDeparture(departure, today));
+  const upcoming = departures.filter(
+    (departure) => isUpcomingDeparture(departure, today) && !isCallRoutingExempt(departure.titleAndCode),
+  );
 
   const brandIdForName = (name: string | null): string | null =>
     name ? (brandIdsForNames([name], brands).ids[0] ?? null) : null;

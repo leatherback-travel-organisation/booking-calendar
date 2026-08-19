@@ -14,6 +14,7 @@ import {
   buildApprovedLeave,
   buildDepartureIndex,
   computeCoverageIssues,
+  isUpcomingDeparture,
   normalizeBookingManagers,
   normalizeEmail,
   staffSlug,
@@ -350,6 +351,44 @@ export async function runReferenceSync(): Promise<ReferenceSyncSummary> {
       and not ((kind || '::' || subject_ref) = any(${presentRefs}))
     returning id
   `;
+
+  // E2e slugs are no longer recorded (see recordUnresolvedSlug); retire any
+  // rows written before that rule existed.
+  await sql`
+    update booking.coverage_issue set resolved_at = now()
+    where resolved_at is null and kind = 'slug-unresolved' and subject_ref ilike '%e2e%'
+  `;
+
+  // A pool-fallback event is stale once its slug routes cleanly again: some
+  // upcoming departure's coordinator is active staff. Guarded on both source
+  // fetches so a failed load never falsely retires a live problem.
+  if (trips && managerRecords) {
+    const managerEmailById = new Map(
+      managers.map((manager) => [manager.id, manager.email ? normalizeEmail(manager.email) : null]),
+    );
+    const activeStaffEmails = new Set(
+      staffLite.filter((row) => row.active).map((row) => normalizeEmail(row.email)),
+    );
+    const routableSlugs = [
+      ...new Set(
+        departureIndex.departures
+          .filter(
+            (departure) =>
+              departure.slug !== null &&
+              isUpcomingDeparture(departure, today) &&
+              departure.coordinatorAirtableIds.some((id) => {
+                const email = managerEmailById.get(id) ?? null;
+                return email !== null && activeStaffEmails.has(email);
+              }),
+          )
+          .map((departure) => departure.slug as string),
+      ),
+    ];
+    await sql`
+      update booking.coverage_issue set resolved_at = now()
+      where resolved_at is null and kind = 'trip-pool-fallback' and subject_ref = any(${routableSlugs})
+    `;
+  }
 
   const durationMs = Date.now() - startedAt;
   const summary: ReferenceSyncSummary = {
