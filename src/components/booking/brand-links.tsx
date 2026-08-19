@@ -22,7 +22,6 @@ export function BrandLinks({ brands, appUrl }: { brands: Brand[]; appUrl: string
           return (
             <li key={brand.id} className={styles.row}>
               <span className={styles.brand}>{brand.name}</span>
-              <code className={styles.url}>{url}</code>
               <CopyButton value={url} />
             </li>
           );

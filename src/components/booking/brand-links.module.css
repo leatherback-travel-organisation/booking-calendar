@@ -45,22 +45,8 @@
 }
 
 .brand {
-  flex: 0 0 180px;
+  flex: 1 1 auto;
   color: var(--ink);
   font-size: var(--text-ui, 14px);
   font-weight: 500;
-}
-
-.url {
-  /* width: 0 + grow keeps the long URL from inflating the page's intrinsic
-     width — the portal shell sizes to content, so an unbreakable string here
-     would push the whole page wider than the viewport. */
-  flex: 1 1 0;
-  width: 0;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--ink-soft);
-  font-size: var(--text-small, 13px);
 }

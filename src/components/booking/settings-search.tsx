@@ -31,7 +31,7 @@ const REGISTRY: RegistryEntry[] = [
   { label: "Guest communications", keywords: ["email", "templates", "messages"], href: "/booking/communications", section: "Communications" },
   { label: "Confirmation email", keywords: ["confirmation", "template", "email"], href: "/booking/communications/confirmation", section: "Communications" },
   { label: "24 hour reminder", keywords: ["reminder", "24h", "day before"], href: "/booking/communications", section: "Communications" },
-  { label: "Team roster", keywords: ["team", "staff", "bm", "people"], href: "/booking/team", section: "Team" },
+  { label: "Team", keywords: ["team", "staff", "bm", "people"], href: "/booking/team", section: "Team" },
   { label: "Group sessions", keywords: ["group", "sessions", "seats", "webinar"], href: "/booking/team/sessions", section: "Team" },
   { label: "New group session", keywords: ["create", "group", "session"], href: "/booking/team/sessions", section: "Team" },
   { label: "Invitations (propose times)", keywords: ["invite", "shortlist", "propose", "times"], href: "/booking/team/invitations", section: "Team" },

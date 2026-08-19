@@ -144,7 +144,7 @@ export default async function InvitationsPage({ searchParams }: PageProps) {
         <div className={styles.pageHead}>
           <h2 className={styles.pageTitle}>Invitations</h2>
           <nav className={styles.crumbs} aria-label="Team tools">
-            <BackLink href="/booking/team" label="Team roster" />
+            <BackLink href="/booking/team" label="Team" />
             <Link href="/booking/team/sessions" className={styles.crumbLink}>
               Group sessions
             </Link>

@@ -111,7 +111,7 @@ export default async function BookingManagerPage({ params, searchParams }: PageP
   return (
     <BookingShell active="team" canManage={canManage}>
       <div className={styles.page}>
-        <BackLink href="/booking/team" label="Team roster" />
+        <BackLink href="/booking/team" label="Team" />
 
         <header className={styles.header}>
           {staff.photoUrl ? (
