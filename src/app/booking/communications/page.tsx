@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { BookingShell } from "@/components/booking/booking-shell";
 import { CommunicationsList } from "@/components/booking/communications/communications-list";
+import { SmsToggles } from "@/components/booking/communications/sms-toggles";
 import { requireBookingAccess } from "@/lib/booking/access";
+import { getStaffByEmail } from "@/lib/booking/availability/service";
 import { databaseConfigured } from "@/lib/booking/db";
 import { MOMENTS, summarizeMoment } from "@/lib/booking/notify/template-scope.ts";
 import { getBrands } from "@/lib/booking/reference/queries";
@@ -15,7 +17,7 @@ export const metadata: Metadata = {
 };
 
 export default async function BookingCommunicationsPage() {
-  const { canManage } = await requireBookingAccess("booking.read");
+  const { identity, canManage } = await requireBookingAccess("booking.read");
 
   if (!databaseConfigured()) {
     return (
@@ -32,9 +34,21 @@ export default async function BookingCommunicationsPage() {
     .map((brand) => ({ key: brand.key, name: brand.name, colorPrimary: brand.colorPrimary }));
   const summaries = MOMENTS.map((moment) => summarizeMoment(moment, rows, brandLites));
 
+  const staffSelf = await getStaffByEmail(identity.email);
+  const canEditComms = canManage || Boolean(staffSelf?.isSenior);
+  const smsBrands = brands
+    .filter((brand) => brand.active)
+    .map((brand) => ({
+      key: brand.key,
+      name: brand.name,
+      colorPrimary: brand.colorPrimary,
+      smsRemindersEnabled: brand.smsRemindersEnabled,
+    }));
+
   return (
     <BookingShell active="communications" canManage={canManage}>
       <CommunicationsList summaries={summaries} brands={brandLites} />
+      <SmsToggles brands={smsBrands} canEdit={canEditComms} />
     </BookingShell>
   );
 }

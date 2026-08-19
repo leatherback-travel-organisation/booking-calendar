@@ -53,7 +53,6 @@ export type SelectedStaffSettings = {
   bio: string | null;
   reminder24hEnabled: boolean;
   reminder1hEnabled: boolean;
-  canEditCommunications: boolean;
 };
 
 export type HoursRow = { dayOfWeek: number; startMin: number; endMin: number };
@@ -255,16 +254,6 @@ export function AvailabilityEditor({
           />
           Send the 1-hour reminder email
         </label>
-        <label className={styles.checkboxField} title={canManage ? undefined : "Pod Leads grant this"}>
-          <input
-            type="checkbox"
-            name="canEditCommunications"
-            defaultChecked={selected.canEditCommunications}
-            disabled={!canManage}
-          />
-          Can edit Guest Communications templates
-        </label>
-
         <label className={styles.field}>
           Bio
           <textarea

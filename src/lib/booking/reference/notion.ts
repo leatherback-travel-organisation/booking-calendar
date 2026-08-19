@@ -72,6 +72,19 @@ function firstFileUrl(property: unknown): string | null {
  * about an hour — download it promptly, never persist it.
  */
 export async function fetchBookingManagerRoster(): Promise<NotionStaffRow[]> {
+  return fetchDirectoryRows({ property: "Department", multi_select: { contains: "Booking Manager" } });
+}
+
+/**
+ * Leadership rows whose Job Title contains "Pod Lead" (incl. "Acting Pod
+ * Lead"). Their Brand lists define the dashboard's pods.
+ */
+export async function fetchPodLeads(): Promise<NotionStaffRow[]> {
+  const rows = await fetchDirectoryRows({ property: "Department", multi_select: { contains: "Leadership" } });
+  return rows.filter((row) => /pod lead/i.test(row.jobTitle ?? ""));
+}
+
+async function fetchDirectoryRows(filter: Record<string, unknown>): Promise<NotionStaffRow[]> {
   const token = process.env.NOTION_TOKEN?.trim();
   if (!token) throw new Error("NOTION_TOKEN is not configured.");
 
@@ -90,7 +103,7 @@ export async function fetchBookingManagerRoster(): Promise<NotionStaffRow[]> {
         cache: "no-store",
         body: JSON.stringify({
           page_size: 100,
-          filter: { property: "Department", multi_select: { contains: "Booking Manager" } },
+          filter,
           ...(cursor ? { start_cursor: cursor } : {}),
         }),
       },

@@ -110,6 +110,9 @@ create table booking.brand (
   from_email    text not null,
   from_name     text not null,
   reply_to      text,
+  -- Guests whose booking has a phone number also get SMS reminders when the
+  -- brand opts in (toggled by Pod Leads/SBMs in Guest Communications).
+  sms_reminders_enabled boolean not null default false,
   active        boolean not null default true
 );
 
@@ -144,8 +147,9 @@ create table booking.staff (
   -- Confirmations, reschedules and cancellations always send.
   reminder_24h_enabled boolean not null default true,
   reminder_1h_enabled boolean not null default true,
-  -- Pod-Lead-granted permission to edit Guest Communications templates.
-  can_edit_communications boolean not null default false,
+  -- Synced from Notion; "Senior Booking Manager" grants Guest Communications
+  -- editing (with Pod Leads) — no per-person toggle to maintain.
+  job_title         text,
   min_notice_hours  integer not null default 4 check (min_notice_hours between 0 and 336),
   booking_window_days integer not null default 28 check (booking_window_days between 1 and 365),
   active            boolean not null default true,
@@ -409,6 +413,21 @@ cross join (values
   ('feedback', 'Feedback Call', 'How was your trip? Most take 15-20 minutes; we allow 30.', 30, true,  false, 4)
 ) as t(key, name, description, duration_min, guest_facing, supports_group, position)
 on conflict (brand_id, key) do nothing;
+
+-- Group sessions are Carex-only (decision 19 Aug): the Lead-Up group call is
+-- retired, replaced by an hour-long Carex pre-trip video call. Lead-up stays
+-- a 1:1 call type; every other brand's pre-trip stays BM-initiated 1:1.
+update booking.event_type set supports_group = false where key = 'lead-up';
+update booking.event_type set supports_group = false
+  where key = 'pre-trip'
+    and brand_id <> (select id from booking.brand where key = 'carex');
+update booking.event_type
+   set name = 'Pre-Trip Video Call',
+       description = 'An hour together on video before you travel — the full pre-trip run-through.',
+       duration_min = 60,
+       location_kind = 'google_meet'
+ where key = 'pre-trip'
+   and brand_id = (select id from booking.brand where key = 'carex');
 
 -- Per-brand voiced templates (Special Feeling, one voice per brand —
 -- Patch adventurous, Camino encouraging, Magnificent rail-elegant, Fencox

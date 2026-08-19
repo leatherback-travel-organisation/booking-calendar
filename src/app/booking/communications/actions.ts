@@ -1,8 +1,8 @@
 "use server";
 
 // Server actions for the Guest Communications editor. Saves and bulk-applies
-// require booking.manage OR the BM's can_edit_communications toggle (granted
-// per person by a Pod Lead); preview only needs booking.read. Every save is
+// require booking.manage (Pod Leads) OR a Senior Booking Manager job title
+// (synced from Notion); preview only needs booking.read. Every save is
 // validated against the variable registry BEFORE it touches the database —
 // a typo'd {{first_nmae}} is rejected here with the exact bad names — and
 // every save is audited.
@@ -109,15 +109,34 @@ function revalidateCommunications(moment: Moment): void {
 }
 
 /**
- * Editing is open to Pod Leads and to BMs whose can_edit_communications
- * toggle a Pod Lead has switched on. Throws for everyone else.
+ * Editing is open to Pod Leads and Senior Booking Managers (job title synced
+ * from Notion). Throws for everyone else.
  */
 async function requireCommsEditor(): Promise<{ email: string }> {
   const access = await requireBookingAccess("booking.read");
   if (access.canManage) return { email: access.identity.email };
   const staff = await getStaffByEmail(access.identity.email);
-  if (staff?.canEditCommunications) return { email: access.identity.email };
-  throw new Error("Guest Communications editing is limited to toggled team members.");
+  if (staff?.isSenior) return { email: access.identity.email };
+  throw new Error("Guest Communications editing is limited to Pod Leads and Senior Booking Managers.");
+}
+
+/**
+ * Per-brand SMS reminders toggle (Guest Communications). When on, bookings
+ * that carry a guest phone number get SMS reminders alongside email.
+ */
+export async function setBrandSmsReminders(input: { brandKey: string; enabled: boolean }): Promise<TemplateActionResult> {
+  const identity = await requireCommsEditor();
+  if (!databaseConfigured()) return { ok: false, error: "The booking database is not configured." };
+  const brand = await brandByKey(input.brandKey);
+  if (!brand) return { ok: false, error: `Unknown brand "${input.brandKey}".` };
+
+  const sql = getSql();
+  await sql`update booking.brand set sms_reminders_enabled = ${input.enabled} where id = ${brand.id}`;
+  await sql`
+    insert into booking.audit_log (actor, action, subject, detail)
+    values (${identity.email}, 'brand_sms_reminders', ${brand.key}, ${JSON.stringify({ enabled: input.enabled })}::jsonb)`;
+  revalidatePath("/booking/communications");
+  return { ok: true };
 }
 
 export async function saveTemplate(input: SaveInput): Promise<TemplateActionResult> {

@@ -87,16 +87,6 @@ export async function saveSettings(formData: FormData): Promise<void> {
       ? staff.reminder1hEnabled
       : formData.get("reminder1hEnabled") === "on";
 
-  // Pod Lead only: the disabled checkbox submits nothing for BMs, and a
-  // submitted change from a non-manager is an escalation attempt — refuse it.
-  const canEditCommunications =
-    formData.get("remindersEnabledField") === null || !access.canManage
-      ? staff.canEditCommunications
-      : formData.get("canEditCommunications") === "on";
-  if (!access.canManage && formData.get("canEditCommunications") === "on" && !staff.canEditCommunications) {
-    throw new Error("Guest Communications access is granted by your Pod Lead.");
-  }
-
   // Restricted fields: disabled inputs are not submitted, so a missing value
   // means "unchanged". A submitted, changed value from a non-manager is an
   // attempt to escalate — refuse it.
@@ -137,9 +127,6 @@ export async function saveSettings(formData: FormData): Promise<void> {
   if (reminder1hEnabled !== staff.reminder1hEnabled) {
     diff.reminder1hEnabled = { from: staff.reminder1hEnabled, to: reminder1hEnabled };
   }
-  if (canEditCommunications !== staff.canEditCommunications) {
-    diff.canEditCommunications = { from: staff.canEditCommunications, to: canEditCommunications };
-  }
   if (minNoticeHours !== staff.minNoticeHours) diff.minNoticeHours = { from: staff.minNoticeHours, to: minNoticeHours };
   if (bookingWindowDays !== staff.bookingWindowDays) {
     diff.bookingWindowDays = { from: staff.bookingWindowDays, to: bookingWindowDays };
@@ -158,8 +145,7 @@ export async function saveSettings(formData: FormData): Promise<void> {
              timezone_override = ${timezoneOverride},
              bio = ${bio},
              reminder_24h_enabled = ${reminder24hEnabled},
-             reminder_1h_enabled = ${reminder1hEnabled},
-             can_edit_communications = ${canEditCommunications}
+             reminder_1h_enabled = ${reminder1hEnabled}
        where id = ${staff.id}`;
     await auditAvailabilityChange(access.identity.email, staff.email, diff);
   }

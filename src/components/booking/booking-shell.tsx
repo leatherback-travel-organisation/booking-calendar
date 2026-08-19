@@ -25,9 +25,11 @@ type BookingShellProps = {
 };
 
 export async function BookingShell({ active, canManage, children }: BookingShellProps) {
+  // Dashboard and Integrations are Pod Lead surfaces; BMs work from their
+  // own team page (the pages themselves redirect, this just hides the tabs).
   const visible = canManage
     ? SECTIONS
-    : SECTIONS.filter((section) => section.key !== "integrations");
+    : SECTIONS.filter((section) => section.key !== "integrations" && section.key !== "dashboard");
 
   return (
     <AppShell active="booking">

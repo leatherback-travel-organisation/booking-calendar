@@ -163,6 +163,49 @@ export function buildVariableValues(ctx: BookingEmailContext): Partial<Record<Va
   };
 }
 
+/**
+ * Short plain-text SMS for the reminder moments. Sent only when the brand
+ * has SMS reminders switched on AND the booking carries a guest phone.
+ * Stub-first like email: the rendered text is recorded in audit_log as
+ * sms_rendered_not_sent until an SMS provider is wired up.
+ */
+export async function sendBookingSms(moment: Moment, ctx: BookingEmailContext): Promise<SendResult> {
+  const phone = ctx.guestPhone?.trim();
+  if (!phone) return { ok: false, error: "no guest phone on the booking" };
+
+  const values = buildVariableValues(ctx);
+  const joinLine =
+    (ctx.callMedium ?? "video") === "phone"
+      ? `${ctx.staff.firstName} will call you — keep your phone nearby.`
+      : ctx.meetUrl
+        ? `Join: ${ctx.meetUrl}`
+        : "";
+  const when =
+    moment === "reminder_24h"
+      ? `tomorrow at ${values["booking.meeting_time"]}`
+      : `at ${values["booking.meeting_time"]} — about an hour away`;
+  const text = [
+    `${ctx.brand.name}: Hi ${values["guest.first_name"]}, your call with ${ctx.staff.firstName} is ${when} (${values["booking.timezone"]}).`,
+    joinLine,
+    `Reschedule: ${ctx.manageUrlRaw}`,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const sql = getSql();
+  const id = `sms-noop-${Date.now().toString(36)}`;
+  await sql`
+    insert into booking.audit_log (actor, action, subject, detail)
+    values ('system', 'sms_rendered_not_sent', ${phone}, ${JSON.stringify({
+      id,
+      text,
+      moment,
+      brandKey: ctx.brand.key,
+      bookingId: ctx.bookingId,
+    })}::jsonb)`;
+  return { ok: true, id };
+}
+
 export async function sendBookingEmail(moment: Moment, ctx: BookingEmailContext): Promise<SendResult> {
   const template = await resolveTemplate(moment, ctx.brand.id, ctx.eventType.key);
   const values = buildVariableValues(ctx);

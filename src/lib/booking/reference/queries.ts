@@ -4,7 +4,7 @@ import "server-only";
 // (booking schema) — external sources are only touched by the sync.
 
 import { getSql } from "@/lib/booking/db";
-import type { Brand, Departure, Staff } from "@/lib/booking/model";
+import { isSeniorTitle, type Brand, type Departure, type Staff } from "@/lib/booking/model";
 import {
   buildDepartureIndex,
   isUpcomingDeparture,
@@ -42,6 +42,7 @@ export async function getBrands(): Promise<Brand[]> {
     fromEmail: row.from_email as string,
     fromName: row.from_name as string,
     replyTo: (row.reply_to as string | null) ?? null,
+    smsRemindersEnabled: Boolean(row.sms_reminders_enabled),
     active: row.active as boolean,
   }));
 }
@@ -76,10 +77,26 @@ export async function getStaffWithBrands(): Promise<Staff[]> {
     bookingWindowDays: Number(row.booking_window_days ?? 0),
     reminder24hEnabled: row.reminder_24h_enabled === undefined ? true : Boolean(row.reminder_24h_enabled),
     reminder1hEnabled: row.reminder_1h_enabled === undefined ? true : Boolean(row.reminder_1h_enabled),
-    canEditCommunications: Boolean(row.can_edit_communications),
+    jobTitle: (row.job_title as string | null) ?? null,
+    isSenior: isSeniorTitle((row.job_title as string | null) ?? null),
     active: row.active as boolean,
     calendarOk: row.calendar_ok as boolean,
   }));
+}
+
+/** One pod: a Pod Lead's (or co-leads') brands, synced from Notion. */
+export type Pod = {
+  key: string;
+  name: string;
+  brandIds: string[];
+};
+
+export async function getPods(): Promise<Pod[]> {
+  const sql = getSql();
+  const rows = await sql`select payload from booking.reference_cache where key = 'booking:pods'`;
+  if (rows.length === 0) return [];
+  const payload = rows[0].payload as { pods?: Pod[] } | null;
+  return payload?.pods ?? [];
 }
 
 export type CoverageIssueRow = {

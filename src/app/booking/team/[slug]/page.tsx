@@ -4,7 +4,7 @@
 // split). This replaces the old standalone Availability page.
 
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { DateTime } from "luxon";
 import { BackLink } from "@/components/booking/back-link";
 import { BookingShell } from "@/components/booking/booking-shell";
@@ -95,10 +95,19 @@ export default async function BookingManagerPage({ params, searchParams }: PageP
   const sp = await searchParams;
   const savedFlag = typeof sp.saved === "string" ? sp.saved : null;
 
-  const staff = (await getStaffWithBrands()).find((member) => member.slug === slug && member.active);
+  const allStaff = await getStaffWithBrands();
+  const staff = allStaff.find((member) => member.slug === slug && member.active);
   if (!staff) notFound();
 
   const isSelf = staff.email.toLowerCase() === identity.email.toLowerCase();
+
+  // BMs see only their own page; switching between BM views is Pod Lead only.
+  if (!canManage && !isSelf) {
+    const own = allStaff.find(
+      (member) => member.active && member.email.toLowerCase() === identity.email.toLowerCase(),
+    );
+    redirect(own ? `/booking/team/${own.slug}` : "/booking/team");
+  }
   const brand = staff.primaryBrandId ? await getBrandById(staff.primaryBrandId) : null;
   const zone = brand ? resolveSchedulingZone(staff, brand) : (staff.timezoneOverride ?? "UTC");
   const zoneLabel = brand ? `${zone} (${brand.name} scheduling zone)` : zone;
@@ -157,7 +166,6 @@ export default async function BookingManagerPage({ params, searchParams }: PageP
             bio: staff.bio,
             reminder24hEnabled: staff.reminder24hEnabled,
             reminder1hEnabled: staff.reminder1hEnabled,
-            canEditCommunications: staff.canEditCommunications,
           }}
           hours={hours}
           zoneLabel={zoneLabel}
