@@ -31,12 +31,14 @@ export default async function BookingCommunicationsPage() {
 
   const brands = await getBrands();
   const rows = await getActiveTemplateRows(brands);
-  const brandLites = brands.map((brand) => ({ key: brand.key, name: brand.name }));
+  const brandLites = brands
+    .filter((brand) => brand.active)
+    .map((brand) => ({ key: brand.key, name: brand.name, colorPrimary: brand.colorPrimary }));
   const summaries = MOMENTS.map((moment) => summarizeMoment(moment, rows, brandLites));
 
   return (
     <BookingShell active="communications" canManage={canManage}>
-      <CommunicationsList summaries={summaries} canManage={canEdit} />
+      <CommunicationsList summaries={summaries} brands={brandLites} canManage={canEdit} />
     </BookingShell>
   );
 }

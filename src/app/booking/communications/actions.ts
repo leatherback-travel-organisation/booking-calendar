@@ -147,20 +147,44 @@ export async function saveTemplate(input: SaveInput): Promise<TemplateActionResu
   return { ok: true };
 }
 
+/**
+ * Literal mentions of the source brand (name or alias) become the
+ * {{brand.name}} variable, so a copied template greets every target brand
+ * by its own name instead of the one it was written for.
+ */
+function neutralizeBrandMentions(text: string, source: Brand): string {
+  let out = text;
+  for (const mention of [source.name, ...source.aliases]) {
+    if (!mention.trim()) continue;
+    const escaped = mention.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    out = out.replace(new RegExp(escaped, "gi"), "{{brand.name}}");
+  }
+  return out;
+}
+
 export async function applyToMany(input: {
   moment: string;
   subject: string;
   bodyHtml: string;
+  /** Brand scope the content was written in; '' = the global default. */
+  sourceBrandKey?: string;
   targets: Array<{ brandKey: string; typeKey: string }>;
 }): Promise<TemplateActionResult> {
   const identity = await requireCommsEditor();
   if (!databaseConfigured()) return { ok: false, error: "The booking database is not configured." };
   if (!isMoment(input.moment)) return { ok: false, error: "Unknown message moment." };
   if (input.targets.length === 0) return { ok: false, error: "No brands selected." };
-  const invalid = validateContent(input.subject, input.bodyHtml);
-  if (invalid) return invalid;
 
   const brands = await getBrands();
+  const sourceBrand = input.sourceBrandKey ? brands.find((b) => b.key === input.sourceBrandKey) : null;
+  let subject = input.subject;
+  let bodyHtml = input.bodyHtml;
+  if (sourceBrand) {
+    subject = neutralizeBrandMentions(subject, sourceBrand);
+    bodyHtml = neutralizeBrandMentions(bodyHtml, sourceBrand);
+  }
+  const invalid = validateContent(subject, bodyHtml);
+  if (invalid) return invalid;
   const resolved: Array<{ brandId: string; brandKey: string; typeKey: string }> = [];
   for (const target of input.targets) {
     const brand = brands.find((candidate) => candidate.key === target.brandKey);
@@ -173,11 +197,11 @@ export async function applyToMany(input: {
       moment: input.moment,
       brandId: target.brandId,
       typeKey: target.typeKey || null,
-      subject: input.subject.trim(),
-      bodyHtml: input.bodyHtml,
+      subject: subject.trim(),
+      bodyHtml,
       actor: identity.email,
     });
-    await auditSave(identity.email, input.moment, target.brandKey, target.typeKey, "apply-to-many");
+    await auditSave(identity.email, input.moment, target.brandKey, target.typeKey, "copy-to");
   }
   revalidateCommunications(input.moment);
   return { ok: true, applied: resolved.length };

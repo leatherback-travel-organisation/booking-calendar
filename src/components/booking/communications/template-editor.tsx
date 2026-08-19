@@ -237,11 +237,12 @@ export function TemplateEditor(props: TemplateEditorProps) {
         moment: props.moment,
         subject,
         bodyHtml,
+        sourceBrandKey: props.scope.brandKey,
         targets: selectedBrands.map((brandKey) => ({ brandKey, typeKey: props.scope.typeKey })),
       });
       if (result.ok) {
         setError(null);
-        setNotice(`Applied to ${result.applied} brand${result.applied === 1 ? "" : "s"}.`);
+        setNotice(`Copied to ${result.applied} brand${result.applied === 1 ? "" : "s"}.`);
         setSelectedBrands([]);
         setConfirmChecked(false);
         setApplyOpen(false);
@@ -425,7 +426,7 @@ export function TemplateEditor(props: TemplateEditorProps) {
       {props.canManage ? (
         <section className={styles.panel}>
           <div className={styles.panelHeader}>
-            <h3>Apply to other brands</h3>
+            <h3>Copy to other brands</h3>
             <button type="button" className={styles.quietButton} onClick={() => setApplyOpen((open) => !open)}>
               {applyOpen ? "Hide" : "Show"}
             </button>
@@ -434,8 +435,11 @@ export function TemplateEditor(props: TemplateEditorProps) {
             <div className={styles.applyPanel}>
               <p className={styles.mutedNote}>
                 Copies the subject and body above to the selected brands
-                {props.scope.typeKey ? ` for ${typeLabel(props.scope.typeKey)} calls` : ""}. Nothing is applied
-                silently — review the list, then confirm.
+                {props.scope.typeKey ? ` for ${typeLabel(props.scope.typeKey)} calls` : ""}.
+                {props.scope.brandKey
+                  ? ` Mentions of ${props.brands.find((b) => b.key === props.scope.brandKey)?.name ?? "this brand"} switch to the {{brand.name}} variable automatically, so each copy greets guests as its own brand.`
+                  : ""}{" "}
+                Nothing is copied silently — review the list, then confirm.
               </p>
               <div className={styles.applyBrands}>
                 {props.brands
@@ -476,7 +480,7 @@ export function TemplateEditor(props: TemplateEditorProps) {
                     onClick={handleApply}
                     disabled={!confirmChecked || applying}
                   >
-                    {applying ? "Applying…" : `Apply to ${applyDiff.length} brand${applyDiff.length === 1 ? "" : "s"}`}
+                    {applying ? "Copying…" : `Copy to ${applyDiff.length} brand${applyDiff.length === 1 ? "" : "s"}`}
                   </button>
                 </>
               ) : (

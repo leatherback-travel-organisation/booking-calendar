@@ -81,6 +81,36 @@
   font-size: var(--text-label, 12px);
   padding: 2px 9px;
   white-space: nowrap;
+  text-decoration: none;
+}
+
+.chip:hover {
+  color: var(--ink);
+}
+
+/* One button per brand, straight into that brand's version of the message.
+   Tinted with the brand colour; solid when the brand has its own template,
+   ghosted while it still rides on the default. */
+.brandLink {
+  --tag: var(--ink-soft);
+  border: 1px dashed color-mix(in srgb, var(--tag) 40%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: color-mix(in srgb, var(--tag) 72%, var(--ink));
+  font-size: var(--text-label, 12px);
+  font-weight: 500;
+  padding: 2px 9px;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.brandLink[data-tailored] {
+  border-style: solid;
+  background: color-mix(in srgb, var(--tag) 11%, var(--card));
+}
+
+.brandLink:hover {
+  background: color-mix(in srgb, var(--tag) 18%, var(--card));
 }
 
 .chip[data-kind="custom"] {

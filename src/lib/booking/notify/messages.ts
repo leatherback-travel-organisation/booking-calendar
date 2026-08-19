@@ -15,45 +15,54 @@ import { getNotifier, type OutboundMessage, type SendResult } from "./notifier";
 
 export type Moment = "confirmation" | "reminder_24h" | "reminder_1h" | "cancellation" | "reschedule";
 
+// Default copy follows the Leatherback Writing & Communication Guide
+// ("Special Feeling"): conversational, contractions, greet → hug → clear
+// answer → warm sign-off, one emoji at most, no travel clichés.
 export const DEFAULT_TEMPLATES: Record<Moment, { subject: string; bodyHtml: string }> = {
   confirmation: {
-    subject: "You're booked: {{booking.meeting_date}} at {{booking.meeting_time}} with {{host.first_name}}",
+    subject: "You're booked, {{guest.first_name}}! {{booking.meeting_date}} at {{booking.meeting_time}} with {{host.first_name}}",
     bodyHtml:
       "<p>Hi {{guest.first_name}},</p>" +
-      "<p>You're booked for a call with {{host.first_name}} on <strong>{{booking.meeting_date}}</strong> at <strong>{{booking.meeting_time}}</strong> ({{booking.timezone}}). We've set aside {{booking.duration}}.</p>" +
-      "<p>Join here when it's time: <a href=\"{{booking.meet_link}}\">{{booking.meet_link}}</a></p>" +
-      "<p>Plans change? You can <a href=\"{{booking.reschedule_link}}\">reschedule</a> or <a href=\"{{booking.cancel_link}}\">cancel</a> any time.</p>" +
+      "<p>Lovely news — your call with {{host.first_name}} is locked in! 🎉</p>" +
+      "<p><strong>{{booking.meeting_date}}</strong> at <strong>{{booking.meeting_time}}</strong> ({{booking.timezone}}) — we've set aside {{booking.duration}} just for you.</p>" +
+      "<p>When it's time, join here: <a href=\"{{booking.meet_link}}\">{{booking.meet_link}}</a></p>" +
+      "<p>Life happens — if that time stops working you can <a href=\"{{booking.reschedule_link}}\">reschedule</a> or <a href=\"{{booking.cancel_link}}\">cancel</a> whenever you need, no fuss.</p>" +
+      "<p>We can't wait to hear what you're dreaming up.</p>" +
       "<p>Talk soon,<br/>{{host.first_name}} at {{brand.name}}</p>",
   },
   reminder_24h: {
-    subject: "Tomorrow: your call with {{host.first_name}} at {{booking.meeting_time}}",
+    subject: "Tomorrow's the day — your call with {{host.first_name}} at {{booking.meeting_time}}",
     bodyHtml:
       "<p>Hi {{guest.first_name}},</p>" +
-      "<p>Just a reminder that you're speaking with {{host.first_name}} tomorrow, {{booking.meeting_date}}, at <strong>{{booking.meeting_time}}</strong> ({{booking.timezone}}).</p>" +
-      "<p>Join link: <a href=\"{{booking.meet_link}}\">{{booking.meet_link}}</a></p>" +
-      "<p>Need to move it? <a href=\"{{booking.reschedule_link}}\">Reschedule here</a>.</p>",
+      "<p>Just a friendly nudge — you're chatting with {{host.first_name}} tomorrow, {{booking.meeting_date}}, at <strong>{{booking.meeting_time}}</strong> ({{booking.timezone}}).</p>" +
+      "<p>Your join link, ready when you are: <a href=\"{{booking.meet_link}}\">{{booking.meet_link}}</a></p>" +
+      "<p>Day looking different than planned? <a href=\"{{booking.reschedule_link}}\">Reschedule here</a> — takes seconds.</p>" +
+      "<p>See you tomorrow!<br/>{{host.first_name}} at {{brand.name}}</p>",
   },
   reminder_1h: {
-    subject: "Starting soon: your call with {{host.first_name}}",
+    subject: "Nearly time! Your call with {{host.first_name}} starts at {{booking.meeting_time}}",
     bodyHtml:
       "<p>Hi {{guest.first_name}},</p>" +
-      "<p>Your call with {{host.first_name}} starts at <strong>{{booking.meeting_time}}</strong> ({{booking.timezone}}) — that's about an hour from now.</p>" +
-      "<p>Join link: <a href=\"{{booking.meet_link}}\">{{booking.meet_link}}</a></p>",
+      "<p>Nearly time! You and {{host.first_name}} are talking at <strong>{{booking.meeting_time}}</strong> ({{booking.timezone}}) — about an hour from now.</p>" +
+      "<p>Pop the kettle on, then join here: <a href=\"{{booking.meet_link}}\">{{booking.meet_link}}</a></p>" +
+      "<p>See you very soon! ☕</p>",
   },
   cancellation: {
     subject: "Your call on {{booking.meeting_date}} has been cancelled",
     bodyHtml:
       "<p>Hi {{guest.first_name}},</p>" +
-      "<p>Your call with {{host.first_name}} on {{booking.meeting_date}} at {{booking.meeting_time}} ({{booking.timezone}}) has been cancelled.</p>" +
-      "<p>If you'd like to find a new time, we'd love to talk: call us on {{brand.phone}} or book again any time.</p>",
+      "<p>Your call with {{host.first_name}} on {{booking.meeting_date}} at {{booking.meeting_time}} ({{booking.timezone}}) is cancelled — all taken care of, nothing more for you to do.</p>" +
+      "<p>If you'd still love a chat, we're easy to reach: call {{brand.name}} on {{brand.phone}}, or book a new time whenever suits you.</p>" +
+      "<p>Hope we get to talk soon,<br/>The {{brand.name}} team</p>",
   },
   reschedule: {
-    subject: "New time confirmed: {{booking.meeting_date}} at {{booking.meeting_time}}",
+    subject: "All sorted — new time locked in: {{booking.meeting_date}} at {{booking.meeting_time}}",
     bodyHtml:
       "<p>Hi {{guest.first_name}},</p>" +
-      "<p>Your call with {{host.first_name}} has moved to <strong>{{booking.meeting_date}}</strong> at <strong>{{booking.meeting_time}}</strong> ({{booking.timezone}}).</p>" +
+      "<p>All sorted — your call with {{host.first_name}} has moved to <strong>{{booking.meeting_date}}</strong> at <strong>{{booking.meeting_time}}</strong> ({{booking.timezone}}).</p>" +
       "<p>The same join link still works: <a href=\"{{booking.meet_link}}\">{{booking.meet_link}}</a></p>" +
-      "<p><a href=\"{{booking.reschedule_link}}\">Reschedule again</a> · <a href=\"{{booking.cancel_link}}\">Cancel</a></p>",
+      "<p>Need to juggle it again? <a href=\"{{booking.reschedule_link}}\">Reschedule</a> · <a href=\"{{booking.cancel_link}}\">Cancel</a> — whatever works for you.</p>" +
+      "<p>See you then!<br/>{{host.first_name}} at {{brand.name}}</p>",
   },
 };
 

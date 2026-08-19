@@ -1,6 +1,8 @@
 // Server-rendered list of guest messages, structured by the guest's journey
-// — not by workflow nesting. One click from any row to its editor.
+// — not by workflow nesting. One click from any row to its editor, and one
+// click per brand straight into that brand's version.
 
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import {
   formatDiffDate,
@@ -12,14 +14,11 @@ import styles from "./communications-list.module.css";
 
 type CommunicationsListProps = {
   summaries: MomentSummary[];
+  brands: Array<{ key: string; name: string; colorPrimary: string | null }>;
   canManage: boolean;
 };
 
-function overrideLabel(override: MomentSummary["overrides"][number]): string {
-  return override.eventTypeKey ? `${override.brandName} · ${override.eventTypeKey}` : override.brandName;
-}
-
-export function CommunicationsList({ summaries, canManage }: CommunicationsListProps) {
+export function CommunicationsList({ summaries, brands, canManage }: CommunicationsListProps) {
   const byMoment = new Map(summaries.map((summary) => [summary.moment, summary]));
 
   return (
@@ -41,18 +40,33 @@ export function CommunicationsList({ summaries, canManage }: CommunicationsListP
                     <p className={styles.rowName}>{meta.label}</p>
                     <p className={styles.rowDescription}>{meta.description}</p>
                     <div className={styles.chips}>
-                      <span className={styles.chip} data-kind={summary?.hasCustomDefault ? "custom" : "builtin"}>
+                      <Link
+                        href={`/booking/communications/${moment}`}
+                        className={styles.chip}
+                        data-kind={summary?.hasCustomDefault ? "custom" : "builtin"}
+                      >
                         Default
-                      </span>
-                      {summary?.overrides.map((override) => (
-                        <span
-                          key={`${override.brandKey}:${override.eventTypeKey ?? ""}`}
-                          className={styles.chip}
-                          data-kind="override"
-                        >
-                          {overrideLabel(override)}
-                        </span>
-                      ))}
+                      </Link>
+                      {brands.map((brand) => {
+                        const overrides = summary?.overrides.filter((o) => o.brandKey === brand.key) ?? [];
+                        const tailored = overrides.length > 0;
+                        return (
+                          <Link
+                            key={brand.key}
+                            href={`/booking/communications/${moment}?brand=${encodeURIComponent(brand.key)}`}
+                            className={styles.brandLink}
+                            data-tailored={tailored || undefined}
+                            style={brand.colorPrimary ? ({ "--tag": brand.colorPrimary } as CSSProperties) : undefined}
+                            title={
+                              tailored
+                                ? `Tailored for ${brand.name}${overrides.some((o) => o.eventTypeKey) ? ` (incl. per-call-type)` : ""} — click to edit`
+                                : `Uses the default — click to tailor for ${brand.name}`
+                            }
+                          >
+                            {brand.name}
+                          </Link>
+                        );
+                      })}
                     </div>
                   </div>
                   <div className={styles.rowSide}>
