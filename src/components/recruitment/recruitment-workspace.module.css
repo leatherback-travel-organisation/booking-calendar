@@ -427,8 +427,8 @@
 .detailList dd { margin: 4px 0 0; color: #2b4664; font-size: 12px; font-weight: 500; }
 .personalDetailsList { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .personalDetailsList div { min-width: 0; }
-.personalDetailsList div:nth-child(5),
-.personalDetailsList div:nth-child(6) { grid-column: 1 / -1; }
+.personalDetailsList div:nth-child(3),
+.personalDetailsList div:nth-child(4) { grid-column: 1 / -1; }
 .personalDetailsList dd { overflow-wrap: anywhere; }
 .fileSection,
 .interviewNotes,
