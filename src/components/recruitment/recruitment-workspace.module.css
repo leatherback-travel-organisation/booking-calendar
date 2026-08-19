@@ -559,6 +559,8 @@
 .templateCard footer .secondaryButton { min-height: 32px; padding: 6px 9px; font-size: 11px; }
 
 .recordGrid { padding-top: 18px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 12px; }
+.recordOverview { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: stretch; gap: 12px; }
+.recordOverview > .recordCard { height: 100%; }
 .recordCard { min-width: 0; padding: 15px; border: 1px solid #dfe8e9; border-radius: 14px; background: white; }
 .recordCard > h3,
 .recordCard .cardSectionHeader h3 { margin: 0; color: #163659; font-size: 13px; }
@@ -631,7 +633,8 @@
   .sectionHeading { align-items: flex-start; flex-direction: column; gap: 7px; }
   .sectionHeading > p { text-align: left; }
   .templatesGrid,
-  .recordGrid { grid-template-columns: 1fr; }
+  .recordGrid,
+  .recordOverview { grid-template-columns: 1fr; }
   .recordWide { grid-column: auto; }
   .record .modalHeader { align-items: stretch; flex-direction: column; }
   .recordHeaderTools { width: 100%; }
