@@ -44,26 +44,15 @@
 
 .scopeBar {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   gap: var(--density-3, 14px);
   flex-wrap: wrap;
 }
 
-.scopeField {
-  display: grid;
-  gap: 4px;
-  font-size: var(--text-label, 12px);
+.scopeNote {
   color: var(--ink-soft);
-}
-
-.scopeField select {
-  border: 1px solid var(--line);
-  border-radius: var(--radius-control, 7px);
-  background: var(--card);
-  color: var(--ink);
   font-size: var(--text-small, 13px);
-  padding: 7px 10px;
-  min-width: 190px;
+  font-weight: 500;
 }
 
 .readOnlyNote {

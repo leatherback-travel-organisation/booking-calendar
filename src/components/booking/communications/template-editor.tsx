@@ -6,7 +6,7 @@
 // Saving validates against the registry first — typos surface here, never in
 // a guest's inbox.
 
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -58,7 +58,6 @@ function typeLabel(key: string): string {
 
 export function TemplateEditor(props: TemplateEditorProps) {
   const router = useRouter();
-  const pathname = usePathname();
 
   const [subject, setSubject] = useState(props.initial.subject);
   const [mode, setMode] = useState<"variables" | "values">("variables");
@@ -122,15 +121,6 @@ export function TemplateEditor(props: TemplateEditorProps) {
   }, [editor]);
 
   const serializeBody = () => chipHtmlToTokens(editor?.getHTML() ?? props.initial.bodyHtml);
-
-  // --- scope switching ------------------------------------------------------
-  const navigateScope = (brandKey: string, typeKey: string) => {
-    const query = new URLSearchParams();
-    if (brandKey) query.set("brand", brandKey);
-    if (typeKey) query.set("type", typeKey);
-    const search = query.toString();
-    router.push(search ? `${pathname}?${search}` : pathname);
-  };
 
   // --- in-body sample-value preview ----------------------------------------
   let valuesPreview: { subject: string; body: string } | null = null;
@@ -267,34 +257,14 @@ export function TemplateEditor(props: TemplateEditorProps) {
       </header>
 
       <div className={styles.scopeBar}>
-        <label className={styles.scopeField}>
-          <span>Brand</span>
-          <select
-            value={props.scope.brandKey}
-            onChange={(event) => navigateScope(event.target.value, props.scope.typeKey)}
-          >
-            <option value="">Default (all brands)</option>
-            {props.brands.map((brand) => (
-              <option key={brand.key} value={brand.key}>
-                {brand.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className={styles.scopeField}>
-          <span>Call type</span>
-          <select
-            value={props.scope.typeKey}
-            onChange={(event) => navigateScope(props.scope.brandKey, event.target.value)}
-          >
-            <option value="">All types</option>
-            {props.typeKeys.map((key) => (
-              <option key={key} value={key}>
-                {typeLabel(key)}
-              </option>
-            ))}
-          </select>
-        </label>
+        {/* Scope comes from the brand buttons on the Guest Communications
+            page — shown here as plain fact, not another control. */}
+        <span className={styles.scopeNote}>
+          {props.scope.brandKey
+            ? `${props.brands.find((brand) => brand.key === props.scope.brandKey)?.name ?? props.scope.brandKey} version`
+            : "Default — all brands"}
+          {props.scope.typeKey ? ` · ${typeLabel(props.scope.typeKey)} calls` : ""}
+        </span>
         {!props.canManage ? (
           <span className={styles.readOnlyNote}>Read-only — ask a Pod Lead to toggle on editing for you.</span>
         ) : null}
