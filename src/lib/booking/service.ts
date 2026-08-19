@@ -34,6 +34,8 @@ export type CreateBookingArgs = {
   guestPhone?: string | null;
   guestNotes?: string | null;
   guestTimezone?: string | null;
+  /** Video creates a Meet link; phone means the BM rings the guest. */
+  callMedium?: "video" | "phone";
   sourceKind: "trip" | "bm" | "contact" | "portal" | "invite";
   sourceSlug?: string | null;
   routedVia?: "primary" | "backup" | "pool";
@@ -129,13 +131,13 @@ export async function createBooking(args: CreateBookingArgs): Promise<CreateBook
     const rows = await sql`
       insert into booking.booking (
         staff_id, brand_id, event_type_id, starts_at, ends_at,
-        guest_timezone, guest_name, guest_email, guest_phone, guest_notes,
+        guest_timezone, guest_name, guest_email, guest_phone, guest_notes, call_medium,
         source_kind, source_slug, routed_via, routed_reason,
         airtable_trip_record_id, manage_token_hash, idempotency_key, confirmed_at
       ) values (
         ${args.staff.id}, ${args.brand.id}, ${args.eventType.id}, ${startIso}, ${endIso},
         ${args.guestTimezone ?? null}, ${args.guestName}, ${args.guestEmail.trim().toLowerCase()},
-        ${args.guestPhone ?? null}, ${args.guestNotes ?? null},
+        ${args.guestPhone ?? null}, ${args.guestNotes ?? null}, ${args.callMedium ?? "video"},
         ${args.sourceKind}, ${args.sourceSlug ?? null}, ${args.routedVia ?? "primary"}, ${args.routedReason ?? null},
         ${args.airtableTripRecordId ?? null}, ${token.hash}, ${args.idempotencyKey}, now()
       )
@@ -174,13 +176,15 @@ export async function createBooking(args: CreateBookingArgs): Promise<CreateBook
   if (calendarConfigured()) {
     try {
       const event = await insertEvent(args.staff.email, {
-        summary: `${args.eventType.name} — ${args.guestName}`,
+        summary: `${args.eventType.name} — ${args.guestName}${(args.callMedium ?? "video") === "phone" ? " (phone)" : ""}`,
         description: buildEventDescription(args),
         startIso,
         endIso,
         timezone: resolveSchedulingZone(args.staff, args.brand),
         attendees: [{ email: args.guestEmail, displayName: args.guestName }],
-        conferenceRequestId: bookingId,
+        // Phone calls get a calendar event but no Meet link — the BM rings
+        // the guest on the number they left.
+        ...((args.callMedium ?? "video") === "video" ? { conferenceRequestId: bookingId } : {}),
         privateProperties: { bookingId },
       });
       meetUrl = event.meetUrl;
@@ -214,6 +218,8 @@ export async function createBooking(args: CreateBookingArgs): Promise<CreateBook
       endIso,
       durationMin: args.eventType.durationMin,
       meetUrl,
+      callMedium: args.callMedium ?? "video",
+      guestPhone: args.guestPhone ?? null,
       manageUrlRaw: manageUrl,
       brand: args.brand,
       staff: args.staff,
@@ -303,6 +309,8 @@ export type ManagedBooking = {
   guestName: string;
   guestEmail: string;
   guestTimezone: string | null;
+  guestPhone: string | null;
+  callMedium: "video" | "phone";
   meetUrl: string | null;
   googleEventId: string | null;
   status: string;
@@ -348,6 +356,8 @@ function mapManagedBooking(row: Record<string, unknown>): ManagedBooking {
     guestName: String(row.guest_name),
     guestEmail: String(row.guest_email),
     guestTimezone: (row.guest_timezone as string | null) ?? null,
+    guestPhone: (row.guest_phone as string | null) ?? null,
+    callMedium: row.call_medium === "phone" ? "phone" : "video",
     meetUrl: (row.meet_url as string | null) ?? null,
     googleEventId: (row.google_event_id as string | null) ?? null,
     status: String(row.status),
@@ -403,6 +413,8 @@ export async function cancelBooking(
       endIso: booking.endsAt,
       durationMin: ctx.eventType.durationMin,
       meetUrl: booking.meetUrl,
+      callMedium: booking.callMedium,
+      guestPhone: booking.guestPhone,
       manageUrlRaw: "",
       brand: ctx.brand,
       staff: ctx.staff,
@@ -537,6 +549,8 @@ export async function rescheduleBooking(
       endIso,
       durationMin: ctx.eventType.durationMin,
       meetUrl: booking.meetUrl,
+      callMedium: booking.callMedium,
+      guestPhone: booking.guestPhone,
       manageUrlRaw: `${appUrl}/manage/${rawToken}`,
       brand: ctx.brand,
       staff: ctx.staff,

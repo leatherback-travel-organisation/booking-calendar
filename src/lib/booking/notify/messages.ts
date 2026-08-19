@@ -9,7 +9,7 @@ import { DateTime } from "luxon";
 import { getSql } from "../db";
 import type { Brand, EventType, Staff } from "../model";
 import { icsCancel, icsRequest } from "./ics.ts";
-import { htmlToText, renderBrandEmail, renderTemplate } from "./render.ts";
+import { escapeHtml, htmlToText, renderBrandEmail, renderTemplate } from "./render.ts";
 import type { VariableName } from "./variables.ts";
 import { getNotifier, type OutboundMessage, type SendResult } from "./notifier";
 
@@ -25,7 +25,7 @@ export const DEFAULT_TEMPLATES: Record<Moment, { subject: string; bodyHtml: stri
       "<p>Hi {{guest.first_name}},</p>" +
       "<p>Lovely news — your call with {{host.first_name}} is locked in! 🎉</p>" +
       "<p><strong>{{booking.meeting_date}}</strong> at <strong>{{booking.meeting_time}}</strong> ({{booking.timezone}}) — we've set aside {{booking.duration}} just for you.</p>" +
-      "<p>When it's time, join here: <a href=\"{{booking.meet_link}}\">{{booking.meet_link}}</a></p>" +
+      "<p>{{booking.join_details}}</p>" +
       "<p>Life happens — if that time stops working you can <a href=\"{{booking.reschedule_link}}\">reschedule</a> or <a href=\"{{booking.cancel_link}}\">cancel</a> whenever you need, no fuss.</p>" +
       "<p>We can't wait to hear what you're dreaming up.</p>" +
       "<p>Talk soon,<br/>{{host.first_name}} at {{brand.name}}</p>",
@@ -35,7 +35,7 @@ export const DEFAULT_TEMPLATES: Record<Moment, { subject: string; bodyHtml: stri
     bodyHtml:
       "<p>Hi {{guest.first_name}},</p>" +
       "<p>Just a friendly nudge — you're chatting with {{host.first_name}} tomorrow, {{booking.meeting_date}}, at <strong>{{booking.meeting_time}}</strong> ({{booking.timezone}}).</p>" +
-      "<p>Your join link, ready when you are: <a href=\"{{booking.meet_link}}\">{{booking.meet_link}}</a></p>" +
+      "<p>{{booking.join_details}}</p>" +
       "<p>Day looking different than planned? <a href=\"{{booking.reschedule_link}}\">Reschedule here</a> — takes seconds.</p>" +
       "<p>See you tomorrow!<br/>{{host.first_name}} at {{brand.name}}</p>",
   },
@@ -44,7 +44,7 @@ export const DEFAULT_TEMPLATES: Record<Moment, { subject: string; bodyHtml: stri
     bodyHtml:
       "<p>Hi {{guest.first_name}},</p>" +
       "<p>Nearly time! You and {{host.first_name}} are talking at <strong>{{booking.meeting_time}}</strong> ({{booking.timezone}}) — about an hour from now.</p>" +
-      "<p>Pop the kettle on, then join here: <a href=\"{{booking.meet_link}}\">{{booking.meet_link}}</a></p>" +
+      "<p>Pop the kettle on. {{booking.join_details}}</p>" +
       "<p>See you very soon! ☕</p>",
   },
   cancellation: {
@@ -60,7 +60,7 @@ export const DEFAULT_TEMPLATES: Record<Moment, { subject: string; bodyHtml: stri
     bodyHtml:
       "<p>Hi {{guest.first_name}},</p>" +
       "<p>All sorted — your call with {{host.first_name}} has moved to <strong>{{booking.meeting_date}}</strong> at <strong>{{booking.meeting_time}}</strong> ({{booking.timezone}}).</p>" +
-      "<p>The same join link still works: <a href=\"{{booking.meet_link}}\">{{booking.meet_link}}</a></p>" +
+      "<p>{{booking.join_details}}</p>" +
       "<p>Need to juggle it again? <a href=\"{{booking.reschedule_link}}\">Reschedule</a> · <a href=\"{{booking.cancel_link}}\">Cancel</a> — whatever works for you.</p>" +
       "<p>See you then!<br/>{{host.first_name}} at {{brand.name}}</p>",
   },
@@ -100,6 +100,9 @@ export type BookingEmailContext = {
   endIso: string;
   durationMin: number;
   meetUrl: string | null;
+  /** How the guest asked to take the call; defaults to video. */
+  callMedium?: "video" | "phone";
+  guestPhone?: string | null;
   manageUrlRaw: string;
   brand: Brand;
   staff: Staff;
@@ -108,6 +111,25 @@ export type BookingEmailContext = {
   tripUrl?: string | null;
   icalSequence?: number;
 };
+
+/**
+ * One line that fits the call however the guest chose to take it: the video
+ * join link, or an honest "we'll ring you" for phone calls. HTML-safe: every
+ * dynamic piece is escaped before assembly.
+ */
+function buildJoinDetails(ctx: BookingEmailContext): string {
+  if ((ctx.callMedium ?? "video") === "phone") {
+    const phone = ctx.guestPhone?.trim();
+    return phone
+      ? `${escapeHtml(ctx.staff.firstName)} will call you on <strong>${escapeHtml(phone)}</strong> — keep your phone nearby.`
+      : `${escapeHtml(ctx.staff.firstName)} will call you — keep your phone nearby.`;
+  }
+  if (ctx.meetUrl) {
+    const url = escapeHtml(ctx.meetUrl);
+    return `When it's time, join here: <a href="${url}">${url}</a>`;
+  }
+  return "Your video link is on its way — it'll be in your reminder emails too.";
+}
 
 export function buildVariableValues(ctx: BookingEmailContext): Partial<Record<VariableName, string>> {
   // Guests always see their own timezone; the abbreviation is displayed next
@@ -124,6 +146,7 @@ export function buildVariableValues(ctx: BookingEmailContext): Partial<Record<Va
     "booking.timezone": start.toFormat("ZZZZ"),
     "booking.duration": `${ctx.durationMin} minutes`,
     "booking.meet_link": ctx.meetUrl ?? "(video link to follow)",
+    "booking.join_details": buildJoinDetails(ctx),
     "booking.reschedule_link": ctx.manageUrlRaw,
     "booking.cancel_link": `${ctx.manageUrlRaw}#cancel`,
     "host.first_name": ctx.staff.firstName,

@@ -647,3 +647,33 @@
     flex: 1 1 100%;
   }
 }
+
+/* Video/phone choice, right where the guest picks a time. */
+.mediumRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.mediumRow .sectionLabel {
+  margin: 0 4px 0 0;
+}
+
+.mediumBtn {
+  border: 1.5px solid var(--bp-line);
+  border-radius: 999px;
+  background: var(--bp-card);
+  color: var(--bp-ink);
+  font-size: 15px;
+  padding: 7px 16px;
+  cursor: pointer;
+}
+
+.mediumBtnActive {
+  border-color: var(--bp-accent);
+  outline: 1.5px solid var(--bp-accent);
+  outline-offset: -1.5px;
+  font-weight: 500;
+}

@@ -66,9 +66,20 @@ export const JOURNEY_STAGES: readonly JourneyStage[] = [
 const TOKEN_PATTERN = /\{\{\s*([a-z_]+\.[a-z_0-9]+)\s*\}\}/g;
 const CHIP_PATTERN = /<span\b[^>]*\bdata-variable="([^"]+)"[^>]*>.*?<\/span>/g;
 
-/** Stored body_html -> editor HTML: {{group.key}} becomes a chip span. */
+/**
+ * Stored body_html -> editor HTML: {{group.key}} becomes a chip span — but
+ * only in text content. A token inside a tag (an href attribute, say) must
+ * stay literal, or the surrounding markup shatters into `">` fragments.
+ */
 export function tokensToChipHtml(html: string): string {
-  return html.replace(TOKEN_PATTERN, (_match, name: string) => `<span data-variable="${name}"></span>`);
+  return html
+    .split(/(<[^>]*>)/)
+    .map((part) =>
+      part.startsWith("<")
+        ? part
+        : part.replace(TOKEN_PATTERN, (_match, name: string) => `<span data-variable="${name}"></span>`),
+    )
+    .join("");
 }
 
 /** Editor HTML -> stored body_html: chip spans become {{group.key}} tokens. */

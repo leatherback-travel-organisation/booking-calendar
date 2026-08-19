@@ -101,6 +101,9 @@ export function BookingFlow({
   const [backupsResult, setBackupsResult] = useState<BackupsResult | null>(null);
   const [showBackups, setShowBackups] = useState(false);
   const [selected, setSelected] = useState<PublicSlot | null>(null);
+  // Video by default; the guest can flip to a phone call right where they
+  // pick the time.
+  const [callMedium, setCallMedium] = useState<"video" | "phone">("video");
   const [notice, setNotice] = useState<string | null>(null);
   const [booked, setBooked] = useState<BookedResult | null>(null);
 
@@ -330,6 +333,7 @@ export function BookingFlow({
           staffSlug: active.slug,
           brandKey: ctx.brand.key,
           eventTypeKey,
+          callMedium,
           sourceKind: tripSlug ? "trip" : "bm",
           sourceSlug: tripSlug ?? bm ?? null,
           routedVia: active.routedVia,
@@ -706,6 +710,27 @@ export function BookingFlow({
             )}
             {availData !== null && availData.slots.length > 0 && (
               <>
+                <div className={styles.mediumRow} role="radiogroup" aria-label="How would you like to take the call?">
+                  <span className={styles.sectionLabel}>How should we meet?</span>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={callMedium === "video"}
+                    className={callMedium === "video" ? `${styles.mediumBtn} ${styles.mediumBtnActive}` : styles.mediumBtn}
+                    onClick={() => setCallMedium("video")}
+                  >
+                    Video call
+                  </button>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={callMedium === "phone"}
+                    className={callMedium === "phone" ? `${styles.mediumBtn} ${styles.mediumBtnActive}` : styles.mediumBtn}
+                    onClick={() => setCallMedium("phone")}
+                  >
+                    Phone call
+                  </button>
+                </div>
                 <SlotPicker slots={availData.slots} timeZone={tz} onPick={pickSlot} />
                 {active.routedVia === "primary" && !showBackups && (
                   <button type="button" className={styles.linkBtn} onClick={openBackups}>

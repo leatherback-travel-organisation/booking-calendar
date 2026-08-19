@@ -15,6 +15,8 @@ export type BookMeta = {
   staffSlug: string;
   brandKey: string;
   eventTypeKey: string;
+  /** How the guest chose to take the call. */
+  callMedium: "video" | "phone";
   sourceKind: "trip" | "bm";
   sourceSlug: string | null;
   routedVia: "primary" | "backup" | "pool";
@@ -91,6 +93,7 @@ export function ConfirmForm({
         guestTimezone: guestTimeZone(),
         sourceKind: meta.sourceKind,
         routedVia: meta.routedVia,
+        callMedium: meta.callMedium,
         idempotencyKey,
         website: honeypot,
       };
@@ -154,7 +157,7 @@ export function ConfirmForm({
   return (
     <form className={styles.form} onSubmit={submit}>
       <div className={styles.slotSummary}>
-        {eventTypeName} with {staffFirstName}
+        {eventTypeName} with {staffFirstName} — {meta.callMedium === "phone" ? "phone call" : "video call"}
         <br />
         <strong>{formatFullDateTime(slot.start, timeZone)}</strong>
       </div>
@@ -189,12 +192,17 @@ export function ConfirmForm({
 
       <div className={styles.field}>
         <label className={styles.fieldLabel} htmlFor="bp-phone">
-          Phone <span className={styles.optionalTag}>(optional)</span>
+          {meta.callMedium === "phone" ? (
+            <>Phone — we&rsquo;ll call you on this number</>
+          ) : (
+            <>Phone <span className={styles.optionalTag}>(optional)</span></>
+          )}
         </label>
         <input
           id="bp-phone"
           className={styles.input}
           type="tel"
+          required={meta.callMedium === "phone"}
           autoComplete="tel"
           maxLength={50}
           value={phoneField}

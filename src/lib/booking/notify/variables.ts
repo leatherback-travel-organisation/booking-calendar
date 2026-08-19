@@ -18,7 +18,11 @@ export const VARIABLES = {
     meeting_time: { label: "Time", sample: "2:30pm" },
     timezone: { label: "Timezone", sample: "AEST" },
     duration: { label: "Duration", sample: "30 minutes" },
-    meet_link: { label: "Video link", sample: "https://meet.google.com/abc-defg-hij" },
+    meet_link: { label: "Join link", sample: "https://meet.google.com/abc-defg-hij" },
+    join_details: {
+      label: "Join details (video link, or phone line for voice calls)",
+      sample: 'When it\'s time, join here: <a href="https://meet.google.com/abc-defg-hij">https://meet.google.com/abc-defg-hij</a>',
+    },
     reschedule_link: { label: "Reschedule link", sample: "https://cove.leatherbacktravel.com/manage/sample" },
     cancel_link: { label: "Cancel link", sample: "https://cove.leatherbacktravel.com/manage/sample#cancel" },
   },

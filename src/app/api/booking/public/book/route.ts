@@ -21,6 +21,7 @@ const BookSchema = z.object({
   guestPhone: z.string().trim().max(50).optional(),
   guestNotes: z.string().trim().max(2000).optional(),
   guestTimezone: z.string().max(64).optional(),
+  callMedium: z.enum(["video", "phone"]).default("video"),
   sourceKind: z.enum(["trip", "bm", "contact", "portal"]).default("bm"),
   sourceSlug: z.string().max(200).optional(),
   routedVia: z.enum(["primary", "backup", "pool"]).default("primary"),
@@ -40,6 +41,13 @@ export async function POST(request: Request): Promise<Response> {
     parsed = BookSchema.parse(await request.json());
   } catch {
     return jsonResponse({ error: "invalid request" }, { status: 400 });
+  }
+
+  if (parsed.callMedium === "phone" && !parsed.guestPhone?.trim()) {
+    return jsonResponse(
+      { error: "phone_required", message: "A phone number is needed so we can call you." },
+      { status: 400 },
+    );
   }
 
   if (honeypotTripped(parsed.website)) {
@@ -75,6 +83,7 @@ export async function POST(request: Request): Promise<Response> {
     guestPhone: parsed.guestPhone ?? null,
     guestNotes: parsed.guestNotes ?? null,
     guestTimezone: parsed.guestTimezone ?? null,
+    callMedium: parsed.callMedium,
     sourceKind: parsed.sourceKind,
     sourceSlug: parsed.sourceSlug ?? null,
     routedVia: parsed.routedVia,
