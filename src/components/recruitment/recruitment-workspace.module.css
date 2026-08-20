@@ -387,10 +387,10 @@
 .emptyRoles strong { color: #385570; font-size: 13px; }
 .emptyRoles span { color: #8794a3; font-size: 11px; }
 
-.overlay { position: fixed; z-index: 200; inset: 0; padding: 18px; background: rgba(4, 22, 45, .46); backdrop-filter: blur(8px); display: flex; justify-content: flex-end; animation: fade .18s ease both; }
+.overlay { position: fixed; z-index: 200; inset: 0; padding: 0; background: rgba(4, 22, 45, .46); backdrop-filter: blur(8px); display: flex; justify-content: flex-end; animation: fade .18s ease both; }
 .drawer { width: min(560px, 100%); height: 100%; padding: 25px; border-radius: 22px; background: #fbfdfd; box-shadow: -18px 0 60px rgba(1,20,40,.2); overflow-y: auto; animation: drawerIn .25s cubic-bezier(.2,.75,.2,1) both; }
-.record { width: min(1240px, 100%); height: 100%; margin: auto; padding: 25px; border-radius: 22px; background: #fbfdfd; box-shadow: 0 28px 75px rgba(1,20,40,.24); overflow-y: auto; animation: modalIn .24s cubic-bezier(.2,.75,.2,1) both; }
-.modal { width: min(700px, 100%); max-height: calc(100vh - 36px); margin: auto; padding: 25px; border-radius: 22px; background: #fbfdfd; box-shadow: 0 28px 75px rgba(1,20,40,.24); overflow-y: auto; animation: modalIn .24s cubic-bezier(.2,.75,.2,1) both; }
+.record { width: 100%; height: 100%; margin: 0; padding: clamp(18px, 3vw, 34px); border-radius: 0; background: #fbfdfd; box-shadow: 0 28px 75px rgba(1,20,40,.24); overflow-y: auto; animation: modalIn .24s cubic-bezier(.2,.75,.2,1) both; }
+.modal { width: min(700px, calc(100% - 36px)); max-height: calc(100vh - 36px); margin: auto; padding: 25px; border-radius: 22px; background: #fbfdfd; box-shadow: 0 28px 75px rgba(1,20,40,.24); overflow-y: auto; animation: modalIn .24s cubic-bezier(.2,.75,.2,1) both; }
 .roleModal { width: min(820px, 100%); }
 .modalHeader { padding-bottom: 18px; border-bottom: 1px solid #e6eded; display: flex; justify-content: space-between; gap: 20px; }
 .modalHeader > div > span { color: var(--teal); }
@@ -400,6 +400,16 @@
 .recordFlags span { padding: 4px 7px; border-radius: 999px; color: #79551f; background: #fff1d6; font-size: 11px; font-weight: 500; }
 .modalHeader > button { width: 36px; height: 36px; padding: 9px; border: 1px solid #dce5e6; border-radius: 10px; color: #52657d; background: white; cursor: pointer; }
 .modalHeader > button svg { width: 17px; height: 17px; }
+.recordHeaderTools { display: flex; align-items: flex-start; justify-content: flex-end; gap: 10px; }
+.candidateActions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.candidateActions button { min-height: 36px; padding: 8px 11px; border: 1px solid #00403a; border-radius: 9px; color: #00403a; background: white; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; font: inherit; font-size: 12px; font-weight: 500; white-space: nowrap; transition: color .15s ease, background .15s ease, box-shadow .15s ease; }
+.candidateActions button:hover:not(:disabled) { color: white; background: #00403a; box-shadow: 0 5px 12px rgba(0,64,58,.16); }
+.candidateActions button:focus-visible { outline: 3px solid rgba(0,64,58,.2); outline-offset: 2px; }
+.candidateActions button[aria-pressed="true"] { color: #00403a; background: #e5f2f0; }
+.candidateActions button:disabled:not([aria-pressed="true"]) { opacity: .45; cursor: not-allowed; }
+.candidateActions svg { width: 16px; height: 16px; flex: 0 0 auto; }
+.modalClose { width: 36px; height: 36px; padding: 9px; border: 1px solid #dce5e6; border-radius: 10px; color: #52657d; background: white; flex: 0 0 auto; cursor: pointer; }
+.modalClose svg { width: 17px; height: 17px; }
 
 .candidateSummary { margin-top: 20px; padding: 16px; border-radius: 15px; background: linear-gradient(120deg, #eaf8f6, #f4faf9); display: flex; align-items: center; gap: 14px; }
 .largeAvatar { width: 56px; height: 56px; border-radius: 18px 18px 6px 18px; color: white; background: linear-gradient(145deg, #00a39a, #087068); display: grid; place-items: center; font-size: 13px; font-weight: 500; }
@@ -415,6 +425,11 @@
 .detailList div { padding: 11px; border: 1px solid #e2e9ea; border-radius: 10px; background: white; }
 .detailList dt { color: #919ba8; font-size: 11px; font-weight: 500; text-transform: uppercase; }
 .detailList dd { margin: 4px 0 0; color: #2b4664; font-size: 12px; font-weight: 500; }
+.personalDetailsList { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.personalDetailsList div { min-width: 0; }
+.personalDetailsList div:nth-child(3),
+.personalDetailsList div:nth-child(4) { grid-column: 1 / -1; }
+.personalDetailsList dd { overflow-wrap: anywhere; }
 .fileSection,
 .interviewNotes,
 .commentThread { margin-top: 18px; }
@@ -549,6 +564,8 @@
 .templateCard footer .secondaryButton { min-height: 32px; padding: 6px 9px; font-size: 11px; }
 
 .recordGrid { padding-top: 18px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 12px; }
+.recordOverview { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: stretch; gap: 12px; }
+.recordOverview > .recordCard { height: 100%; }
 .recordCard { min-width: 0; padding: 15px; border: 1px solid #dfe8e9; border-radius: 14px; background: white; }
 .recordCard > h3,
 .recordCard .cardSectionHeader h3 { margin: 0; color: #163659; font-size: 13px; }
@@ -621,8 +638,12 @@
   .sectionHeading { align-items: flex-start; flex-direction: column; gap: 7px; }
   .sectionHeading > p { text-align: left; }
   .templatesGrid,
-  .recordGrid { grid-template-columns: 1fr; }
+  .recordGrid,
+  .recordOverview { grid-template-columns: 1fr; }
   .recordWide { grid-column: auto; }
+  .record .modalHeader { align-items: stretch; flex-direction: column; }
+  .recordHeaderTools { width: 100%; }
+  .candidateActions { flex: 1 1 auto; justify-content: flex-start; }
 }
 
 @media (max-width: 580px) {
@@ -649,7 +670,7 @@
   .overlay { padding: 0; }
   .drawer,
   .record,
-  .modal { max-height: 100vh; border-radius: 0; }
+  .modal { width: 100%; max-height: 100vh; border-radius: 0; }
   .drawer { padding: 20px; }
   .record { padding: 18px; }
   .formGrid { grid-template-columns: 1fr; }
