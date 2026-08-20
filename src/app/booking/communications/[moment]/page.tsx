@@ -100,8 +100,7 @@ export default async function TemplateEditorPage({ params, searchParams }: PageP
             {MOMENT_META[moment].label} — {selectedBrand.name}
           </h2>
           <p style={{ margin: "4px 0 0", color: "var(--ink-soft)", fontSize: "var(--text-small, 13px)" }}>
-            {MOMENT_META[moment].description} Call types without their own version use the{" "}
-            {selectedBrand.name} default.
+            {MOMENT_META[moment].description} Each call type has its own version.
             {canEdit ? "" : " Read-only — editing is for Pod Leads and Senior BMs."}
           </p>
         </div>
@@ -111,10 +110,6 @@ export default async function TemplateEditorPage({ params, searchParams }: PageP
               <details>
                 <summary style={{ cursor: "pointer", padding: "13px 16px", fontSize: "var(--text-ui, 14px)" }}>
                   <strong>{row.name}</strong>
-                  <span style={{ color: "var(--ink-soft)", fontSize: "var(--text-small, 13px)" }}>
-                    {" "}
-                    · {row.tailored ? "tailored" : `uses the ${selectedBrand.name} default`}
-                  </span>
                 </summary>
                 <div style={{ padding: "0 16px 14px" }}>
                   <TemplateEditor
