@@ -274,12 +274,23 @@ export async function runReferenceSync(): Promise<ReferenceSyncSummary> {
       entry.names.push(lead.name.trim().split(/\s+/)[0] ?? lead.name);
       byBrandSet.set(setKey, entry);
     }
+    // Pod display names (Nicola, 20 Aug): FenEx (Justin), PatchMino
+    // (Courtney & Olivia), Launch Pad (Nicola). A future lead without a
+    // christened pod falls back to "<First>'s pod" until named here.
+    const POD_NAMES: Record<string, string> = {
+      justin: "FenEx",
+      courtney: "PatchMino",
+      olivia: "PatchMino",
+      nicola: "Launch Pad",
+    };
     const pods = [...byBrandSet.values()]
       .map((entry) => {
         const names = [...new Set(entry.names)].sort();
+        const christened = [...new Set(names.map((n) => POD_NAMES[n.toLowerCase()]).filter(Boolean))];
+        const name = christened.length === 1 ? christened[0] : `${names.join(" & ")}'s pod`;
         return {
-          key: names.join("-").toLowerCase().replace(/[^a-z0-9-]/g, ""),
-          name: `${names.join(" & ")}'s pod`,
+          key: name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+          name,
           brandIds: entry.brandIds,
         };
       })

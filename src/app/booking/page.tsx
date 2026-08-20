@@ -151,6 +151,9 @@ export default async function BookingDashboardPage({
   const selfEmail = identity.email.toLowerCase();
   const activeStaff = staff
     .filter((member) => member.active)
+    // The brand/pod filter scopes this panel too — only BMs serving one of
+    // the filtered brands keep their chip.
+    .filter((member) => filterBrandIds === null || member.brandIds.some((id) => filterBrandIds.includes(id)))
     .sort((a, b) => a.fullName.localeCompare(b.fullName));
   const self = activeStaff.find((member) => member.email.toLowerCase() === selfEmail) ?? null;
 

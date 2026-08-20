@@ -38,3 +38,15 @@ export async function getGuestFacingTypeKeys(): Promise<string[]> {
     order by key`;
   return rows.map((row) => String(row.key));
 }
+
+/** Guest-facing call types with display names, in menu order. */
+export async function getGuestFacingTypes(): Promise<Array<{ key: string; name: string }>> {
+  const sql = getSql();
+  const rows = await sql`
+    select key, min(name) as name, min(position) as position
+    from booking.event_type
+    where guest_facing and active
+    group by key
+    order by position`;
+  return rows.map((row) => ({ key: String(row.key), name: String(row.name) }));
+}
