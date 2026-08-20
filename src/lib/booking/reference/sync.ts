@@ -250,12 +250,21 @@ export async function runReferenceSync(): Promise<ReferenceSyncSummary> {
     staffIdByNotionPageId.set(row.notionPageId, applied);
 
     // Brand memberships: replace only when the Notion mapping is non-empty.
+    // "Backup Brands" join the pools (routing, backup ranking, coverage)
+    // without becoming the BM's displayed brand.
     const mappedBrandIds = brands.length > 0 ? brandIdsForNames(row.brands, brands).ids : [];
+    const backupBrandIds =
+      brands.length > 0
+        ? brandIdsForNames(row.backupBrands ?? [], brands).ids.filter((id) => !mappedBrandIds.includes(id))
+        : [];
     if (mappedBrandIds.length > 0) {
       await attempt(`staff-brand:${email}`, async () => {
         await sql`delete from booking.staff_brand where staff_id = ${applied}`;
         for (const brandId of mappedBrandIds) {
-          await sql`insert into booking.staff_brand (staff_id, brand_id) values (${applied}, ${brandId}) on conflict do nothing`;
+          await sql`insert into booking.staff_brand (staff_id, brand_id, is_backup) values (${applied}, ${brandId}, false) on conflict do nothing`;
+        }
+        for (const brandId of backupBrandIds) {
+          await sql`insert into booking.staff_brand (staff_id, brand_id, is_backup) values (${applied}, ${brandId}, true) on conflict do nothing`;
         }
         await sql`update booking.staff set primary_brand_id = coalesce(primary_brand_id, ${mappedBrandIds[0]}) where id = ${applied}`;
         return true;

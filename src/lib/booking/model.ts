@@ -30,7 +30,10 @@ export type Staff = {
   firstName: string;
   slug: string;
   primaryBrandId: string | null;
+  /** Every brand pool this BM serves, backups included. */
   brandIds: string[];
+  /** The subset of brandIds held as backup only (not their displayed brand). */
+  backupBrandIds: string[];
   timezoneOverride: string | null;
   bio: string | null;
   photoUrl: string | null;

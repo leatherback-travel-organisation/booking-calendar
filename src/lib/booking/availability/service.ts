@@ -24,6 +24,9 @@ function mapStaff(row: StaffRow, brandIds: string[]): Staff {
     slug: String(row.slug),
     primaryBrandId: (row.primary_brand_id as string | null) ?? null,
     brandIds,
+    // Booking flows only need pool membership; display splits live in
+    // reference/queries where the roster reads from.
+    backupBrandIds: [],
     timezoneOverride: (row.timezone_override as string | null) ?? null,
     bio: (row.bio as string | null) ?? null,
     photoUrl: (row.photo_url as string | null) ?? null,

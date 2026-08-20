@@ -51,7 +51,8 @@ export async function getStaffWithBrands(): Promise<Staff[]> {
   const sql = getSql();
   const rows = await sql`
     select s.*, s.email::text as email, s.slug::text as slug,
-           coalesce(array_agg(sb.brand_id) filter (where sb.brand_id is not null), '{}') as brand_ids
+           coalesce(array_agg(sb.brand_id) filter (where sb.brand_id is not null), '{}') as brand_ids,
+           coalesce(array_agg(sb.brand_id) filter (where sb.is_backup), '{}') as backup_brand_ids
     from booking.staff s
     left join booking.staff_brand sb on sb.staff_id = s.id
     group by s.id
@@ -65,6 +66,7 @@ export async function getStaffWithBrands(): Promise<Staff[]> {
     slug: row.slug as string,
     primaryBrandId: (row.primary_brand_id as string | null) ?? null,
     brandIds: (row.brand_ids as string[] | null) ?? [],
+    backupBrandIds: (row.backup_brand_ids as string[] | null) ?? [],
     timezoneOverride: (row.timezone_override as string | null) ?? null,
     bio: (row.bio as string | null) ?? null,
     photoUrl: (row.photo_url as string | null) ?? null,

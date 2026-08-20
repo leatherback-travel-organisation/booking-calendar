@@ -170,6 +170,9 @@ create table booking.staff (
 create table booking.staff_brand (
   staff_id uuid not null references booking.staff(id) on delete cascade,
   brand_id uuid not null references booking.brand(id) on delete cascade,
+  -- Backup membership (Notion "Backup Brands"): counts for routing pools,
+  -- backup ranking and coverage, but is not the BM's displayed brand.
+  is_backup boolean not null default false,
   primary key (staff_id, brand_id)
 );
 

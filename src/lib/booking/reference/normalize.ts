@@ -41,6 +41,8 @@ export type NotionStaffRow = {
   email: string | null;
   jobTitle: string | null;
   brands: string[];
+  /** Brands this BM backs up — pool member, not their displayed brand. */
+  backupBrands?: string[];
   location: string | null;
   phone: string | null;
   slackId: string | null;

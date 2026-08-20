@@ -124,13 +124,24 @@ export function TeamRoster({ staff, brands, fetchedAt, appUrl, guestTypes, canMa
                         {member.brandIds.length === 0 ? (
                           <span className={styles.noneChip}>no brand</span>
                         ) : (
-                          member.brandIds.map((brandId) => (
-                            <BrandTag
-                              key={brandId}
-                              name={brandById.get(brandId)?.name ?? brandId}
-                              color={brandById.get(brandId)?.colorPrimary ?? null}
-                            />
-                          ))
+                          <>
+                            {member.brandIds
+                              .filter((brandId) => !member.backupBrandIds.includes(brandId))
+                              .map((brandId) => (
+                                <BrandTag
+                                  key={brandId}
+                                  name={brandById.get(brandId)?.name ?? brandId}
+                                  color={brandById.get(brandId)?.colorPrimary ?? null}
+                                />
+                              ))}
+                            {member.backupBrandIds.map((brandId) => (
+                              <BrandTag
+                                key={brandId}
+                                name={`${brandById.get(brandId)?.name ?? brandId} · backup`}
+                                color={brandById.get(brandId)?.colorPrimary ?? null}
+                              />
+                            ))}
+                          </>
                         )}
                       </div>
                     </td>

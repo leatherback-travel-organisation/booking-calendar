@@ -122,6 +122,7 @@ async function fetchDirectoryRows(filter: Record<string, unknown>): Promise<Noti
         email: emailOf(properties["Email"]),
         jobTitle: textOf(properties["Job Title"], "rich_text"),
         brands: multiSelectNames(properties["Brand"]),
+        backupBrands: multiSelectNames(properties["Backup Brands"]),
         location: selectName(properties["Location"]),
         phone: phoneOf(properties["Phone Number"]),
         slackId: textOf(properties["Slack ID"], "rich_text"),
