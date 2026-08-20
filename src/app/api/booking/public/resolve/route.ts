@@ -18,8 +18,10 @@ export async function GET(request: Request): Promise<Response> {
   const bm = url.searchParams.get("bm");
   const host = url.searchParams.get("host");
   const brandKey = url.searchParams.get("brand");
+  // Guest-portal entry: the exact Airtable trip record the guest booked.
+  const tripRecord = url.searchParams.get("tripRecord");
 
-  if (!trip && !bm && brandKey) {
+  if (!trip && !bm && !tripRecord && brandKey) {
     const brand = await getBrandByKey(brandKey);
     if (brand) {
       return jsonResponse({
@@ -38,7 +40,7 @@ export async function GET(request: Request): Promise<Response> {
     // Unknown brand key: fall through to the brand picker below.
   }
 
-  if (!trip && !bm) {
+  if (!trip && !bm && !tripRecord) {
     // No slug at all: give the brand list so the page can show a picker.
     const brands = await getBrands();
     return jsonResponse({
@@ -47,7 +49,9 @@ export async function GET(request: Request): Promise<Response> {
     });
   }
 
-  const resolved = await resolveManager(bm ? { bmSlug: bm } : { tripSlug: trip!, host });
+  const resolved = await resolveManager(
+    tripRecord ? { tripRecordId: tripRecord } : bm ? { bmSlug: bm } : { tripSlug: trip!, host },
+  );
 
   if (resolved.kind === "unresolved") {
     // Never an error page for the guest — fall back to the trip/brand picker

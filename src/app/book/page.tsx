@@ -30,6 +30,8 @@ export default async function BookPage({
       host={first(params.host)}
       bm={first(params.bm)}
       brand={first(params.brand)}
+      tripRecord={first(params.tripRecord)}
+      source={first(params.source)}
       typeParam={first(params.type)}
       embed={first(params.embed) === "1"}
     />

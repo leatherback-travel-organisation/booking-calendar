@@ -33,13 +33,55 @@ export type ResolvedManager =
 
 export type ResolveInput =
   | { bmSlug: string }
-  | { tripSlug: string; host?: string | null };
+  | { tripSlug: string; host?: string | null }
+  | { tripRecordId: string };
 
 export async function resolveManager(input: ResolveInput): Promise<ResolvedManager> {
   if ("bmSlug" in input) {
     return resolveByBm(input.bmSlug);
   }
+  if ("tripRecordId" in input) {
+    return resolveByTripRecord(input.tripRecordId);
+  }
   return resolveByTrip(input.tripSlug, input.host ?? null);
+}
+
+/**
+ * Guest-portal entry: the portal knows the exact Airtable trip record the
+ * guest booked, so resolution is a direct lookup — no slug matching, no
+ * status/date guessing. The guest legitimately holds this trip.
+ */
+async function resolveByTripRecord(tripRecordId: string): Promise<ResolvedManager> {
+  const [departures, brands] = await Promise.all([getCachedDepartures(), getBrands()]);
+  const departure = departures.find((d) => d.airtableId === tripRecordId) ?? null;
+  if (!departure) {
+    await recordUnresolvedSlug(`record:${tripRecordId}`, null);
+    return { kind: "unresolved" };
+  }
+  const brand = brandForDeparture(departure, brands);
+  if (!brand) {
+    await recordUnresolvedSlug(`record:${tripRecordId}`, null);
+    return { kind: "unresolved" };
+  }
+  for (const email of departure.coordinatorEmails) {
+    const staff = await getStaffByEmail(email);
+    if (staff && staff.active) {
+      return {
+        kind: "primary",
+        staff,
+        brand,
+        departures: [departure],
+        reason: "Trip coordinator of the guest's booked departure.",
+      };
+    }
+  }
+  await recordPoolFallback(departure.slug ?? `record:${tripRecordId}`, brand);
+  return {
+    kind: "pool",
+    brand,
+    departures: [departure],
+    reason: `No reachable Booking Manager for this trip — offering the ${brand.name} team.`,
+  };
 }
 
 async function resolveByBm(bmSlug: string): Promise<ResolvedManager> {

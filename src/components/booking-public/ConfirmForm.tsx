@@ -17,7 +17,7 @@ export type BookMeta = {
   eventTypeKey: string;
   /** How the guest chose to take the call. */
   callMedium: "video" | "phone";
-  sourceKind: "trip" | "bm";
+  sourceKind: "trip" | "bm" | "portal";
   sourceSlug: string | null;
   routedVia: "primary" | "backup" | "pool";
   routedReason: string | null;

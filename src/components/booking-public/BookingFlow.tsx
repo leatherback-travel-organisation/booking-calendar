@@ -69,6 +69,8 @@ export function BookingFlow({
   host,
   bm,
   brand,
+  tripRecord = null,
+  source = null,
   typeParam,
   embed,
 }: {
@@ -76,6 +78,10 @@ export function BookingFlow({
   host: string | null;
   bm: string | null;
   brand: string | null;
+  /** Airtable trip record id — the guest portal's entry point. */
+  tripRecord?: string | null;
+  /** Booking origin, e.g. "portal"; recorded as the booking's source_kind. */
+  source?: string | null;
   typeParam: string | null;
   embed: boolean;
 }) {
@@ -139,6 +145,10 @@ export function BookingFlow({
     if (tripSlug) {
       params.set("trip", tripSlug);
       if (host) params.set("host", host);
+    } else if (tripRecord) {
+      // Portal entry: exact Airtable record. A "Not the right trip?" swap
+      // sets tripSlug, which then takes precedence above.
+      params.set("tripRecord", tripRecord);
     } else if (bm) {
       params.set("bm", bm);
     } else if (brand) {
@@ -168,7 +178,7 @@ export function BookingFlow({
         if (!controller.signal.aborted) setResolveState("error");
       });
     return () => controller.abort();
-  }, [tripSlug, host, bm, brand, applyResolved]);
+  }, [tripSlug, host, bm, brand, tripRecord, applyResolved]);
 
   // 2. Availability: fetched once per BM + event type, paged client-side.
   const brandKey = ctx?.brand.key ?? null;
@@ -334,8 +344,8 @@ export function BookingFlow({
           brandKey: ctx.brand.key,
           eventTypeKey,
           callMedium,
-          sourceKind: tripSlug ? "trip" : "bm",
-          sourceSlug: tripSlug ?? bm ?? null,
+          sourceKind: source === "portal" ? "portal" : tripSlug || tripRecord ? "trip" : "bm",
+          sourceSlug: tripSlug ?? tripRecord ?? bm ?? null,
           routedVia: active.routedVia,
           routedReason: active.routedReason,
           tripName: selectedDeparture?.title ?? null,
