@@ -14,6 +14,12 @@ import { computeSlots, resolveSchedulingZone } from "./availability/engine";
 import { getConfirmed, getWorkingHours } from "./availability/service";
 import { sendBookingEmail } from "./notify/messages";
 import { createOrThreadConversation } from "./helpscout";
+import {
+  buildCrossoverPingHtml,
+  buildCrossoverSectionHtml,
+  type CrossoverBooking,
+  type CrossoverContext,
+} from "./crossover";
 import { issueToken, manageTokenSecret, parseDerivedManageToken, tokenMatches } from "./tokens";
 
 const HOLD_SECONDS = 120;
@@ -234,6 +240,52 @@ export async function createBooking(args: CreateBookingArgs): Promise<CreateBook
     );
   }
 
+  // Guest crossover: any other active booking under the same email — a
+  // second trip on this brand, or anything on a sister brand. Best-effort:
+  // detection can never take the booking down.
+  let crossovers: CrossoverBooking[] = [];
+  try {
+    const rows = await sql`
+      select b.id, b.starts_at, b.source_slug, b.helpscout_conversation_id,
+             et.name as event_type_name, br.key as brand_key, br.name as brand_name,
+             s.full_name as staff_full_name, s.email as staff_email
+      from booking.booking b
+      join booking.staff s on s.id = b.staff_id
+      join booking.brand br on br.id = b.brand_id
+      join booking.event_type et on et.id = b.event_type_id
+      where b.guest_email = ${args.guestEmail}
+        and b.id <> ${bookingId}
+        and b.status = 'confirmed'
+        and (b.starts_at >= now() or b.created_at > now() - interval '30 days')
+      order by b.starts_at`;
+    crossovers = rows.map((row) => ({
+      bookingId: String(row.id),
+      startsAtIso: new Date(row.starts_at as string).toISOString(),
+      eventTypeName: String(row.event_type_name),
+      brandKey: String(row.brand_key),
+      brandName: String(row.brand_name),
+      staffFullName: String(row.staff_full_name),
+      staffEmail: String(row.staff_email),
+      tripSlug: (row.source_slug as string | null) ?? null,
+      helpscoutConversationId: (row.helpscout_conversation_id as string | null) ?? null,
+    }));
+  } catch (error) {
+    await sendBookingAlert(
+      `crossover-check-failed:${bookingId}`,
+      `Crossover check for booking ${bookingId} failed: ${error instanceof Error ? error.message : "unknown"}`,
+    );
+  }
+  const crossoverCtx: CrossoverContext = {
+    guestName: args.guestName,
+    brandKey: args.brand.key,
+    brandName: args.brand.name,
+    staffFullName: args.staff.fullName,
+    eventTypeName: args.eventType.name,
+    startsAtIso: startIso,
+    tripSlug: args.sourceSlug ?? null,
+    timezone: args.brand.schedulingTimezone,
+  };
+
   try {
     const routedVia = args.routedVia ?? "primary";
     const conversationId = await createOrThreadConversation({
@@ -242,11 +294,13 @@ export async function createBooking(args: CreateBookingArgs): Promise<CreateBook
       guestName: args.guestName,
       guestEmail: args.guestEmail,
       subject: `${args.eventType.name} booked — ${args.guestName}`,
+      tags: crossovers.length > 0 ? ["crossover"] : undefined,
       bodyHtml:
         `<p>${args.guestName} booked a ${args.eventType.name} with ${args.staff.fullName}.</p>` +
         (routedVia !== "primary" && args.routedReason ? `<p><strong>Routing note:</strong> ${args.routedReason}</p>` : "") +
         (args.tripName ? `<p>Trip: ${args.tripName}</p>` : "") +
-        (args.guestNotes ? `<p>Guest notes: ${args.guestNotes}</p>` : ""),
+        (args.guestNotes ? `<p>Guest notes: ${args.guestNotes}</p>` : "") +
+        buildCrossoverSectionHtml(crossovers, crossoverCtx),
     });
     if (conversationId) {
       await sql`update booking.booking set helpscout_conversation_id = ${conversationId} where id = ${bookingId}`;
@@ -256,6 +310,42 @@ export async function createBooking(args: CreateBookingArgs): Promise<CreateBook
       `helpscout-failed:${bookingId}`,
       `Help Scout conversation for booking ${bookingId} failed: ${error instanceof Error ? error.message : "unknown"}`,
     );
+  }
+
+  // Tell the other side too: thread the crossover into each existing
+  // conversation so every BM holding this guest hears about the new booking.
+  if (crossovers.length > 0) {
+    const pingHtml = buildCrossoverPingHtml(crossoverCtx);
+    for (const crossover of crossovers) {
+      if (!crossover.helpscoutConversationId) continue;
+      try {
+        await createOrThreadConversation({
+          mailboxId: args.brand.helpscoutMailboxId ?? "",
+          assignToUserId: null,
+          guestName: args.guestName,
+          guestEmail: args.guestEmail,
+          subject: "",
+          bodyHtml: pingHtml,
+          existingConversationId: crossover.helpscoutConversationId,
+        });
+      } catch (error) {
+        await sendBookingAlert(
+          `crossover-ping-failed:${bookingId}:${crossover.bookingId}`,
+          `Crossover note to conversation ${crossover.helpscoutConversationId} failed: ${error instanceof Error ? error.message : "unknown"}`,
+        );
+      }
+    }
+    await sql`
+      insert into booking.audit_log (actor, action, subject, detail)
+      values ('system', 'crossover_flagged', ${bookingId}, ${JSON.stringify({
+        guestEmail: args.guestEmail,
+        matches: crossovers.map((c) => ({
+          bookingId: c.bookingId,
+          brand: c.brandKey,
+          staff: c.staffEmail,
+          tripSlug: c.tripSlug,
+        })),
+      })}::jsonb)`;
   }
 
   await sql`

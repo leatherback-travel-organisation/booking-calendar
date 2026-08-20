@@ -39,6 +39,8 @@ export type HelpscoutNoteInput = {
   guestEmail: string;
   subject: string;
   bodyHtml: string;
+  /** Conversation tags (new conversations only), e.g. ["crossover"]. */
+  tags?: string[];
   existingConversationId?: string | null;
 };
 
@@ -52,6 +54,7 @@ export async function createOrThreadConversation(input: HelpscoutNoteInput): Pro
         mailboxId: input.mailboxId,
         assignTo: input.assignToUserId,
         subject: input.subject,
+        tags: input.tags ?? null,
         bodyHtml: input.bodyHtml,
       })}::jsonb)`;
     return null;
@@ -80,6 +83,7 @@ export async function createOrThreadConversation(input: HelpscoutNoteInput): Pro
       type: "email",
       status: "active",
       customer: { email: input.guestEmail, firstName: input.guestName.split(/\s+/)[0] },
+      ...(input.tags && input.tags.length > 0 ? { tags: input.tags } : {}),
       ...(input.assignToUserId ? { assignTo: Number(input.assignToUserId) } : {}),
       threads: [
         {
