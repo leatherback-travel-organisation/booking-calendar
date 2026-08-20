@@ -54,11 +54,19 @@ fi
 echo "== 4/7 Granting entitlements (Pod Leads + BMs) =="
 DATABASE_URL="$DATABASE_URL" node scripts/grant-booking-entitlements.mjs
 
-echo "== 5/7 Pushing booking-app to cove-superpanel =="
-git push origin booking-app
+echo "== 5/7 Pushing booking-app to the org GitHub source =="
+# cove-superpanel when we have write there; booking-calendar (same org,
+# shared history) otherwise — reconciled into cove-superpanel post-launch.
+if git push origin booking-app 2>/dev/null; then
+  DEPLOY_SOURCE_REMOTE=origin
+else
+  echo "   (cove-superpanel write pending — using booking-calendar)"
+  git push booking-calendar booking-app
+  DEPLOY_SOURCE_REMOTE=booking-calendar
+fi
 
 echo "== 6/7 Deploying production =="
-npm run deploy:production
+DEPLOY_SOURCE_REMOTE="$DEPLOY_SOURCE_REMOTE" npm run deploy:production
 
 echo "== 7/7 Verifying =="
 sleep 20
