@@ -55,10 +55,10 @@ CORS is open (`*`), no auth, read-only, and it returns only what the public
   `poolLabel` gives the honest wording ("the Patch Adventures team").
 - `found: false` means the record didn't resolve; hide the button.
 
-Suggested markup: `Book a call with {bm.firstName ?? poolLabel}` on a button
+Suggested markup: `Book a chat with {bm.firstName ?? poolLabel}` on a button
 tinted `brand.colorPrimary`, linking to `bookUrl`.
 
-### Placement (decided 20 Aug)
+### Placement + copy (decided 20 Aug)
 
 The card lives on **each booking's detail page** (the per-trip page with
 Details / My Travel Guide tabs) — a full-width card between the "Next
@@ -66,13 +66,18 @@ action" banner and the Trip Notes / Itinerary / Pre-Trip Video quick cards:
 
 > [photo]  YOUR BOOKING MANAGER
 >          Mandy · Patch Adventures
->          Questions before you go? Book a Lead-Up Call — 20 minutes,
->          Mandy rings you.                     [ Book a call with Mandy ]
+>          Questions about your trip? Mandy's happy to chat.
+>                                          [ Book a chat with Mandy ]
 
 One `call-card` fetch per booking page, keyed by that booking's `Trips`
-record id. Copy notes: phone-only BMs (most of them) → "…Mandy rings you";
-video-enabled BMs (Janie) → "…video or phone, your choice". For past trips
-pass `type=feedback` and the card becomes "Share your feedback with Farrah".
+record id.
+
+**Copy rule (Nicola, 20 Aug): never name call types in the portal.** No
+"Lead-Up Call", no durations — just "book a chat" or similar. The `type`
+in `bookUrl` stays (it quietly picks the right call type and length on the
+Calltime side): default for upcoming trips, `type=feedback` for past trips
+("How was your trip? {bm.firstName} would love to hear" / "Share your
+thoughts"). Ignore the API's `callType` field when rendering.
 
 ## What Calltime does with portal bookings
 
