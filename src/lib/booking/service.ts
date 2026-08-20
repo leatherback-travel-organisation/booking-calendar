@@ -11,15 +11,18 @@ import { calendarConfigured } from "./google/auth";
 import { deleteEvent, freeBusy, insertEvent, patchEvent } from "./google/calendar";
 import type { Brand, EventType, Interval, Staff } from "./model";
 import { computeSlots, resolveSchedulingZone } from "./availability/engine";
-import { getConfirmed, getWorkingHours } from "./availability/service";
+import { getConfirmed, getStaffByEmail, getWorkingHours } from "./availability/service";
 import { sendBookingEmail } from "./notify/messages";
 import { createOrThreadConversation } from "./helpscout";
 import {
   buildCrossoverPingHtml,
   buildCrossoverSectionHtml,
-  type CrossoverBooking,
+  crossoverPingSubject,
   type CrossoverContext,
+  type CrossoverLead,
 } from "./crossover";
+import { findActiveLeads, resolveLeadTrips } from "./leads";
+import { getBrands } from "./reference/queries";
 import { issueToken, manageTokenSecret, parseDerivedManageToken, tokenMatches } from "./tokens";
 
 const HOLD_SECONDS = 120;
@@ -240,49 +243,53 @@ export async function createBooking(args: CreateBookingArgs): Promise<CreateBook
     );
   }
 
-  // Guest crossover: any other active booking under the same email — a
-  // second trip on this brand, or anything on a sister brand. Best-effort:
-  // detection can never take the booking down.
-  let crossovers: CrossoverBooking[] = [];
+  // Guest crossover: any ACTIVE LEAD (Booking CRM at Strong Interest or
+  // Pending Deposit) under the same guest email — a second trip on this
+  // brand, or anything on a sister brand. Live read-only CRM lookup, trips
+  // resolved from the reference cache. Best-effort: detection can never
+  // take the booking down.
+  let crossovers: CrossoverLead[] = [];
+  let allBrands: Awaited<ReturnType<typeof getBrands>> = [];
+  const brandByName = (name: string | null) =>
+    name
+      ? (allBrands.find(
+          (candidate) =>
+            candidate.name.toLowerCase() === name.toLowerCase() ||
+            candidate.aliases.some((alias) => alias.toLowerCase() === name.toLowerCase()),
+        ) ?? null)
+      : null;
   try {
-    const rows = await sql`
-      select b.id, b.starts_at, b.source_slug, b.helpscout_conversation_id,
-             et.name as event_type_name, br.key as brand_key, br.name as brand_name,
-             s.full_name as staff_full_name, s.email as staff_email
-      from booking.booking b
-      join booking.staff s on s.id = b.staff_id
-      join booking.brand br on br.id = b.brand_id
-      join booking.event_type et on et.id = b.event_type_id
-      where b.guest_email = ${args.guestEmail}
-        and b.id <> ${bookingId}
-        and b.status = 'confirmed'
-        and (b.starts_at >= now() or b.created_at > now() - interval '30 days')
-      order by b.starts_at`;
-    crossovers = rows.map((row) => ({
-      bookingId: String(row.id),
-      startsAtIso: new Date(row.starts_at as string).toISOString(),
-      eventTypeName: String(row.event_type_name),
-      brandKey: String(row.brand_key),
-      brandName: String(row.brand_name),
-      staffFullName: String(row.staff_full_name),
-      staffEmail: String(row.staff_email),
-      tripSlug: (row.source_slug as string | null) ?? null,
-      helpscoutConversationId: (row.helpscout_conversation_id as string | null) ?? null,
-    }));
+    const leadRecords = await findActiveLeads(args.guestEmail);
+    if (leadRecords.length > 0) allBrands = await getBrands();
+    for (const record of leadRecords) {
+      const trips = await resolveLeadTrips(record.tripRecordIds);
+      for (const trip of trips) {
+        crossovers.push({
+          crmRecordId: record.crmRecordId,
+          status: record.status,
+          tripRecordId: trip.tripRecordId,
+          tripTitle: trip.tripTitle,
+          // Canonical brand name (aliases resolved) so relations compare true.
+          brandName: brandByName(trip.brandName)?.name ?? trip.brandName,
+          bmName: trip.coordinatorName,
+          bmEmail: trip.coordinatorEmail?.toLowerCase() ?? null,
+        });
+      }
+    }
   } catch (error) {
+    crossovers = [];
     await sendBookingAlert(
       `crossover-check-failed:${bookingId}`,
-      `Crossover check for booking ${bookingId} failed: ${error instanceof Error ? error.message : "unknown"}`,
+      `Crossover lead check for booking ${bookingId} failed: ${error instanceof Error ? error.message : "unknown"}`,
     );
   }
   const crossoverCtx: CrossoverContext = {
     guestName: args.guestName,
-    brandKey: args.brand.key,
     brandName: args.brand.name,
     staffFullName: args.staff.fullName,
     eventTypeName: args.eventType.name,
     startsAtIso: startIso,
-    tripSlug: args.sourceSlug ?? null,
+    airtableTripRecordId: args.airtableTripRecordId ?? null,
     timezone: args.brand.schedulingTimezone,
   };
 
@@ -312,26 +319,34 @@ export async function createBooking(args: CreateBookingArgs): Promise<CreateBook
     );
   }
 
-  // Tell the other side too: thread the crossover into each existing
-  // conversation so every BM holding this guest hears about the new booking.
+  // Tell the other side too: each lead's owning BM gets a heads-up
+  // conversation in their own brand mailbox, assigned to them, so they hear
+  // about the new booking before reaching out. The new booking's own BM is
+  // skipped — the crossover section above already told them.
   if (crossovers.length > 0) {
-    const pingHtml = buildCrossoverPingHtml(crossoverCtx);
+    const pinged = new Set<string>();
     for (const crossover of crossovers) {
-      if (!crossover.helpscoutConversationId) continue;
+      if (!crossover.bmEmail || crossover.bmEmail === args.staff.email.toLowerCase()) continue;
+      const dedupeKey = `${crossover.bmEmail}:${crossover.crmRecordId}`;
+      if (pinged.has(dedupeKey)) continue;
+      pinged.add(dedupeKey);
+      const leadBrand = brandByName(crossover.brandName);
+      if (!leadBrand?.helpscoutMailboxId) continue;
       try {
+        const owner = await getStaffByEmail(crossover.bmEmail);
         await createOrThreadConversation({
-          mailboxId: args.brand.helpscoutMailboxId ?? "",
-          assignToUserId: null,
+          mailboxId: leadBrand.helpscoutMailboxId,
+          assignToUserId: owner?.helpscoutUserId ?? null,
           guestName: args.guestName,
           guestEmail: args.guestEmail,
-          subject: "",
-          bodyHtml: pingHtml,
-          existingConversationId: crossover.helpscoutConversationId,
+          subject: crossoverPingSubject(crossoverCtx),
+          tags: ["crossover"],
+          bodyHtml: buildCrossoverPingHtml(crossover, crossoverCtx),
         });
       } catch (error) {
         await sendBookingAlert(
-          `crossover-ping-failed:${bookingId}:${crossover.bookingId}`,
-          `Crossover note to conversation ${crossover.helpscoutConversationId} failed: ${error instanceof Error ? error.message : "unknown"}`,
+          `crossover-ping-failed:${bookingId}:${crossover.crmRecordId}`,
+          `Crossover heads-up to ${crossover.bmEmail} failed: ${error instanceof Error ? error.message : "unknown"}`,
         );
       }
     }
@@ -339,11 +354,12 @@ export async function createBooking(args: CreateBookingArgs): Promise<CreateBook
       insert into booking.audit_log (actor, action, subject, detail)
       values ('system', 'crossover_flagged', ${bookingId}, ${JSON.stringify({
         guestEmail: args.guestEmail,
-        matches: crossovers.map((c) => ({
-          bookingId: c.bookingId,
-          brand: c.brandKey,
-          staff: c.staffEmail,
-          tripSlug: c.tripSlug,
+        leads: crossovers.map((c) => ({
+          crmRecordId: c.crmRecordId,
+          status: c.status,
+          tripTitle: c.tripTitle,
+          brand: c.brandName,
+          bm: c.bmEmail,
         })),
       })}::jsonb)`;
   }
