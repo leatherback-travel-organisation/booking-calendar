@@ -20,13 +20,13 @@ const THE_NEST_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 6
 </svg>`;
 
 // Calltime: a clock face inside a speech bubble — a call, about time.
-// Deep teal to match the booking shell; brass centre pin as the accent.
+// Hot pink with a dark navy bubble and clock (Nicola, 20 Aug).
 const CALLTIME_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="10" fill="#143e35"/>
-  <circle cx="32" cy="28.5" r="15" fill="none" stroke="#f2efe6" stroke-width="3.4"/>
-  <path d="M21.5 40.5 L17 52 L31 43.2 Z" fill="#f2efe6"/>
-  <path d="M32 20.5 V28.5 L38.6 32.4" fill="none" stroke="#f2efe6" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="32" cy="28.5" r="2" fill="#e0b453"/>
+  <rect width="64" height="64" rx="10" fill="#ff4fa3"/>
+  <circle cx="32" cy="28.5" r="15" fill="none" stroke="#1d283b" stroke-width="3.6"/>
+  <path d="M21.5 40.5 L17 52 L31 43.2 Z" fill="#1d283b"/>
+  <path d="M32 20.5 V28.5 L38.6 32.4" fill="none" stroke="#1d283b" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="32" cy="28.5" r="2" fill="#1d283b"/>
 </svg>`;
 
 function isCalltimeApplication(application: ApplicationIconIdentity) {
