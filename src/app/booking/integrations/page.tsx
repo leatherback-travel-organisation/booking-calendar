@@ -14,7 +14,7 @@ import styles from "@/components/booking/integrations/integrations.module.css";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Integrations · Calltime · Cove",
+  title: "Integrations · CallTime · Cove",
 };
 
 type Tone = "green" | "amber" | "red" | "grey";

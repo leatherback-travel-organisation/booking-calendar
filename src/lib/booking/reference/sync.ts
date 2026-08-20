@@ -122,9 +122,23 @@ async function syncStaffPhoto(
   if (bytes.length === 0) throw new Error("photo download was empty");
   const hash = createHash("sha256").update(bytes).digest("hex").slice(0, 16);
   const contentType = response.headers.get("content-type")?.split(";")[0]?.trim() || "image/jpeg";
-  const blob = await put(`booking/staff/${hash}.jpg`, bytes, { access: "public", contentType });
+  // The team's Blob store is configured PRIVATE (public uploads are
+  // rejected), so photos upload privately and are served through our own
+  // /api/booking/staff-photo route, which reads with the store token.
+  const blob = await put(`booking/staff/${hash}.jpg`, bytes, {
+    access: "private",
+    contentType,
+    addRandomSuffix: false,
+  });
   const sql = getSql();
-  await sql`update booking.staff set photo_url = ${blob.url}, updated_at = now() where id = ${staffId}`;
+  await sql`
+    insert into booking.reference_cache (key, payload, fetched_at)
+    values (${`staff-photo:${staffId}`}, ${JSON.stringify({ blobUrl: blob.url, contentType })}::jsonb, now())
+    on conflict (key) do update set payload = excluded.payload, fetched_at = excluded.fetched_at`;
+  await sql`
+    update booking.staff
+       set photo_url = ${`/api/booking/staff-photo/${staffId}`}, updated_at = now()
+     where id = ${staffId}`;
   return true;
 }
 

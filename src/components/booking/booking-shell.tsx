@@ -37,7 +37,7 @@ export async function BookingShell({ active, canManage, children }: BookingShell
         <header className={styles.header}>
           <div className={styles.titleBlock}>
             <span className={styles.eyebrow}>Call Scheduling · Internal</span>
-            <h1 className={styles.title}>Calltime</h1>
+            <h1 className={styles.title}>CallTime</h1>
           </div>
           <nav className={styles.nav} aria-label="Booking sections">
             {visible.map((section) => (

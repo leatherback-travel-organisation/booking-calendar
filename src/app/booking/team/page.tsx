@@ -10,7 +10,7 @@ import shellStyles from "@/components/booking/booking-shell.module.css";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Team · Calltime · Cove",
+  title: "Team · CallTime · Cove",
 };
 
 export default async function BookingTeamPage() {

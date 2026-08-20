@@ -18,7 +18,7 @@ insert into applications (
 ) values (
   '7c1a2f64-90b3-4e0d-8a11-5f6f0b6e9a01',
   'booking',
-  'Calltime',
+  'CallTime',
   'Guest call scheduling for Booking Managers — availability, routing, reminders and the trip-page widget.',
   'https://cove.leatherbacktravel.com/booking',
   'Booking Managers - Call Scheduler',

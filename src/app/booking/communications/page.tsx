@@ -13,7 +13,7 @@ import shellStyles from "@/components/booking/booking-shell.module.css";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Communications · Calltime · Cove",
+  title: "Communications · CallTime · Cove",
 };
 
 export default async function BookingCommunicationsPage() {

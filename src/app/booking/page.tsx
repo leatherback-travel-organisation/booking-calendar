@@ -18,7 +18,7 @@ import shellStyles from "@/components/booking/booking-shell.module.css";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Calltime · Cove",
+  title: "CallTime · Cove",
   description: "Guest call scheduling for Booking Managers.",
 };
 

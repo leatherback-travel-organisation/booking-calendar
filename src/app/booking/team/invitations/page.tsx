@@ -28,7 +28,7 @@ import styles from "@/components/booking/team-tools/team-tools.module.css";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Invitations · Calltime · Cove",
+  title: "Invitations · CallTime · Cove",
 };
 
 const SLOT_LIMIT = 30;

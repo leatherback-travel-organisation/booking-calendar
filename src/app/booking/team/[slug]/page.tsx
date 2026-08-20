@@ -26,7 +26,7 @@ import styles from "./bm-page.module.css";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Team · Calltime · Cove",
+  title: "Team · CallTime · Cove",
 };
 
 function initials(fullName: string): string {

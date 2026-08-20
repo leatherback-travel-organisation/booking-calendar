@@ -60,7 +60,10 @@ export async function GET(request: Request): Promise<Response> {
         resolved.kind === "primary"
           ? {
               firstName: resolved.staff.firstName,
-              photoUrl: resolved.staff.photoUrl,
+              // Absolute for the portal (a different origin).
+              photoUrl: resolved.staff.photoUrl?.startsWith("/")
+                ? `${appUrl()}${resolved.staff.photoUrl}`
+                : resolved.staff.photoUrl,
               bio: resolved.staff.bio,
             }
           : null,

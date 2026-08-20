@@ -23,7 +23,7 @@ import styles from "@/components/booking/team-tools/team-tools.module.css";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Group sessions · Calltime · Cove",
+  title: "Group sessions · CallTime · Cove",
 };
 
 const ERROR_COPY: Record<string, string> = {

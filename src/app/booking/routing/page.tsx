@@ -12,7 +12,7 @@ import shellStyles from "@/components/booking/booking-shell.module.css";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Routing · Calltime · Cove",
+  title: "Routing · CallTime · Cove",
 };
 
 async function runSyncNow() {
