@@ -66,32 +66,91 @@ export default async function TemplateEditorPage({ params, searchParams }: PageP
   const brandLites = activeBrands.map((brand) => ({ key: brand.key, name: brand.name }));
   const source = displaySource(momentRows, moment, brandKey || null, typeKey || null);
 
-  // Per-call-type versions for the collapsible list (brand view only):
-  // resolution + tailored flag for each guest-facing type of this brand.
-  const typeVersions =
-    selectedBrand && !typeKey
-      ? await Promise.all(
-          guestTypes.map(async (type) => {
-            const version = await resolveTemplate(moment, selectedBrand.id, type.key);
-            const tailored = momentRows.some(
-              (row) => row.brandKey === selectedBrand.key && row.eventTypeKey === type.key,
-            );
-            return { ...type, tailored, subject: version.subject };
-          }),
-        )
-      : [];
-  const selectedTypeName = typeKey ? (guestTypes.find((type) => type.key === typeKey)?.name ?? typeKey) : null;
+  // Brand view: one collapsible row per scope — the brand default first,
+  // then every guest-facing call type, each expanding to its own full
+  // editor (with preview). Nothing else on the page.
+  if (selectedBrand && !typeKey) {
+    const scopes = [
+      { typeKey: "", name: `All call types — the ${selectedBrand.name} default` },
+      ...guestTypes.map((type) => ({ typeKey: type.key, name: type.name })),
+    ];
+    const rowsData = await Promise.all(
+      scopes.map(async (scopeEntry) => {
+        const version = await resolveTemplate(moment, selectedBrand.id, scopeEntry.typeKey);
+        const tailored = momentRows.some(
+          (row) => row.brandKey === selectedBrand.key && (row.eventTypeKey ?? "") === scopeEntry.typeKey,
+        );
+        return {
+          ...scopeEntry,
+          tailored,
+          initial: { subject: version.subject, bodyHtml: version.bodyHtml },
+          source: displaySource(momentRows, moment, selectedBrand.key, scopeEntry.typeKey || null),
+        };
+      }),
+    );
+
+    return (
+      <BookingShell active="communications" canManage={canManage}>
+        <div style={{ marginBottom: 14 }}>
+          <p style={{ margin: "0 0 10px" }}>
+            <Link href="/booking/communications" style={{ fontSize: "var(--text-small, 13px)" }}>
+              ← Guest Communications
+            </Link>
+          </p>
+          <h2 style={{ margin: 0, fontSize: "var(--text-title, 19px)", fontWeight: 500 }}>
+            {MOMENT_META[moment].label} — {selectedBrand.name}
+          </h2>
+          <p style={{ margin: "4px 0 0", color: "var(--ink-soft)", fontSize: "var(--text-small, 13px)" }}>
+            {MOMENT_META[moment].description} Call types without their own version use the{" "}
+            {selectedBrand.name} default.
+            {canEdit ? "" : " Read-only — editing is for Pod Leads and Senior BMs."}
+          </p>
+        </div>
+        <ul className={listStyles.rows}>
+          {rowsData.map((row) => (
+            <li key={row.typeKey || "default"} className={listStyles.row} style={{ padding: 0 }}>
+              <details>
+                <summary style={{ cursor: "pointer", padding: "13px 16px", fontSize: "var(--text-ui, 14px)" }}>
+                  <strong>{row.name}</strong>
+                  <span style={{ color: "var(--ink-soft)", fontSize: "var(--text-small, 13px)" }}>
+                    {" "}
+                    ·{" "}
+                    {row.typeKey === ""
+                      ? row.tailored
+                        ? "tailored for the brand"
+                        : "uses the global default"
+                      : row.tailored
+                        ? "tailored"
+                        : `uses the ${selectedBrand.name} default`}
+                  </span>
+                </summary>
+                <div style={{ padding: "0 16px 14px" }}>
+                  <TemplateEditor
+                    key={`${moment}:${selectedBrand.key}:${row.typeKey}`}
+                    embedded
+                    moment={moment}
+                    momentLabel={MOMENT_META[moment].label}
+                    momentDescription={MOMENT_META[moment].description}
+                    brands={brandLites}
+                    typeKeys={typeKeys}
+                    scope={{ brandKey: selectedBrand.key, typeKey: row.typeKey }}
+                    initial={row.initial}
+                    source={row.source}
+                    momentRows={momentRows}
+                    canManage={canEdit}
+                    startInPreview={false}
+                  />
+                </div>
+              </details>
+            </li>
+          ))}
+        </ul>
+      </BookingShell>
+    );
+  }
 
   return (
     <BookingShell active="communications" canManage={canManage}>
-      {selectedBrand && selectedTypeName ? (
-        <p style={{ margin: "0 0 12px", fontSize: "var(--text-small, 13px)" }}>
-          Editing the <strong>{selectedTypeName}</strong> version ·{" "}
-          <Link href={`/booking/communications/${moment}?brand=${encodeURIComponent(selectedBrand.key)}`}>
-            back to the {selectedBrand.name} version
-          </Link>
-        </p>
-      ) : null}
       <TemplateEditor
         key={`${moment}:${brandKey}:${typeKey}`}
         moment={moment}
@@ -106,45 +165,6 @@ export default async function TemplateEditorPage({ params, searchParams }: PageP
         canManage={canEdit}
         startInPreview={startInPreview}
       />
-      {selectedBrand && !typeKey ? (
-        <section className={listStyles.stage} style={{ marginTop: 18 }}>
-          <h2 className={listStyles.stageTitle}>By call type</h2>
-          <ul className={listStyles.rows}>
-            <li className={listStyles.row}>
-              <p className={listStyles.rowDescription} style={{ marginTop: 0 }}>
-                Each call type can carry its own {MOMENT_META[moment].label.toLowerCase()} for{" "}
-                {selectedBrand.name}. Types without their own version use the {selectedBrand.name} version
-                above.
-              </p>
-              {typeVersions.map((type) => (
-                <details key={type.key} style={{ padding: "6px 0", borderTop: "1px solid var(--line)" }}>
-                  <summary style={{ cursor: "pointer", fontSize: "var(--text-ui, 14px)" }}>
-                    <strong>{type.name}</strong>
-                    <span style={{ color: "var(--ink-soft)", fontSize: "var(--text-small, 13px)" }}>
-                      {" "}
-                      · {type.tailored ? "tailored" : `uses the ${selectedBrand.name} version`}
-                    </span>
-                  </summary>
-                  <div style={{ padding: "8px 0 10px 18px", display: "grid", gap: 6 }}>
-                    <p style={{ margin: 0, fontSize: "var(--text-small, 13px)", color: "var(--ink-soft)" }}>
-                      Subject: {type.subject}
-                    </p>
-                    <p style={{ margin: 0 }}>
-                      <Link
-                        href={`/booking/communications/${moment}?brand=${encodeURIComponent(selectedBrand.key)}&type=${encodeURIComponent(type.key)}`}
-                        className={listStyles.brandLink}
-                        data-tailored={type.tailored || undefined}
-                      >
-                        {canEdit ? `Edit the ${type.name} version` : `View the ${type.name} version`}
-                      </Link>
-                    </p>
-                  </div>
-                </details>
-              ))}
-            </li>
-          </ul>
-        </section>
-      ) : null}
     </BookingShell>
   );
 }

@@ -47,6 +47,9 @@ type TemplateEditorProps = {
   momentRows: TemplateRowMeta[];
   canManage: boolean;
   startInPreview: boolean;
+  /** Inside a collapsible row: the row supplies the context, so the page
+   * header and scope bar are skipped. */
+  embedded?: boolean;
 };
 
 type InlineError = { message: string; variables?: string[] };
@@ -244,27 +247,31 @@ export function TemplateEditor(props: TemplateEditorProps) {
 
   return (
     <div className={styles.editor}>
-      <header className={styles.header}>
-        <div>
-          <BackLink href="/booking/communications" label="Guest Communications" />
-          <h2 className={styles.title}>{props.momentLabel}</h2>
-          <p className={styles.description}>{props.momentDescription}</p>
-        </div>
-      </header>
+      {!props.embedded ? (
+        <>
+          <header className={styles.header}>
+            <div>
+              <BackLink href="/booking/communications" label="Guest Communications" />
+              <h2 className={styles.title}>{props.momentLabel}</h2>
+              <p className={styles.description}>{props.momentDescription}</p>
+            </div>
+          </header>
 
-      <div className={styles.scopeBar}>
-        {/* Scope comes from the brand buttons on the Guest Communications
-            page — shown here as plain fact, not another control. */}
-        <span className={styles.scopeNote}>
-          {props.scope.brandKey
-            ? `${props.brands.find((brand) => brand.key === props.scope.brandKey)?.name ?? props.scope.brandKey} version`
-            : "Default — all brands"}
-          {props.scope.typeKey ? ` · ${typeLabel(props.scope.typeKey)} calls` : ""}
-        </span>
-        {!props.canManage ? (
-          <span className={styles.readOnlyNote}>Read-only — ask a Pod Lead to toggle on editing for you.</span>
-        ) : null}
-      </div>
+          <div className={styles.scopeBar}>
+            {/* Scope comes from the brand buttons on the Guest Communications
+                page — shown here as plain fact, not another control. */}
+            <span className={styles.scopeNote}>
+              {props.scope.brandKey
+                ? `${props.brands.find((brand) => brand.key === props.scope.brandKey)?.name ?? props.scope.brandKey} version`
+                : "Default — all brands"}
+              {props.scope.typeKey ? ` · ${typeLabel(props.scope.typeKey)} calls` : ""}
+            </span>
+            {!props.canManage ? (
+              <span className={styles.readOnlyNote}>Read-only — ask a Pod Lead to toggle on editing for you.</span>
+            ) : null}
+          </div>
+        </>
+      ) : null}
 
       <section className={styles.panel}>
         <div className={styles.subjectRow}>
