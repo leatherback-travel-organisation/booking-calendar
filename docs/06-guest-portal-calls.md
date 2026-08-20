@@ -66,8 +66,11 @@ action" banner and the Trip Notes / Itinerary / Pre-Trip Video quick cards:
 
 > [photo]  YOUR BOOKING MANAGER
 >          Mandy · Patch Adventures
->          Questions about your trip? Mandy's happy to chat.
->                                          [ Book a chat with Mandy ]
+>          Questions about your trip? Book a chat with Mandy.
+>                                                  [ Book a chat ]
+
+That line is the exact copy (Nicola, 20 Aug):
+"Questions about your trip? Book a chat with {bm.firstName}."
 
 One `call-card` fetch per booking page, keyed by that booking's `Trips`
 record id.
