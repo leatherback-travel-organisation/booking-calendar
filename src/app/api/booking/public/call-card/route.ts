@@ -23,7 +23,8 @@ export async function OPTIONS(): Promise<Response> {
 export async function GET(request: Request): Promise<Response> {
   const url = new URL(request.url);
   const tripRecord = url.searchParams.get("tripRecord");
-  const typeKey = url.searchParams.get("type") ?? "lead-up";
+  // Portal default: the Quick Chat (15-minute 1:1), decided 20 Aug.
+  const typeKey = url.searchParams.get("type") ?? "chat";
   if (!tripRecord || !/^rec[A-Za-z0-9]+$/.test(tripRecord)) {
     return jsonResponse({ found: false, error: "tripRecord (Airtable record id) is required" }, { status: 400, headers: CORS });
   }

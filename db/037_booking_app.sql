@@ -415,7 +415,9 @@ cross join (values
   ('rhime',    'RHIME Call',    'The qualifying call: Relationship, Health, Information, Match, Expectations.', 30, true,  false, 1),
   ('lead-up',  'Lead-Up Call',  'Pre-departure check-in in the lead-up to your trip.', 20, true,  true,  2),
   ('pre-trip', 'Pre-Trip Call', 'A quick call shortly before departure.', 15, false, true,  3),
-  ('feedback', 'Feedback Call', 'How was your trip? Most take 15-20 minutes; we allow 30.', 30, true,  false, 4)
+  ('feedback', 'Feedback Call', 'How was your trip? Most take 15-20 minutes; we allow 30.', 30, true,  false, 4),
+  -- The guest portal's default ("book a chat", decided 20 Aug): a short 1:1.
+  ('chat',     'Quick Chat',    'A quick 15-minute chat about your trip — whatever''s on your mind.', 15, true,  false, 5)
 ) as t(key, name, description, duration_min, guest_facing, supports_group, position)
 on conflict (brand_id, key) do nothing;
 

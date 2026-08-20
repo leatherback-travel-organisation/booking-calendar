@@ -185,7 +185,7 @@ export async function createBooking(args: CreateBookingArgs): Promise<CreateBook
   if (calendarConfigured()) {
     try {
       const event = await insertEvent(args.staff.email, {
-        summary: `${args.eventType.name} — ${args.guestName}${(args.callMedium ?? "video") === "phone" ? " (phone)" : ""}`,
+        summary: `${args.eventType.name} — ${args.guestName}${(args.callMedium ?? "video") === "phone" ? " (phone)" : ""}${args.sourceKind === "portal" ? " (portal)" : ""}`,
         description: buildEventDescription(args),
         startIso,
         endIso,
@@ -295,14 +295,19 @@ export async function createBooking(args: CreateBookingArgs): Promise<CreateBook
 
   try {
     const routedVia = args.routedVia ?? "primary";
+    const viaPortal = args.sourceKind === "portal";
+    const conversationTags = [...(viaPortal ? ["portal"] : []), ...(crossovers.length > 0 ? ["crossover"] : [])];
     const conversationId = await createOrThreadConversation({
       mailboxId: args.brand.helpscoutMailboxId ?? "",
       assignToUserId: routedVia === "primary" ? args.staff.helpscoutUserId : null,
       guestName: args.guestName,
       guestEmail: args.guestEmail,
-      subject: `${args.eventType.name} booked — ${args.guestName}`,
-      tags: crossovers.length > 0 ? ["crossover"] : undefined,
+      subject: `${args.eventType.name} booked — ${args.guestName}${viaPortal ? " (guest portal)" : ""}`,
+      tags: conversationTags.length > 0 ? conversationTags : undefined,
       bodyHtml:
+        (viaPortal
+          ? `<p><strong>⭑ Booked through the guest portal</strong> — ${args.guestName} was signed in and booked from their own trip page. Existing guest; worth a skim of their booking before the call.</p>`
+          : "") +
         `<p>${args.guestName} booked a ${args.eventType.name} with ${args.staff.fullName}.</p>` +
         (routedVia !== "primary" && args.routedReason ? `<p><strong>Routing note:</strong> ${args.routedReason}</p>` : "") +
         (args.tripName ? `<p>Trip: ${args.tripName}</p>` : "") +
@@ -380,6 +385,9 @@ export async function createBooking(args: CreateBookingArgs): Promise<CreateBook
 
 function buildEventDescription(args: CreateBookingArgs): string {
   const lines = [
+    // Portal bookings lead with their origin so the BM comes prepared: the
+    // guest was signed in and booked from their own trip page.
+    args.sourceKind === "portal" ? "⭑ BOOKED VIA THE GUEST PORTAL — existing booking, guest was signed in." : null,
     `Guest: ${args.guestName} <${args.guestEmail}>`,
     args.guestPhone ? `Phone: ${args.guestPhone}` : null,
     args.tripName ? `Trip: ${args.tripName}` : null,
