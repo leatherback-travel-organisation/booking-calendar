@@ -678,6 +678,25 @@ export async function rescheduleBooking(
     );
   }
 
+  // Tell the BM the same way cancellations do: a note on the booking's
+  // conversation. The calendar event moves silently, so without this a BM
+  // who prepped for the old time would never hear the call moved.
+  try {
+    if (booking.helpscoutConversationId) {
+      await createOrThreadConversation({
+        mailboxId: ctx.brand.helpscoutMailboxId ?? "",
+        assignToUserId: null,
+        guestName: booking.guestName,
+        guestEmail: booking.guestEmail,
+        subject: "",
+        bodyHtml: `<p>${booking.guestName} moved their ${ctx.eventType.name} from ${booking.startsAt} to ${startIso}. The calendar event has been updated.</p>`,
+        existingConversationId: booking.helpscoutConversationId,
+      });
+    }
+  } catch {
+    // Threading a note is best-effort; the reschedule itself already stands.
+  }
+
   await sql`
     insert into booking.audit_log (actor, action, subject, detail)
     values ('guest', 'booking_rescheduled', ${booking.id}, ${JSON.stringify({ from: booking.startsAt, to: startIso })}::jsonb)`;
