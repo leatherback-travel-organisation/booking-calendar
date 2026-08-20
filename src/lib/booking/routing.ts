@@ -56,7 +56,9 @@ async function resolveByTripRecord(tripRecordId: string): Promise<ResolvedManage
   const [departures, brands] = await Promise.all([getCachedDepartures(), getBrands()]);
   const departure = departures.find((d) => d.airtableId === tripRecordId) ?? null;
   if (!departure) {
-    await recordUnresolvedSlug(`record:${tripRecordId}`, null);
+    // An empty cache (before the first sync) is not a data problem —
+    // recording it would only leave stale notes on the coverage map.
+    if (departures.length > 0) await recordUnresolvedSlug(`record:${tripRecordId}`, null);
     return { kind: "unresolved" };
   }
   const brand = brandForDeparture(departure, brands);
@@ -128,7 +130,7 @@ async function resolveByTrip(tripSlug: string, host: string | null): Promise<Res
     matched = upcoming.filter((d) => d.slug === wanted || (d.slug !== null && slugKey(d.slug) === wantedKey));
   }
   if (matched.length === 0) {
-    await recordUnresolvedSlug(tripSlug, host);
+    if (upcoming.length > 0) await recordUnresolvedSlug(tripSlug, host);
     return { kind: "unresolved" };
   }
 

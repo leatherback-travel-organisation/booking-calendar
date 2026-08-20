@@ -435,6 +435,24 @@ export async function runReferenceSync(): Promise<ReferenceSyncSummary> {
     `;
   }
 
+  // slug-unresolved notes self-heal too: once the slug (or a portal
+  // record-id probe) matches a live departure, the note retires. The
+  // subject is "<host|any>:<slug>", so strip the host prefix first.
+  if (trips) {
+    const liveSlugs = [
+      ...new Set(departureIndex.departures.filter((d) => d.slug !== null).map((d) => d.slug as string)),
+    ];
+    const liveRecordRefs = departureIndex.departures.map((d) => `record:${d.airtableId}`);
+    await sql`
+      update booking.coverage_issue set resolved_at = now()
+      where resolved_at is null and kind = 'slug-unresolved'
+        and (
+          substring(subject_ref from position(':' in subject_ref) + 1) = any(${liveSlugs})
+          or substring(subject_ref from position(':' in subject_ref) + 1) = any(${liveRecordRefs})
+        )
+    `;
+  }
+
   const durationMs = Date.now() - startedAt;
   const summary: ReferenceSyncSummary = {
     ok: failures.length === 0,
