@@ -58,6 +58,22 @@ CORS is open (`*`), no auth, read-only, and it returns only what the public
 Suggested markup: `Book a call with {bm.firstName ?? poolLabel}` on a button
 tinted `brand.colorPrimary`, linking to `bookUrl`.
 
+### Placement (decided 20 Aug)
+
+The card lives on **each booking's detail page** (the per-trip page with
+Details / My Travel Guide tabs) — a full-width card between the "Next
+action" banner and the Trip Notes / Itinerary / Pre-Trip Video quick cards:
+
+> [photo]  YOUR BOOKING MANAGER
+>          Mandy · Patch Adventures
+>          Questions before you go? Book a Lead-Up Call — 20 minutes,
+>          Mandy rings you.                     [ Book a call with Mandy ]
+
+One `call-card` fetch per booking page, keyed by that booking's `Trips`
+record id. Copy notes: phone-only BMs (most of them) → "…Mandy rings you";
+video-enabled BMs (Janie) → "…video or phone, your choice". For past trips
+pass `type=feedback` and the card becomes "Share your feedback with Farrah".
+
 ## What Calltime does with portal bookings
 
 - Books against the BM's real Google Calendar (conflict-safe), emails the

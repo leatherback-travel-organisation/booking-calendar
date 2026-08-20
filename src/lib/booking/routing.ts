@@ -12,6 +12,7 @@ import { getSql } from "./db";
 import type { Brand, Departure, Staff } from "./model";
 import { slugKey } from "./slug";
 import { getStaffByEmail, getStaffBySlug } from "./availability/service";
+import { isCallRoutingExempt } from "./reference/normalize.ts";
 import { getBrands, getCachedDepartures } from "./reference/queries";
 
 export type ResolvedManager =
@@ -75,7 +76,9 @@ async function resolveByTripRecord(tripRecordId: string): Promise<ResolvedManage
       };
     }
   }
-  await recordPoolFallback(departure.slug ?? `record:${tripRecordId}`, brand);
+  if (!isCallRoutingExempt(departure.titleAndCode)) {
+    await recordPoolFallback(departure.slug ?? `record:${tripRecordId}`, brand);
+  }
   return {
     kind: "pool",
     brand,
@@ -158,7 +161,11 @@ async function resolveByTrip(tripSlug: string, host: string | null): Promise<Res
   }
 
   // No reachable coordinator: honest pool, loud coverage note (§4.2 step 3).
-  await recordPoolFallback(tripSlug, brand);
+  // Ops fixtures (Ceco tests, Private Trips) fall back silently — they are
+  // exempt from coverage by decision, so a lookup must not re-flag them.
+  if (!isCallRoutingExempt(matched[0].titleAndCode)) {
+    await recordPoolFallback(tripSlug, brand);
+  }
   return {
     kind: "pool",
     brand,
