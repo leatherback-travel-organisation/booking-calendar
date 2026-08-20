@@ -70,10 +70,9 @@ export default async function TemplateEditorPage({ params, searchParams }: PageP
   // then every guest-facing call type, each expanding to its own full
   // editor (with preview). Nothing else on the page.
   if (selectedBrand && !typeKey) {
-    const scopes = [
-      { typeKey: "", name: `All call types — the ${selectedBrand.name} default` },
-      ...guestTypes.map((type) => ({ typeKey: type.key, name: type.name })),
-    ];
+    // Call types only — the brand-wide default stays a silent fallback in
+    // the resolution chain (brand+type > brand > global), edited nowhere.
+    const scopes = guestTypes.map((type) => ({ typeKey: type.key, name: type.name }));
     const rowsData = await Promise.all(
       scopes.map(async (scopeEntry) => {
         const version = await resolveTemplate(moment, selectedBrand.id, scopeEntry.typeKey);
@@ -114,14 +113,7 @@ export default async function TemplateEditorPage({ params, searchParams }: PageP
                   <strong>{row.name}</strong>
                   <span style={{ color: "var(--ink-soft)", fontSize: "var(--text-small, 13px)" }}>
                     {" "}
-                    ·{" "}
-                    {row.typeKey === ""
-                      ? row.tailored
-                        ? "tailored for the brand"
-                        : "uses the global default"
-                      : row.tailored
-                        ? "tailored"
-                        : `uses the ${selectedBrand.name} default`}
+                    · {row.tailored ? "tailored" : `uses the ${selectedBrand.name} default`}
                   </span>
                 </summary>
                 <div style={{ padding: "0 16px 14px" }}>
