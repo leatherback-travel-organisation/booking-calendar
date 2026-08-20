@@ -37,6 +37,7 @@ function mapStaff(row: StaffRow, brandIds: string[]): Staff {
     // Default true so an un-migrated database behaves like the schema default.
     reminder24hEnabled: row.reminder_24h_enabled === undefined ? true : Boolean(row.reminder_24h_enabled),
     reminder1hEnabled: row.reminder_1h_enabled === undefined ? true : Boolean(row.reminder_1h_enabled),
+    videoCallsEnabled: Boolean(row.video_calls_enabled),
     jobTitle: (row.job_title as string | null) ?? null,
     isSenior: isSeniorTitle((row.job_title as string | null) ?? null),
     active: Boolean(row.active),

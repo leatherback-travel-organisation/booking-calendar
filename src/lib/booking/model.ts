@@ -44,6 +44,8 @@ export type Staff = {
   /** Guest reminder emails for this BM's bookings, one flag per moment. */
   reminder24hEnabled: boolean;
   reminder1hEnabled: boolean;
+  /** Guests may choose a video call only when true; otherwise phone-only. */
+  videoCallsEnabled: boolean;
   /** Synced from Notion's Job Title. */
   jobTitle: string | null;
   /** Senior Booking Manager — may edit Guest Communications (with Pod Leads). */

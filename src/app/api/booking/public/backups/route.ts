@@ -38,6 +38,7 @@ export async function GET(request: Request): Promise<Response> {
         firstName: entry.staff.firstName,
         photoUrl: entry.staff.photoUrl,
         bio: entry.staff.bio,
+        videoCallsEnabled: entry.staff.videoCallsEnabled,
       },
       openSlotCount: entry.openSlotCount,
       firstSlot: entry.firstSlot,

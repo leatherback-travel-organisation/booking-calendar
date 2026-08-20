@@ -150,6 +150,11 @@ create table booking.staff (
   -- Synced from Notion; "Senior Booking Manager" grants Guest Communications
   -- editing (with Pod Leads) — no per-person toggle to maintain.
   job_title         text,
+  -- Guests may choose a video call only when the BM offers it; otherwise
+  -- bookings are phone-only. Off by default (decision 20 Aug); each BM (or
+  -- their Pod Lead) toggles it on their own page. Janie is the launch
+  -- exception — switch hers on after the first sync.
+  video_calls_enabled boolean not null default false,
   min_notice_hours  integer not null default 4 check (min_notice_hours between 0 and 336),
   booking_window_days integer not null default 28 check (booking_window_days between 1 and 365),
   active            boolean not null default true,

@@ -15,6 +15,8 @@ export type PublicStaff = {
   firstName: string;
   bio: string | null;
   photoUrl: string | null;
+  /** Guests may pick a video call only when the BM offers it. */
+  videoCallsEnabled: boolean;
 };
 
 export type PublicEventType = {
@@ -70,7 +72,7 @@ export type AvailabilityPayload = {
 };
 
 export type BackupEntry = {
-  staff: { slug: string; firstName: string; photoUrl: string | null; bio: string | null };
+  staff: { slug: string; firstName: string; photoUrl: string | null; bio: string | null; videoCallsEnabled: boolean };
   openSlotCount: number;
   firstSlot: string | null;
 };

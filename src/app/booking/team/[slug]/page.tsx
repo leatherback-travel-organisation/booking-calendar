@@ -166,6 +166,7 @@ export default async function BookingManagerPage({ params, searchParams }: PageP
             bio: staff.bio,
             reminder24hEnabled: staff.reminder24hEnabled,
             reminder1hEnabled: staff.reminder1hEnabled,
+            videoCallsEnabled: staff.videoCallsEnabled,
           }}
           hours={hours}
           zoneLabel={zoneLabel}

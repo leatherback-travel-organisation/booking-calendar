@@ -53,6 +53,7 @@ export type SelectedStaffSettings = {
   bio: string | null;
   reminder24hEnabled: boolean;
   reminder1hEnabled: boolean;
+  videoCallsEnabled: boolean;
 };
 
 export type HoursRow = { dayOfWeek: number; startMin: number; endMin: number };
@@ -253,6 +254,15 @@ export function AvailabilityEditor({
             disabled={!canEditOwnBits}
           />
           Send the 1-hour reminder email
+        </label>
+        <label className={styles.checkboxField} title="Off = guests book phone calls only; you ring them.">
+          <input
+            type="checkbox"
+            name="videoCallsEnabled"
+            defaultChecked={selected.videoCallsEnabled}
+            disabled={!canEditOwnBits}
+          />
+          Offer video calls (Google Meet) — off means phone-only
         </label>
         <label className={styles.field}>
           Bio

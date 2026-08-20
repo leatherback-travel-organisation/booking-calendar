@@ -86,6 +86,10 @@ export async function saveSettings(formData: FormData): Promise<void> {
     formData.get("remindersEnabledField") === null
       ? staff.reminder1hEnabled
       : formData.get("reminder1hEnabled") === "on";
+  const videoCallsEnabled =
+    formData.get("remindersEnabledField") === null
+      ? staff.videoCallsEnabled
+      : formData.get("videoCallsEnabled") === "on";
 
   // Restricted fields: disabled inputs are not submitted, so a missing value
   // means "unchanged". A submitted, changed value from a non-manager is an
@@ -127,6 +131,9 @@ export async function saveSettings(formData: FormData): Promise<void> {
   if (reminder1hEnabled !== staff.reminder1hEnabled) {
     diff.reminder1hEnabled = { from: staff.reminder1hEnabled, to: reminder1hEnabled };
   }
+  if (videoCallsEnabled !== staff.videoCallsEnabled) {
+    diff.videoCallsEnabled = { from: staff.videoCallsEnabled, to: videoCallsEnabled };
+  }
   if (minNoticeHours !== staff.minNoticeHours) diff.minNoticeHours = { from: staff.minNoticeHours, to: minNoticeHours };
   if (bookingWindowDays !== staff.bookingWindowDays) {
     diff.bookingWindowDays = { from: staff.bookingWindowDays, to: bookingWindowDays };
@@ -145,7 +152,8 @@ export async function saveSettings(formData: FormData): Promise<void> {
              timezone_override = ${timezoneOverride},
              bio = ${bio},
              reminder_24h_enabled = ${reminder24hEnabled},
-             reminder_1h_enabled = ${reminder1hEnabled}
+             reminder_1h_enabled = ${reminder1hEnabled},
+             video_calls_enabled = ${videoCallsEnabled}
        where id = ${staff.id}`;
     await auditAvailabilityChange(access.identity.email, staff.email, diff);
   }

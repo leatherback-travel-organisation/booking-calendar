@@ -21,9 +21,11 @@ test("a guest books a call end to end", async ({ page }) => {
   await expect(slot).toBeVisible({ timeout: 20_000 });
   await slot.click();
 
-  // Confirmation form.
+  // Confirmation form. Phone is required when the BM is phone-only (video
+  // toggled off — the default since 20 Aug); filling it is safe either way.
   await page.getByLabel(/name/i).first().fill("E2E Test Guest");
   await page.getByLabel(/email/i).first().fill(`e2e+${Date.now()}@example.com`);
+  await page.getByLabel(/phone/i).first().fill("+61 400 000 000");
   await page.getByRole("button", { name: /confirm|book/i }).click();
 
   // Success screen shows the booked time and the manage link.

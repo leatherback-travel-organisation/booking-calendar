@@ -39,6 +39,8 @@ type ActiveStaff = {
   firstName: string;
   photoUrl: string | null;
   bio: string | null;
+  /** When false, this BM takes calls by phone only — no medium choice. */
+  videoCallsEnabled: boolean;
   routedVia: "primary" | "backup" | "pool";
   routedReason: string | null;
 };
@@ -110,6 +112,9 @@ export function BookingFlow({
   // Video by default; the guest can flip to a phone call right where they
   // pick the time.
   const [callMedium, setCallMedium] = useState<"video" | "phone">("video");
+  // The medium that actually books: phone-only BMs never get a video call,
+  // whatever the toggle state said for a previously shown BM.
+  const effectiveMedium: "video" | "phone" = active?.videoCallsEnabled ? callMedium : "phone";
   const [notice, setNotice] = useState<string | null>(null);
   const [booked, setBooked] = useState<BookedResult | null>(null);
 
@@ -259,6 +264,7 @@ export function BookingFlow({
       firstName: entry.staff.firstName,
       photoUrl: entry.staff.photoUrl,
       bio: entry.staff.bio,
+      videoCallsEnabled: entry.staff.videoCallsEnabled,
       routedVia: cameFromPrimary ? "backup" : "pool",
       routedReason: cameFromPrimary
         ? `Chose ${entry.staff.firstName} from alternatives; ${ctx.primary!.firstName} had no suitable times.`
@@ -343,7 +349,7 @@ export function BookingFlow({
           staffSlug: active.slug,
           brandKey: ctx.brand.key,
           eventTypeKey,
-          callMedium,
+          callMedium: effectiveMedium,
           sourceKind: source === "portal" ? "portal" : tripSlug || tripRecord ? "trip" : "bm",
           sourceSlug: tripSlug ?? tripRecord ?? bm ?? null,
           routedVia: active.routedVia,
@@ -720,27 +726,35 @@ export function BookingFlow({
             )}
             {availData !== null && availData.slots.length > 0 && (
               <>
-                <div className={styles.mediumRow} role="radiogroup" aria-label="How would you like to take the call?">
-                  <span className={styles.sectionLabel}>How should we meet?</span>
-                  <button
-                    type="button"
-                    role="radio"
-                    aria-checked={callMedium === "video"}
-                    className={callMedium === "video" ? `${styles.mediumBtn} ${styles.mediumBtnActive}` : styles.mediumBtn}
-                    onClick={() => setCallMedium("video")}
-                  >
-                    Video call
-                  </button>
-                  <button
-                    type="button"
-                    role="radio"
-                    aria-checked={callMedium === "phone"}
-                    className={callMedium === "phone" ? `${styles.mediumBtn} ${styles.mediumBtnActive}` : styles.mediumBtn}
-                    onClick={() => setCallMedium("phone")}
-                  >
-                    Phone call
-                  </button>
-                </div>
+                {active.videoCallsEnabled ? (
+                  <div className={styles.mediumRow} role="radiogroup" aria-label="How would you like to take the call?">
+                    <span className={styles.sectionLabel}>How should we meet?</span>
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={callMedium === "video"}
+                      className={callMedium === "video" ? `${styles.mediumBtn} ${styles.mediumBtnActive}` : styles.mediumBtn}
+                      onClick={() => setCallMedium("video")}
+                    >
+                      Video call
+                    </button>
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={callMedium === "phone"}
+                      className={callMedium === "phone" ? `${styles.mediumBtn} ${styles.mediumBtnActive}` : styles.mediumBtn}
+                      onClick={() => setCallMedium("phone")}
+                    >
+                      Phone call
+                    </button>
+                  </div>
+                ) : (
+                  <div className={styles.mediumRow}>
+                    <span className={styles.sectionLabel}>
+                      This is a phone call — {active.firstName} will ring you at your chosen time.
+                    </span>
+                  </div>
+                )}
                 <SlotPicker slots={availData.slots} timeZone={tz} onPick={pickSlot} />
                 {active.routedVia === "primary" && !showBackups && (
                   <button type="button" className={styles.linkBtn} onClick={openBackups}>

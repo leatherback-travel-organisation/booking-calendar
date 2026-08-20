@@ -70,6 +70,14 @@ export async function POST(request: Request): Promise<Response> {
     getBrandByKey(parsed.brandKey),
   ]);
   if (!staff || !brand) return jsonResponse({ error: "unknown staff or brand" }, { status: 404 });
+  if (parsed.callMedium === "video" && !staff.videoCallsEnabled) {
+    // The UI never offers video for these BMs; a direct API call gets the
+    // honest answer instead of a Meet link the BM didn't sign up for.
+    return jsonResponse(
+      { error: "video_unavailable", message: `${staff.firstName} takes these calls by phone — please book a phone call.` },
+      { status: 400 },
+    );
+  }
   const eventType = await getEventType(brand.id, parsed.eventTypeKey);
   if (!eventType || !eventType.guestFacing) return jsonResponse({ error: "unknown event type" }, { status: 404 });
 

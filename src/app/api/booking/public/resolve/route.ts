@@ -98,6 +98,7 @@ export async function GET(request: Request): Promise<Response> {
         firstName: resolved.staff.firstName,
         bio: resolved.staff.bio,
         photoUrl: resolved.staff.photoUrl,
+        videoCallsEnabled: resolved.staff.videoCallsEnabled,
       },
     });
   }
