@@ -7,6 +7,8 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { put } from "@vercel/blob";
 import { getSql } from "@/lib/booking/db";
+import { calendarConfigured } from "@/lib/booking/google/auth";
+import { checkCalendarAccess } from "@/lib/booking/google/calendar";
 import { AIRTABLE_BOOKING_BASE_ID, AIRTABLE_HR_BASE_ID, listAll } from "./airtable.ts";
 import { fetchBookingManagerRoster, fetchPodLeads } from "./notion.ts";
 import {
@@ -302,6 +304,33 @@ export async function runReferenceSync(): Promise<ReferenceSyncSummary> {
         on conflict (key) do update set payload = excluded.payload, fetched_at = excluded.fetched_at`;
       return true;
     });
+  }
+
+  // ---- calendar reachability self-heals ----------------------------------
+  // Staff never probed (fresh environments, new joiners) or not probed in
+  // 12 hours get checked during the sync — the Integrations button remains
+  // for an on-demand full pass, but nobody has to press it.
+  if (calendarConfigured()) {
+    const stale = await sql`
+      select id, email::text as email from booking.staff
+      where active
+        and (calendar_checked_at is null or calendar_checked_at < now() - interval '12 hours')
+      order by calendar_checked_at asc nulls first
+      limit 20`;
+    for (const row of stale) {
+      await attempt(`calendar:${row.email}`, async () => {
+        const result = await checkCalendarAccess(String(row.email));
+        await sql`
+          update booking.staff
+             set calendar_ok = ${result.ok}, calendar_checked_at = now()
+           where id = ${String(row.id)}`;
+        await sql`
+          insert into booking.reference_cache (key, payload, fetched_at)
+          values (${`calendar-check:${String(row.email).toLowerCase()}`}, ${JSON.stringify({ ok: result.ok, error: result.error ?? null })}::jsonb, now())
+          on conflict (key) do update set payload = excluded.payload, fetched_at = excluded.fetched_at`;
+        return true;
+      });
+    }
   }
 
   // ---- deactivate staff who left the roster (never delete) ---------------

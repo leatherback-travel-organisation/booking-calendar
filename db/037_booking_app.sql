@@ -21,7 +21,7 @@ insert into applications (
   'Calltime',
   'Guest call scheduling for Booking Managers — availability, routing, reminders and the trip-page widget.',
   'https://cove.leatherbacktravel.com/booking',
-  'Booking Operations',
+  'Booking Managers - Call Scheduler',
   'active',
   'restricted',
   true,

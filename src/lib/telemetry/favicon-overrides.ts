@@ -19,6 +19,20 @@ const THE_NEST_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 6
   </g>
 </svg>`;
 
+// Calltime: a clock face inside a speech bubble — a call, about time.
+// Deep teal to match the booking shell; brass centre pin as the accent.
+const CALLTIME_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="10" fill="#143e35"/>
+  <circle cx="32" cy="28.5" r="15" fill="none" stroke="#f2efe6" stroke-width="3.4"/>
+  <path d="M21.5 40.5 L17 52 L31 43.2 Z" fill="#f2efe6"/>
+  <path d="M32 20.5 V28.5 L38.6 32.4" fill="none" stroke="#f2efe6" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="32" cy="28.5" r="2" fill="#e0b453"/>
+</svg>`;
+
+function isCalltimeApplication(application: ApplicationIconIdentity) {
+  return application.slug === "booking" || application.name.toLowerCase() === "calltime";
+}
+
 function containsNestToken(value: string) {
   return value.toLowerCase().split(/[^a-z0-9]+/).includes("nest");
 }
@@ -40,6 +54,13 @@ function isNestApplication(application: ApplicationIconIdentity) {
 }
 
 export function applicationFaviconOverride(application: ApplicationIconIdentity): FaviconOverride | null {
+  if (isCalltimeApplication(application)) {
+    return {
+      bytes: new TextEncoder().encode(CALLTIME_ICON),
+      contentType: "image/svg+xml",
+    };
+  }
+
   if (!isNestApplication(application)) return null;
 
   return {
