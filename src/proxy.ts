@@ -15,8 +15,16 @@ const withClerk = clerkMiddleware(async (auth, request) => {
 });
 
 export async function proxy(request: NextRequest, event: NextFetchEvent) {
-  const canonicalTarget = canonicalProductionUrl(request.url);
-  if (canonicalTarget) return NextResponse.redirect(canonicalTarget, 308);
+  // Vercel cron invocations arrive on the deployment host, never the
+  // canonical domain — a 308 here means the job "succeeds" without ever
+  // running (this silently killed every cron in production). Cron routes
+  // authenticate with CRON_SECRET in their own handlers; host is moot.
+  const pathname = request.nextUrl.pathname;
+  const isCronPath = pathname.startsWith("/api/booking/cron/") || pathname === "/api/app-builder/cron";
+  if (!isCronPath) {
+    const canonicalTarget = canonicalProductionUrl(request.url);
+    if (canonicalTarget) return NextResponse.redirect(canonicalTarget, 308);
+  }
 
   if (isPreviewIdentityEnabled()) return NextResponse.next();
 
