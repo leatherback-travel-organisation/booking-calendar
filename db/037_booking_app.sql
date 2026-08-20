@@ -421,20 +421,17 @@ cross join (values
 ) as t(key, name, description, duration_min, guest_facing, supports_group, position)
 on conflict (brand_id, key) do nothing;
 
--- Group sessions are Carex-only (decision 19 Aug): the Lead-Up group call is
--- retired, replaced by an hour-long Carex pre-trip video call. Lead-up stays
--- a 1:1 call type; every other brand's pre-trip stays BM-initiated 1:1.
+-- The Lead-Up group call is retired (decision 19 Aug): lead-up stays a 1:1
+-- call type. Every brand's pre-trip is the hour-long group-capable video
+-- session (decision 20 Aug) — group calls and webinars for any BM.
 update booking.event_type set supports_group = false where key = 'lead-up';
-update booking.event_type set supports_group = false
-  where key = 'pre-trip'
-    and brand_id <> (select id from booking.brand where key = 'carex');
 update booking.event_type
    set name = 'Pre-Trip Video Call',
-       description = 'An hour together on video before you travel — the full pre-trip run-through.',
+       description = 'An hour together on video — pre-trip run-throughs, group Q&As and webinars.',
        duration_min = 60,
+       supports_group = true,
        location_kind = 'google_meet'
- where key = 'pre-trip'
-   and brand_id = (select id from booking.brand where key = 'carex');
+ where key = 'pre-trip';
 
 -- Per-brand voiced templates (Special Feeling, one voice per brand —
 -- Patch adventurous, Camino encouraging, Magnificent rail-elegant, Fencox
