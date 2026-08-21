@@ -1,7 +1,9 @@
 // Read-only Google-Calendar-style week view for one BM. Every time is
 // precomputed server-side as minutes-from-midnight in the scheduling zone;
-// this component only turns spans into absolutely positioned blocks.
+// this component only turns spans into absolutely positioned blocks. The
+// column count follows the day list rather than assuming a seven-day week.
 
+import type { CSSProperties } from "react";
 import { BmSelect, type BmOption } from "./bm-select";
 import panelStyles from "./dashboard.module.css";
 import styles from "./dashboard-calendar.module.css";
@@ -67,7 +69,7 @@ export function AvailabilityCalendar({ options, selectedSlug, view }: CalendarSe
           <p className={styles.zoneNote}>Times in {view.zone}</p>
 
           <div className={styles.scroll}>
-            <div className={styles.grid}>
+            <div className={styles.grid} style={{ "--day-count": view.days.length } as CSSProperties}>
               <div className={styles.corner} aria-hidden="true" />
               {view.days.map((day) => (
                 <div key={day.key} className={styles.dayHead} data-today={day.isToday || undefined}>

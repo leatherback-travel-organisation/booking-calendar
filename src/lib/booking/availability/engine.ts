@@ -194,3 +194,14 @@ export function rankByOpenSlots<T extends { name: string; slots: Slot[] }>(candi
     return a.name.localeCompare(b.name);
   });
 }
+
+/**
+ * Monday of the working week to display, given "today" already in the
+ * scheduling zone. Saturday and Sunday roll forward to the week ahead: the
+ * week that just ended has nothing bookable left in it.
+ */
+export function workingWeekStart(today: DateTime): DateTime {
+  const day = today.startOf("day");
+  // Luxon weekday: 1 = Monday … 7 = Sunday.
+  return day.weekday >= 6 ? day.plus({ days: 8 - day.weekday }) : day.startOf("week");
+}

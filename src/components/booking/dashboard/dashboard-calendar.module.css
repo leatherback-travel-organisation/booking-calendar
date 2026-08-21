@@ -50,7 +50,8 @@
 
 .grid {
   display: grid;
-  grid-template-columns: 52px repeat(7, minmax(92px, 1fr));
+  /* --day-count is set by the component; the week is Mon-Fri today. */
+  grid-template-columns: 52px repeat(var(--day-count, 5), minmax(92px, 1fr));
   grid-template-rows: auto 480px;
   min-width: 700px;
 }

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { DateTime } from "luxon";
-import { computeSlots, mergeIntervals, rankByOpenSlots, resolveSchedulingZone } from "./engine.ts";
+import { computeSlots, mergeIntervals, rankByOpenSlots, resolveSchedulingZone, workingWeekStart } from "./engine.ts";
 
 const WEEKDAYS_9_TO_5 = [1, 2, 3, 4, 5].map((dayOfWeek) => ({ dayOfWeek, startMin: 540, endMin: 1020 }));
 
@@ -269,4 +269,28 @@ test("mergeIntervals coalesces overlapping and touching intervals", () => {
   assert.equal(merged.length, 2);
   assert.equal(merged[0].start, "2026-08-18T01:00:00.000Z");
   assert.equal(merged[0].end, "2026-08-18T03:00:00.000Z");
+});
+
+// The BM week calendar shows Monday–Friday. Weekday arithmetic is easy to get
+// off by one, and a wrong Monday silently shows the wrong week's calendar.
+test("workingWeekStart anchors to Monday and rolls the weekend forward", () => {
+  const zone = "Australia/Sydney";
+  const monday = DateTime.fromISO("2026-08-17T09:30", { zone });
+  const wednesday = DateTime.fromISO("2026-08-19T23:15", { zone });
+  const friday = DateTime.fromISO("2026-08-21T00:05", { zone });
+
+  // Any weekday resolves to that week's Monday, at midnight.
+  for (const day of [monday, wednesday, friday]) {
+    const start = workingWeekStart(day);
+    assert.equal(start.toFormat("yyyy-LL-dd HH:mm"), "2026-08-17 00:00");
+    assert.equal(start.weekday, 1);
+  }
+
+  // Saturday and Sunday belong to the week ahead, not the one just finished.
+  assert.equal(workingWeekStart(DateTime.fromISO("2026-08-22T10:00", { zone })).toFormat("yyyy-LL-dd"), "2026-08-24");
+  assert.equal(workingWeekStart(DateTime.fromISO("2026-08-23T10:00", { zone })).toFormat("yyyy-LL-dd"), "2026-08-24");
+
+  // Friday + 4 days is Friday: the five columns never spill into the weekend.
+  const week = workingWeekStart(wednesday);
+  assert.equal(week.plus({ days: 4 }).weekday, 5);
 });

@@ -4,6 +4,11 @@ import "server-only";
 // flattened server-side to minutes-from-midnight spans in the scheduling zone
 // so the rendering component stays pure (no Date/DateTime in render bodies).
 // Used by the Dashboard (with a BM dropdown) and each BM's own page.
+//
+// Busy time is read STRAIGHT FROM GOOGLE (free/busy for the BM's own
+// calendar), not inferred from the gaps between open slots. Inferring it
+// meant a commitment outside working hours was invisible and a buffer looked
+// identical to a real meeting — neither is that BM's live calendar.
 
 import { DateTime } from "luxon";
 import type {
@@ -11,21 +16,22 @@ import type {
   CalendarDay,
   CalendarView,
 } from "@/components/booking/dashboard/availability-calendar";
-import { mergeIntervals, resolveSchedulingZone } from "./availability/engine";
+import { mergeIntervals, resolveSchedulingZone, workingWeekStart } from "./availability/engine";
 import {
   availabilityForStaff,
+  cachedFreeBusy,
   getBrandById,
   getEventType,
   getEventTypesForBrand,
-  getWorkingHours,
 } from "./availability/service";
 import { getSql } from "./db";
 import { calendarConfigured } from "./google/auth";
-import type { Staff } from "./model";
+import type { Interval, Staff } from "./model";
 
-// Week calendar shows 7 day columns from today, 08:00–18:00 in the BM's
-// scheduling zone.
-const CAL_DAYS = 7;
+// The working week: Monday–Friday, 08:00–18:00 in the BM's scheduling zone.
+// Weekends are not shown — nobody books calls on them and two dead columns
+// cost a third of the width.
+const CAL_DAYS = 5;
 const CAL_START_MIN = 8 * 60;
 const CAL_END_MIN = 18 * 60;
 
@@ -106,14 +112,15 @@ export async function buildCalendarView(staff: Staff): Promise<CalendarView> {
   }
 
   const zone = resolveSchedulingZone(staff, brand);
-  const firstDay = DateTime.now().setZone(zone).startOf("day");
+  const today = DateTime.now().setZone(zone).startOf("day");
+  const firstDay = workingWeekStart(today);
   const windowStartIso = firstDay.toUTC().toISO()!;
   const windowEndIso = firstDay.plus({ days: CAL_DAYS }).toUTC().toISO()!;
+  const todayKey = today.toFormat("yyyy-LL-dd");
 
   const sql = getSql();
-  const [availability, workingHours, bookingRows] = await Promise.all([
+  const [availability, bookingRows] = await Promise.all([
     availabilityForStaff({ staff, brand, eventType }),
-    getWorkingHours(staff.id),
     sql`
       select b.id, b.starts_at, b.ends_at, b.guest_name, et.name as event_type_name
       from booking.booking b
@@ -126,13 +133,33 @@ export async function buildCalendarView(staff: Staff): Promise<CalendarView> {
   // Adjacent/overlapping 30-min slots coalesce into contiguous "Open" ranges.
   const openRanges = mergeIntervals(availability.slots);
 
+  // The BM's real calendar for exactly the week on screen. availability's own
+  // free/busy covers a different window, so this is a separate (cached) read.
+  let googleBusy: Interval[] = [];
+  let calendarReachable = availability.calendarReachable;
+  if (calendarConfigured()) {
+    try {
+      const { busyByEmail, unreachable } = await cachedFreeBusy(
+        staff.email,
+        [staff.email],
+        windowStartIso,
+        windowEndIso,
+      );
+      googleBusy = busyByEmail.get(staff.email.toLowerCase()) ?? [];
+      if (unreachable.length > 0) calendarReachable = false;
+    } catch {
+      // An outage is not an empty calendar — say so rather than showing a
+      // week that looks wide open.
+      calendarReachable = false;
+    }
+  }
+
   const days: CalendarDay[] = [];
   for (let i = 0; i < CAL_DAYS; i += 1) {
     const day = firstDay.plus({ days: i });
     const dayKey = day.toFormat("yyyy-LL-dd");
     const blocks: CalendarBlock[] = [];
     const bookedSpans: MinuteSpan[] = [];
-    const openSpans: MinuteSpan[] = [];
 
     for (const row of bookingRows) {
       const startIso = new Date(row.starts_at as string).toISOString();
@@ -157,7 +184,6 @@ export async function buildCalendarView(staff: Staff): Promise<CalendarView> {
     for (const range of openRanges) {
       const span = spanForDay(range.start, range.end, day, zone);
       if (!span) continue;
-      openSpans.push(span);
       blocks.push({
         key: `open-${dayKey}-${span.start}`,
         kind: "open",
@@ -170,17 +196,15 @@ export async function buildCalendarView(staff: Staff): Promise<CalendarView> {
       });
     }
 
-    // Working hours that are neither open nor booked read as Busy — in prod
-    // this is Google-calendar-busy time; in dev without Google it is mostly
-    // buffers and the min-notice runway.
-    const dow = day.weekday % 7; // luxon 1=Mon..7=Sun → ours 0=Sun..6=Sat
-    const withinHours = mergeSpans(
-      workingHours
-        .filter((row) => row.dayOfWeek === dow)
-        .map((row) => clipToVisible({ start: row.startMin, end: row.endMin }))
+    // Real Google-calendar busy time. CallTime's own bookings are on that
+    // calendar too, so subtract them — a booked call renders once, as the
+    // block that knows the guest's name.
+    const googleSpans = mergeSpans(
+      googleBusy
+        .map((interval) => spanForDay(interval.start, interval.end, day, zone))
         .filter((span): span is MinuteSpan => span !== null),
     );
-    for (const span of subtractSpans(withinHours, [...openSpans, ...bookedSpans])) {
+    for (const span of subtractSpans(googleSpans, bookedSpans)) {
       blocks.push({
         key: `busy-${dayKey}-${span.start}`,
         kind: "busy",
@@ -189,7 +213,7 @@ export async function buildCalendarView(staff: Staff): Promise<CalendarView> {
         timeLabel: null,
         title: null,
         subtitle: null,
-        tooltip: spanTooltip(span, "Busy"),
+        tooltip: spanTooltip(span, "Busy (Google Calendar)"),
       });
     }
 
@@ -197,11 +221,11 @@ export async function buildCalendarView(staff: Staff): Promise<CalendarView> {
       key: dayKey,
       weekday: day.toFormat("ccc"),
       dateLabel: day.toFormat("d LLL"),
-      isToday: i === 0,
+      isToday: dayKey === todayKey,
       blocks,
     });
   }
 
-  const notice = !calendarConfigured() ? "not-connected" : availability.calendarReachable ? null : "unreachable";
+  const notice = !calendarConfigured() ? "not-connected" : calendarReachable ? null : "unreachable";
   return { kind: "grid", zone, days, notice };
 }
