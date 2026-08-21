@@ -97,6 +97,4 @@ export async function rateLimited(
   }
 }
 
-export function appUrl(): string {
-  return process.env.NEXT_PUBLIC_APP_URL ?? "https://cove.leatherbacktravel.com";
-}
+export { appUrl } from "./app-url";

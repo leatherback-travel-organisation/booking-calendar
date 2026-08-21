@@ -9,6 +9,7 @@ import type { Brand, EventType, Staff } from "./model";
 import type { Interval } from "./model";
 import { createBooking, type CreateBookingResult } from "./service";
 import { issueToken, tokenMatches } from "./tokens";
+import { appUrl } from "./app-url";
 
 export type Invitation = {
   id: string;
@@ -60,7 +61,7 @@ export async function createInvitation(args: {
       staff: args.staff.email,
       candidateCount: args.candidates.length,
     })}::jsonb)`;
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? "https://cove.leatherbacktravel.com";
+  const base = appUrl();
   return { invitationId, url: `${base}/invite/${token.raw}` };
 }
 

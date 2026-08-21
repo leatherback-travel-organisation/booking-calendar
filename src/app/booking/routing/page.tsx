@@ -6,6 +6,7 @@ import { CoverageMap } from "@/components/booking/coverage-map";
 import { requireBookingAccess } from "@/lib/booking/access";
 import { databaseConfigured } from "@/lib/booking/db";
 import { getBrands, getDepartureStats, getOpenCoverageIssues } from "@/lib/booking/reference/queries";
+import { appUrl as publicAppUrl } from "@/lib/booking/app-url";
 import { runReferenceSync } from "@/lib/booking/reference/sync";
 import shellStyles from "@/components/booking/booking-shell.module.css";
 
@@ -39,7 +40,7 @@ export default async function BookingRoutingPage() {
     getDepartureStats(),
     getBrands(),
   ]);
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const appUrl = publicAppUrl();
 
   return (
     <BookingShell active="routing" canManage={canManage}>

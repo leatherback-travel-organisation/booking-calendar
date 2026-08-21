@@ -15,6 +15,7 @@ import type { Brand, EventType, Staff } from "./model";
 import { resolveSchedulingZone } from "./availability/engine";
 import { sendBookingEmail } from "./notify/messages";
 import { issueToken } from "./tokens";
+import { appUrl } from "./app-url";
 
 export type GroupSession = {
   id: string;
@@ -86,7 +87,7 @@ export async function createGroupSession(args: {
     try {
       const event = await insertEvent(args.staff.email, {
         summary: `${args.eventType.name} (group) — ${args.capacity} seats`,
-        description: `Group session. Seat roster: ${process.env.NEXT_PUBLIC_APP_URL ?? "https://cove.leatherbacktravel.com"}/booking?session=${sessionId}`,
+        description: `Group session. Seat roster: ${appUrl()}/booking?session=${sessionId}`,
         startIso,
         endIso,
         timezone: resolveSchedulingZone(args.staff, args.brand),

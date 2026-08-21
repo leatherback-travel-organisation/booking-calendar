@@ -8,6 +8,8 @@ export async function register(): Promise<void> {
   const secret = process.env.CRON_SECRET;
   if (!secret) return;
 
+  // Deliberately localhost, unlike lib/booking/app-url: this loop only ever
+  // runs against the dev server on this machine.
   const base = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const hit = (path: string) =>
     fetch(`${base}${path}`, { headers: { Authorization: `Bearer ${secret}` } }).catch(() => {});

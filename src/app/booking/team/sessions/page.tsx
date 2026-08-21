@@ -17,6 +17,7 @@ import { databaseConfigured, getSql } from "@/lib/booking/db";
 import { listOpenSessions } from "@/lib/booking/groups";
 import { getBrands, getStaffWithBrands } from "@/lib/booking/reference/queries";
 import { cancelSessionAction, createSessionAction } from "./actions";
+import { appUrl as publicAppUrl } from "@/lib/booking/app-url";
 import shellStyles from "@/components/booking/booking-shell.module.css";
 import styles from "@/components/booking/team-tools/team-tools.module.css";
 
@@ -75,7 +76,7 @@ export default async function GroupSessionsPage({ searchParams }: PageProps) {
     ]),
   );
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://cove.leatherbacktravel.com";
+  const appUrl = publicAppUrl();
   const selfEmail = identity.email.toLowerCase();
 
   const activeStaff = staff.filter((member) => member.active);
