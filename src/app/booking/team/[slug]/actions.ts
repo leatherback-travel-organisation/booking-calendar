@@ -2,8 +2,9 @@
 
 // Server actions for per-BM scheduling controls. Permission rules are
 // enforced HERE, not in the UI: a Booking Manager (no booking.manage) may
-// change only their own buffer, bio and guest-reminder toggle; everything
-// else is Pod Lead only.
+// change only their own buffer, bio and video-call toggle; everything else is
+// Pod Lead only. Guest reminders are NOT here — they belong to the brand and
+// only Pod Leads and Senior BMs edit them (Guest Communications).
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -77,17 +78,9 @@ export async function saveSettings(formData: FormData): Promise<void> {
 
   // Checkboxes: an unchecked box submits nothing, so the form carries a marker
   // field — without it (e.g. an older form) the value is left unchanged. Like
-  // buffer and bio, a BM may toggle these on their own row.
-  const reminder24hEnabled =
-    formData.get("remindersEnabledField") === null
-      ? staff.reminder24hEnabled
-      : formData.get("reminder24hEnabled") === "on";
-  const reminder1hEnabled =
-    formData.get("remindersEnabledField") === null
-      ? staff.reminder1hEnabled
-      : formData.get("reminder1hEnabled") === "on";
+  // buffer and bio, a BM may toggle this on their own row.
   const videoCallsEnabled =
-    formData.get("remindersEnabledField") === null
+    formData.get("toggleFields") === null
       ? staff.videoCallsEnabled
       : formData.get("videoCallsEnabled") === "on";
 
@@ -125,12 +118,6 @@ export async function saveSettings(formData: FormData): Promise<void> {
   const diff: Record<string, { from: unknown; to: unknown }> = {};
   if (bufferMinutes !== staff.bufferMinutes) diff.bufferMinutes = { from: staff.bufferMinutes, to: bufferMinutes };
   if (bio !== staff.bio) diff.bio = { from: staff.bio, to: bio };
-  if (reminder24hEnabled !== staff.reminder24hEnabled) {
-    diff.reminder24hEnabled = { from: staff.reminder24hEnabled, to: reminder24hEnabled };
-  }
-  if (reminder1hEnabled !== staff.reminder1hEnabled) {
-    diff.reminder1hEnabled = { from: staff.reminder1hEnabled, to: reminder1hEnabled };
-  }
   if (videoCallsEnabled !== staff.videoCallsEnabled) {
     diff.videoCallsEnabled = { from: staff.videoCallsEnabled, to: videoCallsEnabled };
   }
@@ -151,8 +138,6 @@ export async function saveSettings(formData: FormData): Promise<void> {
              booking_window_days = ${bookingWindowDays},
              timezone_override = ${timezoneOverride},
              bio = ${bio},
-             reminder_24h_enabled = ${reminder24hEnabled},
-             reminder_1h_enabled = ${reminder1hEnabled},
              video_calls_enabled = ${videoCallsEnabled}
        where id = ${staff.id}`;
     await auditAvailabilityChange(access.identity.email, staff.email, diff);

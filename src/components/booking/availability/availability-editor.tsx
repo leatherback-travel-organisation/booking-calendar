@@ -3,7 +3,8 @@
 // Per-BM scheduling controls, shown on each BM's own page. The permission
 // split mirrors the server rules (which are authoritative): Pod Leads edit
 // everything for everyone; a Booking Manager edits only their own buffer,
-// bio and reminder toggles.
+// bio and video-call toggle. Guest reminders are a brand setting and live in
+// Guest Communications.
 
 import { useState } from "react";
 import styles from "./availability.module.css";
@@ -51,8 +52,6 @@ export type SelectedStaffSettings = {
   bookingWindowDays: number;
   timezoneOverride: string | null;
   bio: string | null;
-  reminder24hEnabled: boolean;
-  reminder1hEnabled: boolean;
   videoCallsEnabled: boolean;
 };
 
@@ -236,25 +235,7 @@ export function AvailabilityEditor({
         ) : null}
 
         {/* Marker so the server action can tell "unchecked" from "not submitted". */}
-        <input type="hidden" name="remindersEnabledField" value="1" />
-        <label className={styles.checkboxField}>
-          <input
-            type="checkbox"
-            name="reminder24hEnabled"
-            defaultChecked={selected.reminder24hEnabled}
-            disabled={!canEditOwnBits}
-          />
-          Send the 24-hour reminder email
-        </label>
-        <label className={styles.checkboxField}>
-          <input
-            type="checkbox"
-            name="reminder1hEnabled"
-            defaultChecked={selected.reminder1hEnabled}
-            disabled={!canEditOwnBits}
-          />
-          Send the 1-hour reminder email
-        </label>
+        <input type="hidden" name="toggleFields" value="1" />
         <label className={styles.checkboxField} title="Off = guests book phone calls only; you ring them.">
           <input
             type="checkbox"
@@ -281,7 +262,7 @@ export function AvailabilityEditor({
             <button type="submit" className={styles.saveButton}>
               Save settings
             </button>
-            {!canManage ? <span className={styles.cardHint}>You can change your buffer, bio and reminder emails.</span> : null}
+            {!canManage ? <span className={styles.cardHint}>You can change your buffer, bio and video calls.</span> : null}
           </div>
         ) : null}
       </form>

@@ -164,8 +164,6 @@ export default async function BookingManagerPage({ params, searchParams }: PageP
             bookingWindowDays: staff.bookingWindowDays,
             timezoneOverride: staff.timezoneOverride,
             bio: staff.bio,
-            reminder24hEnabled: staff.reminder24hEnabled,
-            reminder1hEnabled: staff.reminder1hEnabled,
             videoCallsEnabled: staff.videoCallsEnabled,
           }}
           hours={hours}

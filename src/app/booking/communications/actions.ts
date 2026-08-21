@@ -139,6 +139,39 @@ export async function setBrandSmsReminders(input: { brandKey: string; enabled: b
   return { ok: true };
 }
 
+/**
+ * Per-brand reminder emails, one flag per reminder moment. Off means that
+ * reminder never sends for the brand's bookings; confirmations, reschedules
+ * and cancellations are unaffected and always send.
+ */
+export async function setBrandReminderEmails(input: {
+  brandKey: string;
+  moment: "reminder_24h" | "reminder_1h";
+  enabled: boolean;
+}): Promise<TemplateActionResult> {
+  const identity = await requireCommsEditor();
+  if (!databaseConfigured()) return { ok: false, error: "The booking database is not configured." };
+  if (input.moment !== "reminder_24h" && input.moment !== "reminder_1h") {
+    return { ok: false, error: "Unknown reminder moment." };
+  }
+  const brand = await brandByKey(input.brandKey);
+  if (!brand) return { ok: false, error: `Unknown brand "${input.brandKey}".` };
+
+  const sql = getSql();
+  // The column is chosen here, never interpolated from input.
+  if (input.moment === "reminder_24h") {
+    await sql`update booking.brand set reminder_24h_enabled = ${input.enabled} where id = ${brand.id}`;
+  } else {
+    await sql`update booking.brand set reminder_1h_enabled = ${input.enabled} where id = ${brand.id}`;
+  }
+  await sql`
+    insert into booking.audit_log (actor, action, subject, detail)
+    values (${identity.email}, 'brand_reminder_emails', ${brand.key},
+            ${JSON.stringify({ moment: input.moment, enabled: input.enabled })}::jsonb)`;
+  revalidatePath("/booking/communications");
+  return { ok: true };
+}
+
 export async function saveTemplate(input: SaveInput): Promise<TemplateActionResult> {
   const identity = await requireCommsEditor();
   if (!databaseConfigured()) return { ok: false, error: "The booking database is not configured." };

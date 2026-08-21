@@ -89,13 +89,6 @@ export function TeamRoster({ staff, brands, fetchedAt, appUrl, guestTypes, canMa
                             ) : (
                               <strong>{member.fullName}</strong>
                             )}
-                            {!member.reminder24hEnabled && !member.reminder1hEnabled ? (
-                              <span className={styles.mutedChip}>Reminders off</span>
-                            ) : !member.reminder24hEnabled ? (
-                              <span className={styles.mutedChip}>24h reminder off</span>
-                            ) : !member.reminder1hEnabled ? (
-                              <span className={styles.mutedChip}>1h reminder off</span>
-                            ) : null}
                           </div>
                         </div>
                       </div>

@@ -18,6 +18,13 @@ export type Brand = {
   fromEmail: string;
   fromName: string;
   replyTo: string | null;
+  /**
+   * Guest reminder settings, owned by the brand and edited only by Pod Leads
+   * and Senior BMs (Guest Communications). Confirmations, reschedules and
+   * cancellations always send — these govern reminders only.
+   */
+  reminder24hEnabled: boolean;
+  reminder1hEnabled: boolean;
   /** Bookings with a guest phone also get SMS reminders when true. */
   smsRemindersEnabled: boolean;
   active: boolean;
@@ -44,9 +51,6 @@ export type Staff = {
   bufferMinutes: number;
   minNoticeHours: number;
   bookingWindowDays: number;
-  /** Guest reminder emails for this BM's bookings, one flag per moment. */
-  reminder24hEnabled: boolean;
-  reminder1hEnabled: boolean;
   /** Guests may choose a video call only when true; otherwise phone-only. */
   videoCallsEnabled: boolean;
   /** Synced from Notion's Job Title. */

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { BookingShell } from "@/components/booking/booking-shell";
 import { CommunicationsList } from "@/components/booking/communications/communications-list";
-import { SmsToggles } from "@/components/booking/communications/sms-toggles";
+import { ReminderSettings } from "@/components/booking/communications/reminder-settings";
 import { requireBookingAccess } from "@/lib/booking/access";
 import { getStaffByEmail } from "@/lib/booking/availability/service";
 import { databaseConfigured } from "@/lib/booking/db";
@@ -36,19 +36,21 @@ export default async function BookingCommunicationsPage() {
 
   const staffSelf = await getStaffByEmail(identity.email);
   const canEditComms = canManage || Boolean(staffSelf?.isSenior);
-  const smsBrands = brands
+  const reminderBrands = brands
     .filter((brand) => brand.active)
     .map((brand) => ({
       key: brand.key,
       name: brand.name,
       colorPrimary: brand.colorPrimary,
+      reminder24hEnabled: brand.reminder24hEnabled,
+      reminder1hEnabled: brand.reminder1hEnabled,
       smsRemindersEnabled: brand.smsRemindersEnabled,
     }));
 
   return (
     <BookingShell active="communications" canManage={canManage}>
       <CommunicationsList summaries={summaries} brands={brandLites} />
-      <SmsToggles brands={smsBrands} canEdit={canEditComms} />
+      <ReminderSettings brands={reminderBrands} canEdit={canEditComms} />
     </BookingShell>
   );
 }

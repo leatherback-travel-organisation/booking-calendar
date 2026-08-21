@@ -37,9 +37,6 @@ function mapStaff(row: StaffRow, brandIds: string[]): Staff {
     bufferMinutes: Number(row.buffer_minutes),
     minNoticeHours: Number(row.min_notice_hours),
     bookingWindowDays: Number(row.booking_window_days),
-    // Default true so an un-migrated database behaves like the schema default.
-    reminder24hEnabled: row.reminder_24h_enabled === undefined ? true : Boolean(row.reminder_24h_enabled),
-    reminder1hEnabled: row.reminder_1h_enabled === undefined ? true : Boolean(row.reminder_1h_enabled),
     videoCallsEnabled: Boolean(row.video_calls_enabled),
     jobTitle: (row.job_title as string | null) ?? null,
     isSenior: isSeniorTitle((row.job_title as string | null) ?? null),
@@ -66,6 +63,9 @@ export function mapBrand(row: Record<string, unknown>): Brand {
     fromEmail: String(row.from_email),
     fromName: String(row.from_name),
     replyTo: (row.reply_to as string | null) ?? null,
+    // Default true so an un-migrated database behaves like the schema default.
+    reminder24hEnabled: row.reminder_24h_enabled === undefined ? true : Boolean(row.reminder_24h_enabled),
+    reminder1hEnabled: row.reminder_1h_enabled === undefined ? true : Boolean(row.reminder_1h_enabled),
     smsRemindersEnabled: Boolean(row.sms_reminders_enabled),
     active: Boolean(row.active),
   };

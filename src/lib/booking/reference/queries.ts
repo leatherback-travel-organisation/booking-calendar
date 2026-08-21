@@ -42,6 +42,9 @@ export async function getBrands(): Promise<Brand[]> {
     fromEmail: row.from_email as string,
     fromName: row.from_name as string,
     replyTo: (row.reply_to as string | null) ?? null,
+    // Default true so an un-migrated database behaves like the schema default.
+    reminder24hEnabled: row.reminder_24h_enabled === undefined ? true : Boolean(row.reminder_24h_enabled),
+    reminder1hEnabled: row.reminder_1h_enabled === undefined ? true : Boolean(row.reminder_1h_enabled),
     smsRemindersEnabled: Boolean(row.sms_reminders_enabled),
     active: row.active as boolean,
   }));
@@ -77,8 +80,6 @@ export async function getStaffWithBrands(): Promise<Staff[]> {
     bufferMinutes: Number(row.buffer_minutes ?? 0),
     minNoticeHours: Number(row.min_notice_hours ?? 0),
     bookingWindowDays: Number(row.booking_window_days ?? 0),
-    reminder24hEnabled: row.reminder_24h_enabled === undefined ? true : Boolean(row.reminder_24h_enabled),
-    reminder1hEnabled: row.reminder_1h_enabled === undefined ? true : Boolean(row.reminder_1h_enabled),
     videoCallsEnabled: Boolean(row.video_calls_enabled),
     jobTitle: (row.job_title as string | null) ?? null,
     isSenior: isSeniorTitle((row.job_title as string | null) ?? null),
