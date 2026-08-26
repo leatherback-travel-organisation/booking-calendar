@@ -535,3 +535,31 @@ test("addDays crosses month boundaries in UTC", () => {
   assert.equal(addDays("2026-08-31", 1), "2026-09-01");
   assert.equal(addDays("2026-09-01", -1), "2026-08-31");
 });
+
+test("buildDepartureIndex carries Countries and Regions Visited for trip search", () => {
+  const index = buildDepartureIndex(
+    [
+      trip("recNepal", {
+        "Trip Title & Code": "Annapurna Base Camp 14 Days - ABC1",
+        "Trip Name": ["Annapurna Base Camp 14 Days"],
+        "Start Date": ["2026-10-05"],
+        Status: ["Published"],
+        Brand: ["Patch Adventures"],
+        "Website URL": ["patchadventures.com.au/tour/annapurna-base-camp"],
+        "Countries Visited": ["Nepal"],
+        "Regions Visited": ["Central & South Asia"],
+      }),
+      trip("recNoLookups", {
+        "Trip Title & Code": "Mystery",
+        Status: ["Published"],
+        Brand: ["Patch Adventures"],
+      }),
+    ],
+    [{ key: "patch", name: "Patch Adventures", aliases: [] }],
+  );
+  assert.deepEqual(index.departures[0].countries, ["Nepal"]);
+  assert.deepEqual(index.departures[0].regions, ["Central & South Asia"]);
+  // Absent lookups normalise to empty arrays, never undefined.
+  assert.deepEqual(index.departures[1].countries, []);
+  assert.deepEqual(index.departures[1].regions, []);
+});

@@ -100,6 +100,9 @@ export type Departure = {
   /** Parsed from websiteUrl at sync time. */
   host: string | null;
   slug: string | null;
+  /** Airtable "Countries Visited" / "Regions Visited" lookups — trip search matches these. */
+  countries: string[];
+  regions: string[];
   coordinatorAirtableIds: string[];
   coordinatorEmails: string[];
 };

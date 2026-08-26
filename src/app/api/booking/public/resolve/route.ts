@@ -112,19 +112,28 @@ export async function GET(request: Request): Promise<Response> {
 async function upcomingTripsForBrand(
   brand: Brand,
   limit = 60,
-): Promise<{ slug: string; title: string; startDate: string | null }[]> {
+): Promise<{ slug: string; title: string; startDate: string | null; destinations: string[] }[]> {
   const departures = await getCachedDepartures();
   const today = new Date().toISOString().slice(0, 10);
-  const bySlug = new Map<string, { slug: string; title: string; startDate: string | null }>();
+  const bySlug = new Map<string, { slug: string; title: string; startDate: string | null; destinations: string[] }>();
   for (const d of departures) {
     if (d.status !== "Published" && d.status !== "Marketing Ready") continue;
     if (d.startDate === null || d.startDate < today) continue;
     if (d.slug === null) continue;
     if (d.brandName === null) continue;
     if (d.brandName !== brand.name && !brand.aliases.includes(d.brandName)) continue;
+    // Countries + regions merged; ?? [] because pre-migration cache rows lack them.
+    const destinations = [...new Set([...(d.countries ?? []), ...(d.regions ?? [])])];
     const existing = bySlug.get(d.slug);
     if (!existing || existing.startDate === null || (d.startDate < existing.startDate)) {
-      bySlug.set(d.slug, { slug: d.slug, title: d.niceName ?? d.tripName, startDate: d.startDate });
+      bySlug.set(d.slug, {
+        slug: d.slug,
+        title: d.niceName ?? d.tripName,
+        startDate: d.startDate,
+        destinations: existing ? [...new Set([...existing.destinations, ...destinations])] : destinations,
+      });
+    } else if (destinations.length > 0) {
+      existing.destinations = [...new Set([...existing.destinations, ...destinations])];
     }
   }
   return [...bySlug.values()]

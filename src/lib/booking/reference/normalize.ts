@@ -271,6 +271,8 @@ export function buildDepartureIndex(
       brandName,
       status: firstString(fields["Status"]),
       startDate: isoDate(firstString(fields["Start Date"])),
+      countries: stringArray(fields["Countries Visited"]),
+      regions: stringArray(fields["Regions Visited"]),
       websiteUrl,
       host: parsed?.host ?? null,
       slug: parsed?.slug ?? null,

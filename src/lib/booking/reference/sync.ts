@@ -35,6 +35,8 @@ export const TRIP_FIELDS = [
   "Status",
   "Brand",
   "Website URL",
+  "Countries Visited",
+  "Regions Visited",
 ];
 
 const BOOKING_MANAGER_FIELDS = ["Name", "Email", "Help Scout User ID", "AirCall User ID", "Slack User ID", "Status"];

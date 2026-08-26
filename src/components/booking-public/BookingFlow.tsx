@@ -395,9 +395,17 @@ export function BookingFlow({
   // the chosen trip resolves to its own coordinator — never a silent pool.
   if (!ctx && tripPicker) {
     const query = tripQuery.trim().toLowerCase();
+    // Every word of the query must appear in the trip's title or one of its
+    // destinations — so "Nepal" finds every Nepal trip, and "nepal trek"
+    // narrows within them.
     const matches =
       query.length >= 2
-        ? tripPicker.trips.filter((t) => t.title.toLowerCase().includes(query)).slice(0, 12)
+        ? tripPicker.trips
+            .filter((t) => {
+              const haystack = [t.title, ...(t.destinations ?? [])].join(" ").toLowerCase();
+              return query.split(/\s+/).every((word) => haystack.includes(word));
+            })
+            .slice(0, 12)
         : [];
     return (
       <BrandFrame brand={tripPicker.brand} embed={embed}>
@@ -423,7 +431,7 @@ export function BookingFlow({
           </div>
           {query.length >= 2 && matches.length === 0 && (
             <p className={styles.mutedText}>
-              No trips match &ldquo;{tripQuery.trim()}&rdquo; — try another word from the trip name.
+              No trips match &ldquo;{tripQuery.trim()}&rdquo; — try another word from the trip name, or a country it visits.
             </p>
           )}
           {matches.length > 0 && (
