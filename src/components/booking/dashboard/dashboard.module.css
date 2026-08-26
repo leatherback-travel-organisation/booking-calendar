@@ -368,3 +368,12 @@ span.bmLinkAvatar[data-fallback] {
   font-size: var(--text-label, 12px);
   font-weight: 500;
 }
+
+/* Booker note on internally booked calls — context for the BM taking it. */
+.bookingNote {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-label, 12px);
+  font-style: italic;
+}

@@ -1,10 +1,16 @@
-// Read-only Google-Calendar-style week view for one BM. Every time is
-// precomputed server-side as minutes-from-midnight in the scheduling zone;
-// this component only turns spans into absolutely positioned blocks. The
-// column count follows the day list rather than assuming a seven-day week.
+"use client";
 
-import type { CSSProperties } from "react";
+// Google-Calendar-style week view for one BM. Every time is precomputed
+// server-side as minutes-from-midnight in the scheduling zone; this component
+// turns spans into absolutely positioned blocks, pages between weeks via
+// plain links, and — when a composer config is supplied — turns a click on a
+// day column into an internal booking (see BookingComposer). The column count
+// follows the day list rather than assuming a seven-day week.
+
+import { useState, type CSSProperties, type MouseEvent } from "react";
+import Link from "next/link";
 import { BmSelect, type BmOption } from "./bm-select";
+import { BookingComposer, type ComposerConfig, type ComposerSlot } from "./booking-composer";
 import panelStyles from "./dashboard.module.css";
 import styles from "./dashboard-calendar.module.css";
 
@@ -30,13 +36,26 @@ export type CalendarDay = {
 };
 
 export type CalendarView =
-  | { kind: "grid"; zone: string; days: CalendarDay[]; notice: "unreachable" | "not-connected" | null }
+  | {
+      kind: "grid";
+      zone: string;
+      days: CalendarDay[];
+      notice: "unreachable" | "not-connected" | null;
+      weekOffset: number;
+      weekLabel: string;
+    }
   | { kind: "message"; message: string };
+
+export type WeekNav = { prevHref: string; todayHref: string; nextHref: string };
 
 export type CalendarSection = {
   options: BmOption[];
   selectedSlug: string | null;
   view: CalendarView;
+  /** Prev/this/next week links (hrefs carry the week offset). Absent = no paging. */
+  nav?: WeekNav | null;
+  /** Click-to-book config. Absent = read-only calendar. */
+  composer?: ComposerConfig | null;
 };
 
 const DAY_START_MIN = 8 * 60;
@@ -48,11 +67,35 @@ function pct(minutes: number): string {
   return `${((minutes / VISIBLE_MIN) * 100).toFixed(3)}%`;
 }
 
-export function AvailabilityCalendar({ options, selectedSlug, view }: CalendarSection) {
+export function AvailabilityCalendar({ options, selectedSlug, view, nav, composer }: CalendarSection) {
+  const [slot, setSlot] = useState<ComposerSlot | null>(null);
+
+  // Click anywhere in a day column → snap to the previous half hour.
+  const pickSlot = (event: MouseEvent<HTMLDivElement>, dayKey: string, dayLabel: string) => {
+    if (!composer) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const ratio = (event.clientY - rect.top) / rect.height;
+    const minute = DAY_START_MIN + Math.floor((ratio * VISIBLE_MIN) / 30) * 30;
+    setSlot({ dayKey, dayLabel, startMin: Math.max(DAY_START_MIN, Math.min(minute, DAY_END_MIN - 30)) });
+  };
+
   return (
     <section className={panelStyles.panel} aria-label="Availability week calendar">
       <div className={styles.head}>
         <h2 className={panelStyles.panelTitle}>Availability</h2>
+        {view.kind === "grid" && nav ? (
+          <nav className={styles.weekNav} aria-label="Calendar week">
+            <Link href={nav.prevHref} className={styles.weekNavButton} aria-label="Previous week">
+              ‹
+            </Link>
+            <Link href={nav.todayHref} className={styles.weekNavLabel} title="Back to this week">
+              {view.weekLabel}
+            </Link>
+            <Link href={nav.nextHref} className={styles.weekNavButton} aria-label="Next week">
+              ›
+            </Link>
+          </nav>
+        ) : null}
         {options.length > 0 ? <BmSelect options={options} selectedSlug={selectedSlug} /> : null}
       </div>
 
@@ -86,7 +129,13 @@ export function AvailabilityCalendar({ options, selectedSlug, view }: CalendarSe
                 ))}
               </div>
               {view.days.map((day) => (
-                <div key={day.key} className={styles.dayCol} data-today={day.isToday || undefined}>
+                <div
+                  key={day.key}
+                  className={styles.dayCol}
+                  data-today={day.isToday || undefined}
+                  data-bookable={composer ? true : undefined}
+                  onClick={(event) => pickSlot(event, day.key, `${day.weekday} ${day.dateLabel}`)}
+                >
                   {day.blocks.map((block) => (
                     <div
                       key={block.key}
@@ -113,8 +162,14 @@ export function AvailabilityCalendar({ options, selectedSlug, view }: CalendarSe
               ))}
             </div>
           </div>
+          {composer ? (
+            <p className={styles.subtleNote}>Click a time to book a guest in{composer.staffName ? ` with ${composer.staffName}` : ""}.</p>
+          ) : null}
         </>
       )}
+      {composer && slot ? (
+        <BookingComposer config={composer} slot={slot} zone={view.kind === "grid" ? view.zone : ""} onClose={() => setSlot(null)} />
+      ) : null}
     </section>
   );
 }

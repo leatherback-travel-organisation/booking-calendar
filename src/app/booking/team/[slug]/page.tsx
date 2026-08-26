@@ -14,7 +14,7 @@ import { BookingList, type DashboardBooking } from "@/components/booking/dashboa
 import { SettingsSearch } from "@/components/booking/settings-search";
 import { requireBookingAccess } from "@/lib/booking/access";
 import { resolveSchedulingZone } from "@/lib/booking/availability/engine";
-import { getBrandById, getWorkingHours } from "@/lib/booking/availability/service";
+import { getBrandById, getEventTypesForBrand, getWorkingHours } from "@/lib/booking/availability/service";
 import { buildCalendarView } from "@/lib/booking/calendar-view";
 import { databaseConfigured, getSql } from "@/lib/booking/db";
 import { getStaffWithBrands } from "@/lib/booking/reference/queries";
@@ -43,7 +43,7 @@ async function loadUpcoming(
 ): Promise<DashboardBooking[]> {
   const sql = getSql();
   const rows = await sql`
-    select b.id, b.starts_at, b.guest_name, b.guest_phone, b.routed_via,
+    select b.id, b.starts_at, b.guest_name, b.guest_phone, b.routed_via, b.booked_by, b.internal_notes,
            s.first_name, s.photo_url, s.timezone_override,
            et.name as event_type_name,
            br.name as brand_name, br.color_primary as brand_color, br.scheduling_timezone
@@ -71,6 +71,8 @@ async function loadUpcoming(
       brandColor: (row.brand_color as string | null) ?? null,
       routedVia: String(row.routed_via),
       canCall: Boolean((row.guest_phone as string | null)?.trim()) && (ownPage || viewer.canManage),
+      bookedBy: (row.booked_by as string | null) ?? null,
+      internalNotes: (row.internal_notes as string | null) ?? null,
     };
   });
 }
@@ -94,6 +96,7 @@ export default async function BookingManagerPage({ params, searchParams }: PageP
   const { slug } = await params;
   const sp = await searchParams;
   const savedFlag = typeof sp.saved === "string" ? sp.saved : null;
+  const weekOffset = typeof sp.week === "string" ? Number.parseInt(sp.week, 10) || 0 : 0;
 
   const allStaff = await getStaffWithBrands();
   const staff = allStaff.find((member) => member.slug === slug && member.active);
@@ -115,7 +118,7 @@ export default async function BookingManagerPage({ params, searchParams }: PageP
   const [hours, upcoming, calendarView] = await Promise.all([
     getWorkingHours(staff.id),
     loadUpcoming(staff.id, { email: identity.email, canManage }, staff.email),
-    buildCalendarView(staff),
+    buildCalendarView(staff, weekOffset),
   ]);
 
   return (
@@ -144,7 +147,28 @@ export default async function BookingManagerPage({ params, searchParams }: PageP
           </div>
         </header>
 
-        <AvailabilityCalendar options={[]} selectedSlug={null} view={calendarView} />
+        <AvailabilityCalendar
+          options={[]}
+          selectedSlug={null}
+          view={calendarView}
+          nav={{
+            prevHref: `/booking/team/${staff.slug}?week=${weekOffset - 1}`,
+            todayHref: `/booking/team/${staff.slug}`,
+            nextHref: `/booking/team/${staff.slug}?week=${weekOffset + 1}`,
+          }}
+          composer={
+            brand
+              ? {
+                  staffSlug: staff.slug,
+                  staffName: staff.fullName,
+                  videoAllowed: staff.videoCallsEnabled,
+                  eventTypes: (await getEventTypesForBrand(brand.id))
+                    .filter((candidate) => candidate.active)
+                    .map((candidate) => ({ key: candidate.key, name: candidate.name, durationMin: candidate.durationMin })),
+                }
+              : null
+          }
+        />
 
         <section className={dashStyles.panel}>
           <h2 className={dashStyles.panelTitle}>Upcoming calls</h2>

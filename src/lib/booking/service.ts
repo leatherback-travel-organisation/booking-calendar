@@ -45,8 +45,11 @@ export type CreateBookingArgs = {
   guestTimezone?: string | null;
   /** Video creates a Meet link; phone means the BM rings the guest. */
   callMedium?: "video" | "phone";
-  sourceKind: "trip" | "bm" | "contact" | "portal" | "invite";
+  sourceKind: "trip" | "bm" | "contact" | "portal" | "invite" | "internal";
   sourceSlug?: string | null;
+  /** Internal bookings: the staff member who made it, and their notes for the BM taking the call. */
+  bookedBy?: string | null;
+  internalNotes?: string | null;
   routedVia?: "primary" | "backup" | "pool";
   routedReason?: string | null;
   airtableTripRecordId?: string | null;
@@ -142,13 +145,13 @@ export async function createBooking(args: CreateBookingArgs): Promise<CreateBook
         staff_id, brand_id, event_type_id, starts_at, ends_at,
         guest_timezone, guest_name, guest_email, guest_phone, guest_notes, call_medium,
         source_kind, source_slug, routed_via, routed_reason,
-        airtable_trip_record_id, manage_token_hash, idempotency_key, confirmed_at
+        airtable_trip_record_id, booked_by, internal_notes, manage_token_hash, idempotency_key, confirmed_at
       ) values (
         ${args.staff.id}, ${args.brand.id}, ${args.eventType.id}, ${startIso}, ${endIso},
         ${args.guestTimezone ?? null}, ${args.guestName}, ${args.guestEmail.trim().toLowerCase()},
         ${args.guestPhone ?? null}, ${args.guestNotes ?? null}, ${args.callMedium ?? "video"},
         ${args.sourceKind}, ${args.sourceSlug ?? null}, ${args.routedVia ?? "primary"}, ${args.routedReason ?? null},
-        ${args.airtableTripRecordId ?? null}, ${token.hash}, ${args.idempotencyKey}, now()
+        ${args.airtableTripRecordId ?? null}, ${args.bookedBy ?? null}, ${args.internalNotes ?? null}, ${token.hash}, ${args.idempotencyKey}, now()
       )
       returning id`;
     bookingId = String(rows[0].id);
@@ -388,10 +391,12 @@ function buildEventDescription(args: CreateBookingArgs): string {
     // Portal bookings lead with their origin so the BM comes prepared: the
     // guest was signed in and booked from their own trip page.
     args.sourceKind === "portal" ? "⭑ BOOKED VIA THE GUEST PORTAL — existing booking, guest was signed in." : null,
+    args.sourceKind === "internal" ? `⭑ BOOKED INTERNALLY by ${args.bookedBy ?? "a teammate"} — guest did not pick this time.` : null,
     `Guest: ${args.guestName} <${args.guestEmail}>`,
     args.guestPhone ? `Phone: ${args.guestPhone}` : null,
     args.tripName ? `Trip: ${args.tripName}` : null,
     args.guestNotes ? `Notes: ${args.guestNotes}` : null,
+    args.internalNotes ? `Booker notes: ${args.internalNotes}` : null,
     `Booked via Leatherback Booking (${args.sourceKind}).`,
   ];
   return lines.filter(Boolean).join("\n");

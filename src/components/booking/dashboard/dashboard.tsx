@@ -21,6 +21,9 @@ export type DashboardBooking = {
   routedVia: string;
   /** Show click-to-dial: guest left a phone AND the viewer may start it. */
   canCall: boolean;
+  /** Internal bookings: who booked it, and their note for the BM taking the call. */
+  bookedBy?: string | null;
+  internalNotes?: string | null;
 };
 
 /** One day of the coming week's agenda. */
@@ -90,7 +93,13 @@ export function BookingList({ bookings, emptyLabel }: { bookings: DashboardBooki
           </span>
           <BrandTag name={booking.brandName} color={booking.brandColor} />
           {booking.routedVia !== "primary" ? <span className={styles.routedBadge}>{booking.routedVia}</span> : null}
+          {booking.bookedBy ? (
+            <span className={styles.routedBadge} title={booking.internalNotes ? `Note: ${booking.internalNotes}` : undefined}>
+              booked by {booking.bookedBy.split("@")[0]}
+            </span>
+          ) : null}
           {booking.canCall ? <CallButton bookingId={booking.id} /> : null}
+          {booking.internalNotes ? <p className={styles.bookingNote}>{booking.internalNotes}</p> : null}
         </li>
       ))}
     </ul>

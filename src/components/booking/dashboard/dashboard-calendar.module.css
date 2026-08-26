@@ -175,3 +175,41 @@
   font-weight: 500;
   letter-spacing: 0.02em;
 }
+
+/* Week paging (prev / label-as-today-link / next). */
+.weekNav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.weekNavButton {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control, 7px);
+  background: var(--paper);
+  color: var(--ink);
+  text-decoration: none;
+  font-size: var(--text-small, 13px);
+  line-height: 1;
+  padding: 5px 9px;
+}
+
+.weekNavButton:hover {
+  background: color-mix(in srgb, var(--ink) 5%, var(--paper));
+}
+
+.weekNavLabel {
+  color: var(--ink);
+  text-decoration: none;
+  font-size: var(--text-small, 13px);
+  padding: 5px 6px;
+}
+
+.weekNavLabel:hover {
+  text-decoration: underline;
+}
+
+/* Click-to-book affordance on the day columns. */
+.dayCol[data-bookable] {
+  cursor: copy;
+}

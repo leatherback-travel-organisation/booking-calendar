@@ -97,7 +97,11 @@ function spanTooltip(span: MinuteSpan, suffix: string): string {
   return `${minuteLabel(span.start)}–${minuteLabel(span.end)} · ${suffix}`;
 }
 
-export async function buildCalendarView(staff: Staff): Promise<CalendarView> {
+/** How far the calendar can be paged either way, in weeks. */
+export const MAX_WEEK_OFFSET = 52;
+
+export async function buildCalendarView(staff: Staff, weekOffset = 0): Promise<CalendarView> {
+  const offset = Math.max(-MAX_WEEK_OFFSET, Math.min(MAX_WEEK_OFFSET, Math.trunc(weekOffset) || 0));
   const brand = staff.primaryBrandId ? await getBrandById(staff.primaryBrandId) : null;
   if (!brand) {
     return { kind: "message", message: `${staff.fullName} has no primary brand set, so availability cannot be computed.` };
@@ -113,7 +117,7 @@ export async function buildCalendarView(staff: Staff): Promise<CalendarView> {
 
   const zone = resolveSchedulingZone(staff, brand);
   const today = DateTime.now().setZone(zone).startOf("day");
-  const firstDay = workingWeekStart(today);
+  const firstDay = workingWeekStart(today).plus({ weeks: offset });
   const windowStartIso = firstDay.toUTC().toISO()!;
   const windowEndIso = firstDay.plus({ days: CAL_DAYS }).toUTC().toISO()!;
   const todayKey = today.toFormat("yyyy-LL-dd");
@@ -227,5 +231,10 @@ export async function buildCalendarView(staff: Staff): Promise<CalendarView> {
   }
 
   const notice = !calendarConfigured() ? "not-connected" : calendarReachable ? null : "unreachable";
-  return { kind: "grid", zone, days, notice };
+  const lastDay = firstDay.plus({ days: CAL_DAYS - 1 });
+  const weekLabel =
+    firstDay.month === lastDay.month
+      ? `${firstDay.toFormat("d")}–${lastDay.toFormat("d LLL yyyy")}`
+      : `${firstDay.toFormat("d LLL")} – ${lastDay.toFormat("d LLL yyyy")}`;
+  return { kind: "grid", zone, days, notice, weekOffset: offset, weekLabel };
 }
