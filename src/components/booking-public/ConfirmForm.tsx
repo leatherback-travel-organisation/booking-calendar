@@ -9,6 +9,7 @@ import type { FormEvent } from "react";
 import styles from "./bp.module.css";
 import { Turnstile } from "./Turnstile";
 import { formatFullDateTime, guestTimeZone } from "./format";
+import { defaultIso, dialCountries, findCountry, OTHER_ISO, toE164 } from "./dial-codes";
 import type { BookFailure, BookSuccess, PublicSlot } from "./types";
 
 export type BookMeta = {
@@ -71,6 +72,9 @@ export function ConfirmForm({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phoneField, setPhoneField] = useState("");
+  const [phoneIso, setPhoneIso] = useState(() =>
+    defaultIso(typeof navigator === "undefined" ? undefined : navigator.language),
+  );
   const [notes, setNotes] = useState("");
   const [honeypot, setHoneypot] = useState("");
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
@@ -97,7 +101,7 @@ export function ConfirmForm({
         idempotencyKey,
         website: honeypot,
       };
-      if (phoneField.trim()) body.guestPhone = phoneField.trim();
+      if (phoneField.trim()) body.guestPhone = toE164(phoneIso, phoneField.trim());
       if (notes.trim()) body.guestNotes = notes.trim();
       if (meta.sourceSlug) body.sourceSlug = meta.sourceSlug;
       if (meta.routedReason) body.routedReason = meta.routedReason;
@@ -198,16 +202,32 @@ export function ConfirmForm({
             <>Phone <span className={styles.optionalTag}>(optional)</span></>
           )}
         </label>
-        <input
-          id="bp-phone"
-          className={styles.input}
-          type="tel"
-          required={meta.callMedium === "phone"}
-          autoComplete="tel"
-          maxLength={50}
-          value={phoneField}
-          onChange={(e) => setPhoneField(e.target.value)}
-        />
+        <div className={styles.phoneRow}>
+          <select
+            className={styles.input}
+            aria-label="Country code"
+            value={phoneIso}
+            onChange={(e) => setPhoneIso(e.target.value)}
+          >
+            {dialCountries().map((c) => (
+              <option key={c.iso} value={c.iso}>
+                {c.name} +{c.dial}
+              </option>
+            ))}
+            <option value={OTHER_ISO}>Other (type the full number)</option>
+          </select>
+          <input
+            id="bp-phone"
+            className={styles.input}
+            type="tel"
+            required={meta.callMedium === "phone"}
+            autoComplete="tel"
+            maxLength={50}
+            placeholder={phoneIso === OTHER_ISO ? "+971 50 123 4567" : findCountry(phoneIso)?.example}
+            value={phoneField}
+            onChange={(e) => setPhoneField(e.target.value)}
+          />
+        </div>
       </div>
 
       <div className={styles.field}>

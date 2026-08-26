@@ -677,3 +677,26 @@
   outline-offset: -1.5px;
   font-weight: 500;
 }
+
+/* Country code + national number side by side; the code picker hugs its
+   content and the number takes the rest. Stacks on narrow screens. */
+.phoneRow {
+  display: flex;
+  gap: 8px;
+}
+.phoneRow select {
+  flex: 0 1 auto;
+  max-width: 46%;
+}
+.phoneRow input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+@media (max-width: 420px) {
+  .phoneRow {
+    flex-direction: column;
+  }
+  .phoneRow select {
+    max-width: none;
+  }
+}
