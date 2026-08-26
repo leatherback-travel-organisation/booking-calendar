@@ -148,8 +148,15 @@ export default async function BookingManagerPage({ params, searchParams }: PageP
         </header>
 
         <AvailabilityCalendar
-          options={[]}
-          selectedSlug={null}
+          options={
+            canManage
+              ? allStaff
+                  .filter((member) => member.active)
+                  .sort((a, b) => a.fullName.localeCompare(b.fullName))
+                  .map((member) => ({ slug: member.slug, fullName: member.fullName }))
+              : []
+          }
+          selectedSlug={staff.slug}
           view={calendarView}
           nav={{
             prevHref: `/booking/team/${staff.slug}?week=${weekOffset - 1}`,

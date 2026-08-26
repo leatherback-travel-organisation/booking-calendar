@@ -1,7 +1,7 @@
 "use client";
 
-// Navigation-only dropdown: picking a Booking Manager reloads /booking with
-// that BM's week calendar rendered server-side.
+// Navigation-only dropdown: picking a Booking Manager opens their page, week
+// calendar included. Rendered only for Pod Leads — BMs cannot view others.
 
 import { useRouter } from "next/navigation";
 import styles from "./dashboard-calendar.module.css";
@@ -15,7 +15,7 @@ export function BmSelect({ options, selectedSlug }: { options: BmOption[]; selec
       className={styles.bmSelect}
       aria-label="Booking Manager"
       value={selectedSlug ?? ""}
-      onChange={(event) => router.push(`/booking?bm=${encodeURIComponent(event.target.value)}`)}
+      onChange={(event) => router.push(`/booking/team/${encodeURIComponent(event.target.value)}`)}
     >
       {options.map((option) => (
         <option key={option.slug} value={option.slug}>
