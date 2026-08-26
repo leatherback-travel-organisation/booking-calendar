@@ -66,6 +66,11 @@ else
 fi
 
 echo "== 6/7 Deploying production =="
+# deploy-production.mjs spawns `vercel` by NAME, so VERCEL_BIN alone is not
+# enough — without its directory on PATH the deploy dies with ENOENT after
+# every earlier step has already run (hit 26 Aug).
+VERCEL_DIR="$(cd "$(dirname "$VERCEL_BIN")" 2>/dev/null && pwd || true)"
+[ -n "$VERCEL_DIR" ] && export PATH="$VERCEL_DIR:$PATH"
 DEPLOY_SOURCE_REMOTE="$DEPLOY_SOURCE_REMOTE" npm run deploy:production
 
 echo "== 7/7 Verifying =="
