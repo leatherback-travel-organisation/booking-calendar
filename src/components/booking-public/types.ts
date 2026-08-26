@@ -38,6 +38,8 @@ export type PublicBrandTrip = {
   slug: string;
   title: string;
   startDate: string | null;
+  /** Every upcoming departure date (ISO, ascending), soonest first. */
+  startDates?: string[];
   /** Countries and regions the trip visits — the picker matches these too. */
   destinations?: string[];
 };

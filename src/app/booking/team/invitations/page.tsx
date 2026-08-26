@@ -191,7 +191,7 @@ export default async function InvitationsPage({ searchParams }: PageProps) {
                         </span>
                       </td>
                       <td>{formatRelative(new Date(row.created_at as string).toISOString())}</td>
-                      <td>{DateTime.fromJSDate(new Date(row.expires_at as string)).toFormat("d LLL")}</td>
+                      <td>{DateTime.fromJSDate(new Date(row.expires_at as string)).toFormat("d LLLL yyyy")}</td>
                     </tr>
                   ))}
                 </tbody>

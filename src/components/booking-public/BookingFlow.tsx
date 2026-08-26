@@ -10,7 +10,7 @@ import { BrandFrame } from "./BrandFrame";
 import { ConfirmForm, type BookMeta, type BookedResult } from "./ConfirmForm";
 import { SlotPicker } from "./SlotPicker";
 import { TeamList } from "./TeamList";
-import { formatFullDateTime, guestTimeZone } from "./format";
+import { formatDateOnly, formatFullDateTime, guestTimeZone } from "./format";
 import { resolveBrandPoolAction } from "@/app/book/actions";
 import type {
   AvailabilityPayload,
@@ -439,7 +439,13 @@ export function BookingFlow({
               {matches.map((t) => (
                 <button key={t.slug} type="button" className={styles.typeBtn} onClick={() => changeTrip(t.slug)}>
                   <span className={styles.typeName}>{t.title}</span>
-                  {t.startDate && <span className={styles.typeMeta}>Departs {t.startDate}</span>}
+                  {(t.startDates?.length ?? 0) > 0 ? (
+                    <span className={styles.typeMeta}>
+                      Departs {t.startDates!.map((d) => formatDateOnly(d)).join(" · ")}
+                    </span>
+                  ) : t.startDate ? (
+                    <span className={styles.typeMeta}>Departs {formatDateOnly(t.startDate)}</span>
+                  ) : null}
                 </button>
               ))}
             </div>
@@ -629,7 +635,7 @@ export function BookingFlow({
                 {ctx.brandTrips.map((t) => (
                   <option key={t.slug} value={t.slug}>
                     {t.title}
-                    {t.startDate ? ` — departs ${t.startDate}` : ""}
+                    {t.startDate ? ` — departs ${formatDateOnly(t.startDate)}` : ""}
                   </option>
                 ))}
               </select>
@@ -648,7 +654,7 @@ export function BookingFlow({
                   {ctx.departures.map((d) => (
                     <option key={d.airtableId} value={d.airtableId}>
                       {d.title}
-                      {d.startDate ? ` — departs ${d.startDate}` : ""}
+                      {d.startDate ? ` — departs ${formatDateOnly(d.startDate)}` : ""}
                     </option>
                   ))}
                 </select>

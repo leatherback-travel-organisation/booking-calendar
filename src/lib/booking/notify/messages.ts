@@ -141,7 +141,7 @@ export function buildVariableValues(ctx: BookingEmailContext): Partial<Record<Va
     "guest.first_name": guestFirst,
     "guest.full_name": ctx.guestName,
     "guest.email": ctx.guestEmail,
-    "booking.meeting_date": start.toFormat("cccc d LLLL"),
+    "booking.meeting_date": start.toFormat("cccc d LLLL yyyy"),
     "booking.meeting_time": start.toFormat("h:mma").toLowerCase(),
     "booking.timezone": start.toFormat("ZZZZ"),
     "booking.duration": `${ctx.durationMin} minutes`,

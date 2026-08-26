@@ -112,10 +112,13 @@ export async function GET(request: Request): Promise<Response> {
 async function upcomingTripsForBrand(
   brand: Brand,
   limit = 60,
-): Promise<{ slug: string; title: string; startDate: string | null; destinations: string[] }[]> {
+): Promise<{ slug: string; title: string; startDate: string | null; startDates: string[]; destinations: string[] }[]> {
   const departures = await getCachedDepartures();
   const today = new Date().toISOString().slice(0, 10);
-  const bySlug = new Map<string, { slug: string; title: string; startDate: string | null; destinations: string[] }>();
+  const bySlug = new Map<
+    string,
+    { slug: string; title: string; startDate: string | null; startDates: string[]; destinations: string[] }
+  >();
   for (const d of departures) {
     if (d.status !== "Published" && d.status !== "Marketing Ready") continue;
     if (d.startDate === null || d.startDate < today) continue;
@@ -130,10 +133,14 @@ async function upcomingTripsForBrand(
         slug: d.slug,
         title: d.niceName ?? d.tripName,
         startDate: d.startDate,
+        // Every upcoming departure, not just the soonest — trips run several
+        // times a year and the picker shows the guest all of them.
+        startDates: [...new Set([...(existing?.startDates ?? []), d.startDate])].sort(),
         destinations: existing ? [...new Set([...existing.destinations, ...destinations])] : destinations,
       });
-    } else if (destinations.length > 0) {
-      existing.destinations = [...new Set([...existing.destinations, ...destinations])];
+    } else {
+      existing.startDates = [...new Set([...existing.startDates, d.startDate])].sort();
+      if (destinations.length > 0) existing.destinations = [...new Set([...existing.destinations, ...destinations])];
     }
   }
   return [...bySlug.values()]

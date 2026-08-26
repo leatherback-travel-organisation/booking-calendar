@@ -64,23 +64,34 @@ export function dayKey(iso: string, timeZone: string): string {
   }).format(new Date(iso));
 }
 
-/** "Tuesday 18 August" */
+/** "Tuesday 18 August 2026" — dates are always "d Month yyyy" (Nicola, 26 Aug). */
 export function formatDayHeading(iso: string, timeZone: string): string {
   return new Intl.DateTimeFormat("en-AU", {
     timeZone,
     weekday: "long",
     day: "numeric",
     month: "long",
+    year: "numeric",
   }).format(new Date(iso));
 }
 
-/** "Tue 18 Aug" */
+/** "28 August 2026" from a date-only ISO string ("2026-08-28"). */
+export function formatDateOnly(isoDate: string): string {
+  return new Intl.DateTimeFormat("en-AU", {
+    timeZone: "UTC",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(`${isoDate}T12:00:00Z`));
+}
+
+/** "Tue 18 August" — the range line already carries the year once. */
 export function formatDayShort(iso: string, timeZone: string): string {
   return new Intl.DateTimeFormat("en-AU", {
     timeZone,
     weekday: "short",
     day: "numeric",
-    month: "short",
+    month: "long",
   }).format(new Date(iso));
 }
 

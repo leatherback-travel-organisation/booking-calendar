@@ -224,7 +224,7 @@ export async function buildCalendarView(staff: Staff, weekOffset = 0): Promise<C
     days.push({
       key: dayKey,
       weekday: day.toFormat("ccc"),
-      dateLabel: day.toFormat("d LLL"),
+      dateLabel: day.toFormat("d LLLL"),
       isToday: dayKey === todayKey,
       blocks,
     });
@@ -234,7 +234,7 @@ export async function buildCalendarView(staff: Staff, weekOffset = 0): Promise<C
   const lastDay = firstDay.plus({ days: CAL_DAYS - 1 });
   const weekLabel =
     firstDay.month === lastDay.month
-      ? `${firstDay.toFormat("d")}–${lastDay.toFormat("d LLL yyyy")}`
-      : `${firstDay.toFormat("d LLL")} – ${lastDay.toFormat("d LLL yyyy")}`;
+      ? `${firstDay.toFormat("d")}–${lastDay.toFormat("d LLLL yyyy")}`
+      : `${firstDay.toFormat("d LLLL")} – ${lastDay.toFormat("d LLLL yyyy")}`;
   return { kind: "grid", zone, days, notice, weekOffset: offset, weekLabel };
 }

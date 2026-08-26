@@ -48,7 +48,7 @@ function mapWeekBooking(
       canCall: hasPhone && (ownBooking || viewer.canManage),
     },
     dayKey: dt.toFormat("yyyy-LL-dd"),
-    dayLabel: isToday ? "Today" : dt.toFormat("cccc d LLL"),
+    dayLabel: isToday ? "Today" : dt.toFormat("cccc d LLLL yyyy"),
   };
 }
 
