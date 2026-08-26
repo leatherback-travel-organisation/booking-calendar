@@ -16,7 +16,7 @@ const sql = neon(process.env.DATABASE_URL);
 console.log("=== bookings in the last 24h ===");
 for (const b of await sql`
   select b.id, b.created_at, b.guest_name, b.guest_email, b.source_kind, b.booked_by,
-         b.helpscout_conversation_id, b.calendar_event_id is not null as has_cal_event,
+         b.helpscout_conversation_id, b.google_event_id is not null as has_cal_event,
          s.full_name as bm, br.name as brand
     from booking.booking b
     join booking.staff s on s.id = b.staff_id
