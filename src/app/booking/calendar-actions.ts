@@ -115,7 +115,7 @@ export async function bookInternalAction(input: InternalBookingInput): Promise<I
   revalidatePath(`/booking/team/${staff.slug}`);
   return {
     ok: true,
-    timeLabel: `${start.toFormat("ccc d LLL, h:mm a")}–${start
+    timeLabel: `${start.toFormat("ccc d LLLL yyyy, h:mm a")}–${start
       .plus({ minutes: eventType.durationMin })
       .toFormat("h:mm a")} (${zone})`,
   };
