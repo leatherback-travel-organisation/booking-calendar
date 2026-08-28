@@ -730,8 +730,11 @@ export function pickBrandLogo(
         /^image\//.test(String((a as { type?: unknown }).type ?? ""))),
   );
   if (images.length === 0) return null;
+  // PNGs can carry transparency, JPEGs never do — the page background should
+  // show through wherever possible (Nicola, 27 Aug). Main marks still beat
+  // grayscale/negative/secondary variants regardless of format.
   const score = (a: { filename: string }) =>
-    (/grayscale|negative|secondary/i.test(a.filename) ? 0 : 2) + (/\.png$/i.test(a.filename) ? 1 : 0);
+    (/grayscale|negative|secondary/i.test(a.filename) ? 0 : 4) + (/\.png$/i.test(a.filename) ? 3 : 0);
   const best = [...images].sort((a, b) => score(b) - score(a))[0];
   return { url: best.url, filename: best.filename, size: best.size };
 }

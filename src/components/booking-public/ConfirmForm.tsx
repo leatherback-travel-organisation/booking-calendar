@@ -99,6 +99,7 @@ export function ConfirmForm({
   staffFirstName,
   eventTypeName,
   phone,
+  guestCountry,
   meta,
   onBack,
   onSuccess,
@@ -109,6 +110,8 @@ export function ConfirmForm({
   staffFirstName: string;
   eventTypeName: string;
   phone: string | null;
+  /** Viewer's country from the edge header — presets the dial code, always editable. */
+  guestCountry: string | null;
   meta: BookMeta;
   onBack: () => void;
   onSuccess: (result: BookedResult) => void;
@@ -118,9 +121,11 @@ export function ConfirmForm({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phoneField, setPhoneField] = useState("");
-  const [phoneIso, setPhoneIso] = useState(() =>
-    defaultIso(typeof navigator === "undefined" ? undefined : navigator.language),
-  );
+  const [phoneIso, setPhoneIso] = useState(() => {
+    // Where the guest actually is beats what their browser is set to.
+    if (guestCountry && findCountry(guestCountry)) return guestCountry;
+    return defaultIso(typeof navigator === "undefined" ? undefined : navigator.language);
+  });
   const [notes, setNotes] = useState("");
   const [honeypot, setHoneypot] = useState("");
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);

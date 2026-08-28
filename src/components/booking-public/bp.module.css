@@ -40,17 +40,19 @@
   gap: 16px;
 }
 
+/* Branding sits centred above the card (Nicola, 27 Aug); the support phone
+   line centres beneath it rather than fighting the logo for the row. */
 .header {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  padding: 8px 4px;
+  gap: 6px;
+  padding: 8px 4px 16px;
+  text-align: center;
 }
 
 .logoImg {
-  max-height: 44px;
+  max-height: 56px;
   max-width: 220px;
   display: block;
 }

@@ -35,6 +35,7 @@ export async function GET(request: Request): Promise<Response> {
           colorAccent: brand.colorAccent,
           phone: supportPhone(brand, request),
         },
+        guestCountry: request.headers.get("x-vercel-ip-country")?.toUpperCase() ?? null,
         trips: await upcomingTripsForBrand(brand, 200),
       });
     }
@@ -66,7 +67,9 @@ export async function GET(request: Request): Promise<Response> {
 
   const eventTypes = (await getEventTypesForBrand(resolved.brand.id)).filter((t) => t.guestFacing && t.active);
   const phone = supportPhone(resolved.brand, request);
+  const guestCountry = request.headers.get("x-vercel-ip-country")?.toUpperCase() ?? null;
   const common = {
+    guestCountry,
     brandTrips: await upcomingTripsForBrand(resolved.brand),
     brand: {
       key: resolved.brand.key,

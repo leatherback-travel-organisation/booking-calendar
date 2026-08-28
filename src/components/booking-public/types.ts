@@ -46,7 +46,7 @@ export type PublicBrandTrip = {
 
 export type ResolvePayload =
   | { kind: "brand-picker"; brands: { key: string; name: string }[] }
-  | { kind: "trip-picker"; brand: PublicBrand; trips: PublicBrandTrip[] }
+  | { kind: "trip-picker"; brand: PublicBrand; guestCountry?: string | null; trips: PublicBrandTrip[] }
   | {
       kind: "primary";
       brand: PublicBrand;

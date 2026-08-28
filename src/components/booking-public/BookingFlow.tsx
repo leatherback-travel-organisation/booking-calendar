@@ -26,6 +26,7 @@ import type {
 
 type Ctx = {
   mode: "primary" | "pool";
+  guestCountry: string | null;
   brand: PublicBrand;
   eventTypes: PublicEventType[];
   departures: PublicDeparture[];
@@ -97,7 +98,7 @@ export function BookingFlow({
   const [resolveState, setResolveState] = useState<"loading" | "error" | "ready">("loading");
   const [brands, setBrands] = useState<{ key: string; name: string }[] | null>(null);
   // ?brand= contact-page links: the guest searches the brand's trips first.
-  const [tripPicker, setTripPicker] = useState<{ brand: PublicBrand; trips: PublicBrandTrip[] } | null>(null);
+  const [tripPicker, setTripPicker] = useState<{ brand: PublicBrand; guestCountry?: string | null; trips: PublicBrandTrip[] } | null>(null);
   const [tripQuery, setTripQuery] = useState("");
   const [brandPickPending, setBrandPickPending] = useState(false);
   const [ctx, setCtx] = useState<Ctx | null>(null);
@@ -111,10 +112,12 @@ export function BookingFlow({
   const [selected, setSelected] = useState<PublicSlot | null>(null);
   // Video by default; the guest can flip to a phone call right where they
   // pick the time.
-  const [callMedium, setCallMedium] = useState<"video" | "phone">("video");
+  // Deliberately no default (Nicola, 27 Aug): when both mediums are on offer
+  // the guest must actively choose one before times appear.
+  const [callMedium, setCallMedium] = useState<"video" | "phone" | null>(null);
   // The medium that actually books: phone-only BMs never get a video call,
   // whatever the toggle state said for a previously shown BM.
-  const effectiveMedium: "video" | "phone" = active?.videoCallsEnabled ? callMedium : "phone";
+  const effectiveMedium: "video" | "phone" | null = active?.videoCallsEnabled ? callMedium : "phone";
   const [notice, setNotice] = useState<string | null>(null);
   const [booked, setBooked] = useState<BookedResult | null>(null);
 
@@ -123,6 +126,7 @@ export function BookingFlow({
       const departures = sortDepartures(payload.departures);
       const primary = payload.kind === "primary" ? payload.staff : null;
       setCtx({
+        guestCountry: (payload as { guestCountry?: string | null }).guestCountry ?? null,
         mode: payload.kind,
         brand: payload.brand,
         eventTypes: payload.eventTypes,
@@ -313,6 +317,7 @@ export function BookingFlow({
         return;
       }
       setCtx({
+        guestCountry: (resolution as { guestCountry?: string | null }).guestCountry ?? null,
         mode: "pool",
         brand: resolution.brand,
         eventTypes: resolution.eventTypes,
@@ -344,7 +349,7 @@ export function BookingFlow({
   const phone = ctx?.brand.phone ?? null;
 
   const meta: BookMeta | null =
-    ctx && active && eventTypeKey
+    ctx && active && eventTypeKey && effectiveMedium !== null
       ? {
           staffSlug: active.slug,
           brandKey: ctx.brand.key,
@@ -670,6 +675,7 @@ export function BookingFlow({
         {/* Main area */}
         {selected && active && eventType && meta ? (
           <ConfirmForm
+          guestCountry={ctx?.guestCountry ?? tripPicker?.guestCountry ?? null}
             slot={selected}
             timeZone={tz}
             staffFirstName={active.firstName}
@@ -769,7 +775,11 @@ export function BookingFlow({
                     </span>
                   </div>
                 )}
-                <SlotPicker slots={availData.slots} timeZone={tz} onPick={pickSlot} />
+                {effectiveMedium === null ? (
+                  <p className={styles.mutedText}>Choose video or phone above to see {active.firstName}&rsquo;s times.</p>
+                ) : (
+                  <SlotPicker slots={availData.slots} timeZone={tz} onPick={pickSlot} />
+                )}
                 {active.routedVia === "primary" && !showBackups && (
                   <button type="button" className={styles.linkBtn} onClick={openBackups}>
                     Can&rsquo;t find a time that works?
