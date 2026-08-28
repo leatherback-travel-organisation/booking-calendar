@@ -49,11 +49,27 @@ export default async function BookingIntegrationsPage() {
   }
 
   const sql = getSql();
-  const [staffRows, cacheRows] = await Promise.all([
+  const [staffRows, cacheRows, recentBookings, notifyAudit] = await Promise.all([
     sql`select id, email, full_name, calendar_ok, calendar_checked_at, aircall_user_id, helpscout_user_id from booking.staff where active order by full_name`,
     sql`
       select key, payload, fetched_at from booking.reference_cache
       where key in ('airtable:trips', 'notion:staff', 'cron:reminders-heartbeat') or key like 'calendar-check:%'`,
+    sql`
+      select b.id, b.created_at, b.guest_name, b.source_kind, b.booked_by, b.status,
+             b.helpscout_conversation_id, b.google_event_id is not null as has_calendar_event,
+             s.full_name as bm_name, br.name as brand_name
+        from booking.booking b
+        join booking.staff s on s.id = b.staff_id
+        join booking.brand br on br.id = b.brand_id
+       where b.created_at > now() - interval '48 hours'
+       order by b.created_at desc limit 20`,
+    sql`
+      select created_at, action, subject
+        from booking.audit_log
+       where created_at > now() - interval '48 hours'
+         and (action in ('email_rendered_not_sent', 'sms_rendered_not_sent', 'helpscout_stubbed', 'ops_alert')
+              or action like '%fail%')
+       order by created_at desc limit 30`,
   ]);
 
   const cache = new Map(
@@ -227,6 +243,51 @@ export default async function BookingIntegrationsPage() {
             </div>
           </li>
         </ul>
+
+        {/* Where each recent booking's notifications actually went — the
+            first place to look when "nobody got an email". */}
+        <section className={styles.connections} aria-label="Recent booking notifications">
+          <h2 className={styles.panelTitle}>Notifications — last 48 hours</h2>
+          {recentBookings.length === 0 ? (
+            <p className={shellStyles.placeholder}>No bookings in the last 48 hours.</p>
+          ) : (
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th scope="col">Booked</th>
+                  <th scope="col">Guest → BM</th>
+                  <th scope="col">Source</th>
+                  <th scope="col">Calendar</th>
+                  <th scope="col">Help Scout</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentBookings.map((row) => (
+                  <tr key={String(row.id)}>
+                    <td>{new Date(row.created_at as string).toLocaleString("en-AU", { day: "numeric", month: "long", hour: "numeric", minute: "2-digit", timeZone: "Australia/Melbourne" })}</td>
+                    <td>{String(row.guest_name)} → {String(row.bm_name)} ({String(row.brand_name)})</td>
+                    <td>{String(row.source_kind)}{row.booked_by ? ` by ${String(row.booked_by)}` : ""}</td>
+                    <td>{row.has_calendar_event ? "✓ event" : "— none"}</td>
+                    <td>{row.helpscout_conversation_id ? `✓ #${String(row.helpscout_conversation_id)}` : "✗ NONE"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          {notifyAudit.length > 0 ? (
+            <>
+              <h3 className={styles.panelTitle}>Rendered-not-sent and failures</h3>
+              <ul>
+                {notifyAudit.map((row, index) => (
+                  <li key={index}>
+                    {new Date(row.created_at as string).toLocaleString("en-AU", { day: "numeric", month: "long", hour: "numeric", minute: "2-digit", timeZone: "Australia/Melbourne" })}{" "}
+                    <strong>{String(row.action)}</strong> — {String(row.subject)}
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
+        </section>
 
         <section className={styles.connections} aria-label="Per-BM connections">
           <h2 className={styles.connectionsTitle}>Who&rsquo;s connected to what</h2>
