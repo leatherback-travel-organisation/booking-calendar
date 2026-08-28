@@ -53,15 +53,14 @@ export type RecentBooking = {
   status: string;
 };
 
-// booking.source_kind values: trip/contact/portal are guest self-booked
-// surfaces; bm/invite/session are BM-initiated.
-const SOURCE_LABEL: Record<string, string> = {
-  trip: "self-booked · trip",
-  contact: "self-booked · contact",
-  portal: "self-booked · portal",
-  bm: "BM-entered",
-  invite: "BM shortlist",
+// Provenance chip, shown only when it says something a BM should notice.
+// Ordinary guest bookings (a trip page, a contact page, the BM's own link)
+// are the norm and get no chip at all.
+const NOTABLE_SOURCE_LABEL: Record<string, string> = {
+  portal: "guest portal",
+  invite: "shortlist invite",
   session: "group seat",
+  internal: "booked internally",
 };
 
 /** Small round BM avatar for booking rows, with an initial-circle fallback. */
@@ -243,9 +242,11 @@ export function Dashboard({ issues, days, recent, schedulingPages, schedulingLin
                     </span>
                   </div>
                   <div className={styles.recentSide}>
-                    <span className={styles.sourceChip} data-source={booking.sourceKind}>
-                      {SOURCE_LABEL[booking.sourceKind] ?? booking.sourceKind}
-                    </span>
+                    {NOTABLE_SOURCE_LABEL[booking.sourceKind] ? (
+                      <span className={styles.sourceChip} data-source={booking.sourceKind}>
+                        {NOTABLE_SOURCE_LABEL[booking.sourceKind]}
+                      </span>
+                    ) : null}
                     <span className={styles.recentWhen}>{formatRelative(booking.createdAtIso)}</span>
                   </div>
                 </li>
