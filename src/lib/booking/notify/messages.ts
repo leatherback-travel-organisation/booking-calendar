@@ -254,7 +254,13 @@ export async function sendBookingEmail(moment: Moment, ctx: BookingEmailContext)
           },
         }
       : {}),
-    meta: { moment, brandKey: ctx.brand.key, bookingId: ctx.bookingId },
+    meta: {
+      moment,
+      brandKey: ctx.brand.key,
+      bookingId: ctx.bookingId,
+      helpscoutMailboxId: ctx.brand.helpscoutMailboxId,
+      helpscoutUserId: ctx.staff.helpscoutUserId,
+    },
   };
   return getNotifier().send(message);
 }

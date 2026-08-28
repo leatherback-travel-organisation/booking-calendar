@@ -97,3 +97,64 @@ export async function createOrThreadConversation(input: HelpscoutNoteInput): Pro
   const location = response.headers.get("Resource-ID") ?? response.headers.get("Location")?.split("/").pop();
   return location ?? null;
 }
+
+export type HelpscoutEmailInput = {
+  mailboxId: string;
+  /** HS user the email is sent AS (the BM) — omitted, the mailbox default sends. */
+  sentByUserId: string | null;
+  guestName: string;
+  guestEmail: string;
+  subject: string;
+  bodyHtml: string;
+  ics?: { filename: string; content: string } | null;
+};
+
+/**
+ * Send a real customer email through Help Scout: an outbound conversation in
+ * the brand mailbox whose reply thread is the email. Attributed to the BM via
+ * `user`, tagged and auto-closed so BM queues stay clean while the full
+ * history stays searchable in the mailbox. Throws on failure — the caller
+ * decides how loud to be.
+ */
+export async function sendCustomerEmail(input: HelpscoutEmailInput): Promise<string | null> {
+  if (!helpscoutConfigured()) throw new Error("Help Scout is not configured");
+  const token = await helpscoutToken();
+  const userId = input.sentByUserId ? Number(input.sentByUserId) : undefined;
+  const response = await fetch("https://api.helpscout.net/v2/conversations", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      subject: input.subject,
+      mailboxId: Number(input.mailboxId),
+      type: "email",
+      status: "closed",
+      tags: ["calltime-auto"],
+      customer: { email: input.guestEmail, firstName: input.guestName.split(/\s+/)[0] },
+      ...(userId ? { user: userId, assignTo: userId } : {}),
+      threads: [
+        {
+          type: "reply",
+          customer: { email: input.guestEmail },
+          text: input.bodyHtml,
+          ...(userId ? { user: userId } : {}),
+          ...(input.ics
+            ? {
+                attachments: [
+                  {
+                    fileName: input.ics.filename,
+                    mimeType: "text/calendar",
+                    data: Buffer.from(input.ics.content).toString("base64"),
+                  },
+                ],
+              }
+            : {}),
+        },
+      ],
+    }),
+  });
+  if (response.status !== 201) {
+    const text = (await response.text().catch(() => "")).slice(0, 300);
+    throw new Error(`Help Scout email failed (${response.status}) ${text}`);
+  }
+  return response.headers.get("Resource-ID") ?? response.headers.get("Location")?.split("/").pop() ?? null;
+}

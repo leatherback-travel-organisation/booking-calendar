@@ -1,7 +1,9 @@
-// Outbound email behind an interface with two implementations, selected by
-// environment (§17.3 stub-first policy):
-//   BOOKING_NOTIFIER=live  + RESEND_API_KEY → LiveNotifier (Resend)
-//   anything else                           → NoopNotifier (renders + records)
+// Outbound email behind an interface, selected by environment:
+//   BOOKING_NOTIFIER=live + RESEND_API_KEY → LiveNotifier (Resend)
+//   BOOKING_NOTIFIER=stub                  → NoopNotifier (renders + records)
+//   otherwise, Help Scout configured       → HelpScoutNotifier (AUTOMATIC:
+//     a real customer email from the brand mailbox, sent as the BM)
+//   otherwise                              → NoopNotifier
 // The Noop path stores the fully-rendered payload in booking.audit_log so a
 // Pod Lead can read the exact email a guest would receive before any real
 // send happens.
@@ -9,6 +11,7 @@
 import "server-only";
 
 import { getSql } from "../db";
+import { helpscoutConfigured, sendCustomerEmail } from "../helpscout";
 
 export type OutboundMessage = {
   to: string;
@@ -24,18 +27,21 @@ export type OutboundMessage = {
     content: string;
     method: "REQUEST" | "CANCEL";
   };
-  /** For audit/debug context. */
+  /** For audit/debug context — the Help Scout fields also route the send. */
   meta: {
     moment: string;
     brandKey: string;
     bookingId?: string;
+    helpscoutMailboxId?: string | null;
+    /** The BM's Help Scout user — the email is sent as them. */
+    helpscoutUserId?: string | null;
   };
 };
 
 export type SendResult = { ok: true; id: string } | { ok: false; error: string };
 
 export interface Notifier {
-  readonly mode: "noop" | "live";
+  readonly mode: "noop" | "live" | "helpscout";
   send(message: OutboundMessage): Promise<SendResult>;
 }
 
@@ -106,10 +112,38 @@ class LiveNotifier implements Notifier {
   }
 }
 
+class HelpScoutNotifier implements Notifier {
+  readonly mode = "helpscout" as const;
+
+  async send(message: OutboundMessage): Promise<SendResult> {
+    // A brand with no mailbox cannot send — record instead of vanishing.
+    if (!message.meta.helpscoutMailboxId) {
+      return new NoopNotifier().send(message);
+    }
+    try {
+      const conversationId = await sendCustomerEmail({
+        mailboxId: message.meta.helpscoutMailboxId,
+        sentByUserId: message.meta.helpscoutUserId ?? null,
+        guestName: message.toName ?? message.to,
+        guestEmail: message.to,
+        subject: message.subject,
+        bodyHtml: message.html,
+        ics: message.ics ? { filename: message.ics.filename, content: message.ics.content } : null,
+      });
+      return { ok: true, id: conversationId ?? "helpscout" };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : "Help Scout send failed" };
+    }
+  }
+}
+
 export function getNotifier(): Notifier {
   const apiKey = process.env.RESEND_API_KEY;
   if (process.env.BOOKING_NOTIFIER === "live" && apiKey) {
     return new LiveNotifier(apiKey);
+  }
+  if (process.env.BOOKING_NOTIFIER !== "stub" && helpscoutConfigured()) {
+    return new HelpScoutNotifier();
   }
   return new NoopNotifier();
 }
