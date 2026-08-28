@@ -128,33 +128,39 @@ type DashboardProps = {
 
 function FilterBar({ filters }: { filters: DashboardFilters }) {
   const anyActive = filters.activeBrandKey !== null || filters.activePodKey !== null;
+  // Three rows (Nicola, 28 Aug): All on its own, then pods, then brands.
   return (
     <nav className={styles.filterBar} aria-label="Filter bookings by brand or pod">
-      <Link href="/booking" className={styles.filterChip} data-active={!anyActive || undefined}>
-        All
-      </Link>
-      {filters.pods.map((pod) => (
-        <Link
-          key={pod.key}
-          href={`/booking?pod=${encodeURIComponent(pod.key)}`}
-          className={styles.filterChip}
-          data-active={filters.activePodKey === pod.key || undefined}
-        >
-          {pod.name}
+      <div className={styles.filterRow}>
+        <Link href="/booking" className={styles.filterChip} data-active={!anyActive || undefined}>
+          All
         </Link>
-      ))}
-      <span className={styles.filterDivider} aria-hidden="true" />
-      {filters.brands.map((brand) => (
-        <Link
-          key={brand.key}
-          href={`/booking?brand=${encodeURIComponent(brand.key)}`}
-          className={styles.filterChip}
-          data-active={filters.activeBrandKey === brand.key || undefined}
-          style={brand.colorPrimary ? ({ "--tag": brand.colorPrimary } as React.CSSProperties) : undefined}
-        >
-          {brand.name}
-        </Link>
-      ))}
+      </div>
+      <div className={styles.filterRow}>
+        {filters.pods.map((pod) => (
+          <Link
+            key={pod.key}
+            href={`/booking?pod=${encodeURIComponent(pod.key)}`}
+            className={styles.filterChip}
+            data-active={filters.activePodKey === pod.key || undefined}
+          >
+            {pod.name}
+          </Link>
+        ))}
+      </div>
+      <div className={styles.filterRow}>
+        {filters.brands.map((brand) => (
+          <Link
+            key={brand.key}
+            href={`/booking?brand=${encodeURIComponent(brand.key)}`}
+            className={styles.filterChip}
+            data-active={filters.activeBrandKey === brand.key || undefined}
+            style={brand.colorPrimary ? ({ "--tag": brand.colorPrimary } as React.CSSProperties) : undefined}
+          >
+            {brand.name}
+          </Link>
+        ))}
+      </div>
     </nav>
   );
 }

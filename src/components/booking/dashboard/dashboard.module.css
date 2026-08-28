@@ -6,9 +6,15 @@
 /* Brand/pod filter chips. Plain links: the active filter lives in the URL. */
 .filterBar {
   display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filterRow {
+  display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .filterChip {
@@ -32,12 +38,6 @@
   font-weight: 500;
 }
 
-.filterDivider {
-  width: 1px;
-  align-self: stretch;
-  margin: 2px 4px;
-  background: var(--line);
-}
 
 .alertBanner {
   border: 1px solid var(--terracotta);
