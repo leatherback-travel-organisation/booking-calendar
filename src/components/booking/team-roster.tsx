@@ -95,19 +95,29 @@ export function TeamRoster({ staff, brands, fetchedAt, appUrl, guestTypes, canMa
                     </td>
                     <td>
                       {(() => {
-                        // A BM whose own brands (backups excluded) number two or
-                        // more gets one link row per brand, each framing the
-                        // guest page in that brand.
+                        // One link row per brand this BM can take calls for:
+                        // their own brands first, then backup brands (labelled
+                        // as such — Jax and Janie cover each other). A BM with
+                        // exactly one brand and no backups keeps one plain row.
                         const ownBrands = member.brandIds
                           .filter((brandId) => !member.backupBrandIds.includes(brandId))
                           .map((brandId) => brandById.get(brandId))
                           .filter((brand): brand is NonNullable<typeof brand> => Boolean(brand));
+                        const backupBrands = member.backupBrandIds
+                          .map((brandId) => brandById.get(brandId))
+                          .filter((brand): brand is NonNullable<typeof brand> => Boolean(brand));
                         const linkRows =
-                          ownBrands.length >= 2
-                            ? ownBrands.map((brand) => ({
-                                label: brand.name,
-                                suffix: `&brand=${encodeURIComponent(brand.key)}`,
-                              }))
+                          ownBrands.length + backupBrands.length >= 2
+                            ? [
+                                ...ownBrands.map((brand) => ({
+                                  label: brand.name,
+                                  suffix: `&brand=${encodeURIComponent(brand.key)}`,
+                                })),
+                                ...backupBrands.map((brand) => ({
+                                  label: `${brand.name} · backup`,
+                                  suffix: `&brand=${encodeURIComponent(brand.key)}`,
+                                })),
+                              ]
                             : [{ label: null, suffix: "" }];
                         return linkRows.map((row) => (
                           <div className={styles.copyRow} key={row.label ?? "default"}>
