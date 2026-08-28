@@ -94,15 +94,34 @@ export function TeamRoster({ staff, brands, fetchedAt, appUrl, guestTypes, canMa
                       </div>
                     </td>
                     <td>
-                      <div className={styles.copyRow}>
-                        {guestTypes.map((type) => (
-                          <CopyButton
-                            key={type.key}
-                            value={`${appUrl}/book?bm=${encodeURIComponent(member.slug)}&type=${encodeURIComponent(type.key)}`}
-                            label={type.name.replace(/ Call$/, "")}
-                          />
-                        ))}
-                      </div>
+                      {(() => {
+                        // A BM whose own brands (backups excluded) number two or
+                        // more gets one link row per brand, each framing the
+                        // guest page in that brand.
+                        const ownBrands = member.brandIds
+                          .filter((brandId) => !member.backupBrandIds.includes(brandId))
+                          .map((brandId) => brandById.get(brandId))
+                          .filter((brand): brand is NonNullable<typeof brand> => Boolean(brand));
+                        const linkRows =
+                          ownBrands.length >= 2
+                            ? ownBrands.map((brand) => ({
+                                label: brand.name,
+                                suffix: `&brand=${encodeURIComponent(brand.key)}`,
+                              }))
+                            : [{ label: null, suffix: "" }];
+                        return linkRows.map((row) => (
+                          <div className={styles.copyRow} key={row.label ?? "default"}>
+                            {row.label ? <span className={styles.copyRowLabel}>{row.label}</span> : null}
+                            {guestTypes.map((type) => (
+                              <CopyButton
+                                key={type.key}
+                                value={`${appUrl}/book?bm=${encodeURIComponent(member.slug)}&type=${encodeURIComponent(type.key)}${row.suffix}`}
+                                label={type.name.replace(/ Call$/, "")}
+                              />
+                            ))}
+                          </div>
+                        ));
+                      })()}
                     </td>
                     <td>
                       <Link

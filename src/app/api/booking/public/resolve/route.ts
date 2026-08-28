@@ -52,7 +52,7 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   const resolved = await resolveManager(
-    tripRecord ? { tripRecordId: tripRecord } : bm ? { bmSlug: bm } : { tripSlug: trip!, host },
+    tripRecord ? { tripRecordId: tripRecord } : bm ? { bmSlug: bm, brandKey } : { tripSlug: trip!, host },
   );
 
   if (resolved.kind === "unresolved") {

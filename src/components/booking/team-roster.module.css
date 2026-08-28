@@ -231,3 +231,12 @@
   grid-template-columns: repeat(2, max-content);
   gap: 6px;
 }
+
+/* Brand label opening a multi-brand BM's per-brand link row. */
+.copyRowLabel {
+  color: var(--ink-soft);
+  font-size: var(--text-label, 12px);
+  font-weight: 500;
+  margin-right: 4px;
+  white-space: nowrap;
+}

@@ -33,13 +33,13 @@ export type ResolvedManager =
   | { kind: "unresolved" };
 
 export type ResolveInput =
-  | { bmSlug: string }
+  | { bmSlug: string; brandKey?: string | null }
   | { tripSlug: string; host?: string | null }
   | { tripRecordId: string };
 
 export async function resolveManager(input: ResolveInput): Promise<ResolvedManager> {
   if ("bmSlug" in input) {
-    return resolveByBm(input.bmSlug);
+    return resolveByBm(input.bmSlug, input.brandKey ?? null);
   }
   if ("tripRecordId" in input) {
     return resolveByTripRecord(input.tripRecordId);
@@ -89,10 +89,18 @@ async function resolveByTripRecord(tripRecordId: string): Promise<ResolvedManage
   };
 }
 
-async function resolveByBm(bmSlug: string): Promise<ResolvedManager> {
+async function resolveByBm(bmSlug: string, brandKey: string | null): Promise<ResolvedManager> {
   const staff = await getStaffBySlug(bmSlug);
   if (!staff) return { kind: "unresolved" };
   const brands = await getBrands();
+  // A multi-brand BM (Jax: Carex + Salt Caravan) shares per-brand personal
+  // links: ?bm=<slug>&brand=<key> frames the page in THAT brand. A brand the
+  // BM does not serve is refused outright rather than silently reassigned.
+  if (brandKey) {
+    const requested = brands.find((b) => b.key === brandKey);
+    if (!requested || !staff.brandIds.includes(requested.id)) return { kind: "unresolved" };
+    return { kind: "primary", staff, brand: requested, departures: [], reason: "Direct booking link." };
+  }
   const brand =
     brands.find((b) => b.id === staff.primaryBrandId) ??
     brands.find((b) => staff.brandIds.includes(b.id));
