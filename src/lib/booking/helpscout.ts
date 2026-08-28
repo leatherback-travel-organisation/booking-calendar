@@ -44,6 +44,15 @@ export type HelpscoutNoteInput = {
   existingConversationId?: string | null;
 };
 
+
+/** First + last split so Help Scout lists the guest by name, not address. */
+function guestCustomer(fullName: string, email: string): { email: string; firstName: string; lastName?: string } {
+  const parts = fullName.trim().split(/\s+/);
+  const firstName = parts[0] || email;
+  const lastName = parts.slice(1).join(" ");
+  return lastName ? { email, firstName, lastName } : { email, firstName };
+}
+
 export async function createOrThreadConversation(input: HelpscoutNoteInput): Promise<string | null> {
   if (!helpscoutConfigured()) {
     const sql = getSql();
@@ -82,7 +91,7 @@ export async function createOrThreadConversation(input: HelpscoutNoteInput): Pro
       mailboxId: Number(input.mailboxId),
       type: "email",
       status: "active",
-      customer: { email: input.guestEmail, firstName: input.guestName.split(/\s+/)[0] },
+      customer: guestCustomer(input.guestName, input.guestEmail),
       ...(input.tags && input.tags.length > 0 ? { tags: input.tags } : {}),
       ...(input.assignToUserId ? { assignTo: Number(input.assignToUserId) } : {}),
       threads: [
@@ -129,7 +138,7 @@ export async function sendCustomerEmail(input: HelpscoutEmailInput): Promise<str
       type: "email",
       status: "closed",
       tags: ["calltime-auto"],
-      customer: { email: input.guestEmail, firstName: input.guestName.split(/\s+/)[0] },
+      customer: guestCustomer(input.guestName, input.guestEmail),
       ...(userId ? { user: userId, assignTo: userId } : {}),
       threads: [
         {

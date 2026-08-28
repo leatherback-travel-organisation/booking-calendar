@@ -92,8 +92,7 @@ export function renderBrandEmail(shell: BrandShellInput, bodyHtml: string): stri
     <div style="max-width:600px;margin:0 auto;padding:32px 20px;">
       <div style="padding:8px 0 24px;">${logo}</div>
       <div style="background:#ffffff;border-radius:10px;padding:32px 28px;border-top:4px solid ${accent};font-size:16px;line-height:1.55;">
-        <style>a { color: ${accent}; }</style>
-        ${bodyHtml}
+        ${bodyHtml.replace(/<a /g, `<a style="color:${accent};" `)}
       </div>
       <div style="height:3px;max-width:120px;margin:14px 0 0 8px;background:${secondary};border-radius:2px;"></div>
       <div style="padding:20px 8px;font-size:13px;color:#6b7266;">
