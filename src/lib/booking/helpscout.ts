@@ -121,9 +121,9 @@ export type HelpscoutEmailInput = {
 /**
  * Send a real customer email through Help Scout: an outbound conversation in
  * the brand mailbox whose reply thread is the email. Attributed to the BM via
- * `user`, tagged and auto-closed so BM queues stay clean while the full
- * history stays searchable in the mailbox. Throws on failure — the caller
- * decides how loud to be.
+ * `user`, assigned to them, and left ACTIVE so it sits in their inbox as a
+ * live thread (Nicola, 28 Aug — closed threads were invisible). Throws on
+ * failure — the caller decides how loud to be.
  */
 export async function sendCustomerEmail(input: HelpscoutEmailInput): Promise<string | null> {
   if (!helpscoutConfigured()) throw new Error("Help Scout is not configured");
@@ -136,7 +136,7 @@ export async function sendCustomerEmail(input: HelpscoutEmailInput): Promise<str
       subject: input.subject,
       mailboxId: Number(input.mailboxId),
       type: "email",
-      status: "closed",
+      status: "active",
       tags: ["calltime-auto"],
       customer: guestCustomer(input.guestName, input.guestEmail),
       ...(userId ? { user: userId, assignTo: userId } : {}),

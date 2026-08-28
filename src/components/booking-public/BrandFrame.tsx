@@ -2,7 +2,7 @@
 
 // Brand-themed page chrome shared by /book and /manage/[token]. Sets the
 // --bp-primary / --bp-accent custom properties inline from the brand colours
-// and shows the support phone at every stage (header + footer).
+// with the support phone in the footer (the header is the logo alone).
 
 import { useEffect } from "react";
 import type { CSSProperties, ReactNode } from "react";
@@ -50,11 +50,6 @@ export function BrandFrame({
             ) : (
               <span className={styles.brandName}>{brand.name}</span>
             )}
-            {phone && (
-              <a className={styles.phoneLink} href={`tel:${phone.replace(/\s/g, "")}`}>
-                Call us {phone}
-              </a>
-            )}
           </header>
         )}
         {children}
@@ -62,7 +57,8 @@ export function BrandFrame({
           {phone ? (
             <>
               Questions? Call {brand?.name ?? "us"} on{" "}
-              <a href={`tel:${phone.replace(/\s/g, "")}`}>{phone}</a> and we&rsquo;re happy to help.
+              <a href={`tel:${phone.replace(/\s/g, "")}`}>{phone}</a>
+              {" "}and we&rsquo;ll happily help.
             </>
           ) : (
             <>We&rsquo;re happy to help with anything at all.</>
