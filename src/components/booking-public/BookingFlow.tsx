@@ -313,7 +313,7 @@ export function BookingFlow({
     try {
       const resolution = await resolveBrandPoolAction(key);
       if (!resolution) {
-        setNotice("We couldn't load that brand just now — please try again.");
+        setNotice("We couldn't load that brand just now. Please try again.");
         return;
       }
       setCtx({
@@ -436,7 +436,7 @@ export function BookingFlow({
           </div>
           {query.length >= 2 && matches.length === 0 && (
             <p className={styles.mutedText}>
-              No trips match &ldquo;{tripQuery.trim()}&rdquo; — try another word from the trip name, or a country it visits.
+              No trips match &ldquo;{tripQuery.trim()}&rdquo;. Try another word from the trip name, or a country it visits.
             </p>
           )}
           {matches.length > 0 && (
@@ -640,7 +640,7 @@ export function BookingFlow({
                 {ctx.brandTrips.map((t) => (
                   <option key={t.slug} value={t.slug}>
                     {t.title}
-                    {t.startDate ? ` — departs ${formatDateOnly(t.startDate)}` : ""}
+                    {t.startDate ? ` (departs ${formatDateOnly(t.startDate)})` : ""}
                   </option>
                 ))}
               </select>
@@ -659,7 +659,7 @@ export function BookingFlow({
                   {ctx.departures.map((d) => (
                     <option key={d.airtableId} value={d.airtableId}>
                       {d.title}
-                      {d.startDate ? ` — departs ${formatDateOnly(d.startDate)}` : ""}
+                      {d.startDate ? ` (departs ${formatDateOnly(d.startDate)})` : ""}
                     </option>
                   ))}
                 </select>
@@ -698,7 +698,7 @@ export function BookingFlow({
             )}
             {backupsList !== null && backupsList.length === 0 && phone && (
               <div className={styles.phoneBox}>
-                <span>Nobody has open times online right now — call us and we&rsquo;ll find you a time:</span>
+                <span>Nobody has open times online right now. Call us and we&rsquo;ll find you a time:</span>
                 <a className={styles.phoneBig} href={`tel:${phone.replace(/\s/g, "")}`}>{phone}</a>
               </div>
             )}
@@ -720,7 +720,7 @@ export function BookingFlow({
             {calendarDown && (
               <>
                 <div className={styles.notice}>
-                  We can&rsquo;t load {active.firstName}&rsquo;s calendar right now — it doesn&rsquo;t mean they&rsquo;re
+                  We can&rsquo;t load {active.firstName}&rsquo;s calendar right now. It doesn&rsquo;t mean they&rsquo;re
                   fully booked.
                 </div>
                 {phone && (
@@ -771,7 +771,7 @@ export function BookingFlow({
                 ) : (
                   <div className={styles.mediumRow}>
                     <span className={styles.sectionLabel}>
-                      This is a phone call — {active.firstName} will ring you at your chosen time.
+                      This is a phone call: {active.firstName} will ring you at your chosen time.
                     </span>
                   </div>
                 )}
@@ -793,7 +793,7 @@ export function BookingFlow({
                 {backupsLoading && <p className={styles.loadingText}>Checking the team&rsquo;s calendars…</p>}
                 {backupsFailed && (
                   <div className={`${styles.notice} ${styles.noticeError}`}>
-                    We couldn&rsquo;t load the team just now — please try again.
+                    We couldn&rsquo;t load the team just now. Please try again.
                   </div>
                 )}
                 {backupsList !== null && backupsList.length === 0 && (

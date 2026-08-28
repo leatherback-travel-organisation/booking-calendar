@@ -9,7 +9,7 @@ import { getSql } from "./db";
 import { sendBookingAlert } from "./alerts";
 import { calendarConfigured } from "./google/auth";
 import { deleteEvent, freeBusy, insertEvent, patchEvent } from "./google/calendar";
-import type { Brand, EventType, Interval, Staff } from "./model";
+import { guestEventTypeName, type Brand, type EventType, type Interval, type Staff } from "./model";
 import { computeSlots, resolveSchedulingZone } from "./availability/engine";
 import { getConfirmed, getStaffByEmail, getWorkingHours } from "./availability/service";
 import { sendBookingEmail } from "./notify/messages";
@@ -188,7 +188,7 @@ export async function createBooking(args: CreateBookingArgs): Promise<CreateBook
   if (calendarConfigured()) {
     try {
       const event = await insertEvent(args.staff.email, {
-        summary: `${args.eventType.name} — ${args.guestName}${(args.callMedium ?? "video") === "phone" ? " (phone)" : ""}${args.sourceKind === "portal" ? " (portal)" : ""}`,
+        summary: `${guestEventTypeName(args.eventType.key, args.eventType.name)} · ${args.guestName}${(args.callMedium ?? "video") === "phone" ? " (phone)" : ""}${args.sourceKind === "portal" ? " (portal)" : ""}`,
         description: buildEventDescription(args),
         startIso,
         endIso,

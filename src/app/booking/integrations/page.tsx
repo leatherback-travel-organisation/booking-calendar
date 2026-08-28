@@ -49,7 +49,7 @@ export default async function BookingIntegrationsPage() {
   }
 
   const sql = getSql();
-  const [staffRows, cacheRows, recentBookings, notifyAudit, lastSyncRows] = await Promise.all([
+  const [staffRows, cacheRows, recentBookings, notifyAudit, lastSyncRows, migrationRows] = await Promise.all([
     sql`select id, email, full_name, calendar_ok, calendar_checked_at, aircall_user_id, helpscout_user_id from booking.staff where active order by full_name`,
     sql`
       select key, payload, fetched_at from booking.reference_cache
@@ -73,6 +73,8 @@ export default async function BookingIntegrationsPage() {
     sql`
       select created_at, detail from booking.audit_log
        where action = 'reference_sync' order by created_at desc limit 1`,
+    sql`
+      select filename, applied_at from schema_migrations order by filename desc limit 5`,
   ]);
   const lastSync = lastSyncRows[0]
     ? {
@@ -283,6 +285,14 @@ export default async function BookingIntegrationsPage() {
               </tbody>
             </table>
           )}
+          <h3 className={styles.panelTitle}>Migrations (latest five)</h3>
+          <ul>
+            {migrationRows.map((row) => (
+              <li key={String(row.filename)}>
+                {String(row.filename)} · applied {new Date(row.applied_at as string).toLocaleString("en-AU", { day: "numeric", month: "long", hour: "numeric", minute: "2-digit", timeZone: "Australia/Melbourne" })}
+              </li>
+            ))}
+          </ul>
           {lastSync && lastSync.failures.length > 0 ? (
             <>
               <h3 className={styles.panelTitle}>Last sync failures</h3>

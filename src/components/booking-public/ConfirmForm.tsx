@@ -57,7 +57,7 @@ function notesPrompt(eventTypeKey: string, tripName: string | null): { label: st
       return tripName
         ? {
             label: `Anything you'd like to cover about ${tripName}?`,
-            placeholder: "Questions about the itinerary, fitness, timing — nothing is too small.",
+            placeholder: "Questions about the itinerary, fitness, timing. nothing is too small.",
           }
         : {
             label: "Which trip are you interested in?",
@@ -86,7 +86,7 @@ function notesPrompt(eventTypeKey: string, tripName: string | null): { label: st
     case "chat":
       return {
         label: "What's on your mind?",
-        placeholder: "Whatever you'd like to chat about — big or small.",
+        placeholder: "Whatever you'd like to chat about. big or small.",
       };
     default:
       return { label: "Anything you\u2019d like us to know?", placeholder: "" };
@@ -110,7 +110,7 @@ export function ConfirmForm({
   staffFirstName: string;
   eventTypeName: string;
   phone: string | null;
-  /** Viewer's country from the edge header — presets the dial code, always editable. */
+  /** Viewer's country from the edge header. presets the dial code, always editable. */
   guestCountry: string | null;
   meta: BookMeta;
   onBack: () => void;
@@ -187,7 +187,7 @@ export function ConfirmForm({
       }
 
       if (response.status === 409 || response.status === 422) {
-        onSlotTaken(failure.message ?? "That time was just taken — here are fresh options.");
+        onSlotTaken(failure.message ?? "That time was just taken. here are fresh options.");
         return;
       }
       if (response.status === 502) {
@@ -212,7 +212,7 @@ export function ConfirmForm({
   return (
     <form className={styles.form} onSubmit={submit}>
       <div className={styles.slotSummary}>
-        {eventTypeName} with {staffFirstName} — {meta.callMedium === "phone" ? "phone call" : "video call"}
+        {eventTypeName} with {staffFirstName}. {meta.callMedium === "phone" ? "phone call" : "video call"}
         <br />
         <strong>{formatFullDateTime(slot.start, timeZone)}</strong>
       </div>
@@ -296,7 +296,7 @@ export function ConfirmForm({
         />
       </div>
 
-      {/* Honeypot: hidden by CSS, not type=hidden — humans never see it. */}
+      {/* Honeypot: hidden by CSS, not type=hidden. humans never see it. */}
       <div className={styles.honeypot} aria-hidden="true">
         <label htmlFor="bp-website">Website</label>
         <input

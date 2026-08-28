@@ -725,16 +725,18 @@ export function pickBrandLogo(
 ): { url: string; filename: string; size: number } | null {
   if (!Array.isArray(attachments)) return null;
   const images = attachments.filter(
-    (a): a is { url: string; filename: string; size: number; type: string } =>
+    (a): a is { url: string; filename: string; size: number; type: string; width?: number; height?: number } =>
       Boolean(a && typeof a === "object" && typeof (a as { url?: unknown }).url === "string" &&
         /^image\//.test(String((a as { type?: unknown }).type ?? ""))),
   );
   if (images.length === 0) return null;
-  // PNGs can carry transparency, JPEGs never do — the page background should
-  // show through wherever possible (Nicola, 27 Aug). Main marks still beat
-  // grayscale/negative/secondary variants regardless of format.
-  const score = (a: { filename: string }) =>
-    (/grayscale|negative|secondary/i.test(a.filename) ? 0 : 4) + (/\.png$/i.test(a.filename) ? 3 : 0);
+  // Preference order (Nicola, 27-28 Aug): the main mark over grayscale/
+  // negative/secondary variants, PNG over JPEG (transparency), and a
+  // horizontal wordmark over a stacked lockup when the file offers one.
+  const score = (a: { filename: string; width?: number; height?: number }) => {
+    const horizontal = a.width && a.height && a.width / a.height >= 2 ? 1 : 0;
+    return (/grayscale|negative|secondary/i.test(a.filename) ? 0 : 8) + (/\.png$/i.test(a.filename) ? 4 : 0) + horizontal * 2;
+  };
   const best = [...images].sort((a, b) => score(b) - score(a))[0];
   return { url: best.url, filename: best.filename, size: best.size };
 }

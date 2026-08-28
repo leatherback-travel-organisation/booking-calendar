@@ -78,7 +78,7 @@ export function SlotPicker({
       </div>
       {visible.length === 0 ? (
         <p className={styles.emptyWeek}>
-          No times this week{hasNext ? " — try the following week." : "."}
+          No times this week{hasNext ? ". try the following week." : "."}
         </p>
       ) : (
         visible.map((group) => (

@@ -103,7 +103,7 @@ export function ManagePanel({ token, state, booking, staff, brand, eventType }: 
         setNotice("All moved! A confirmation email with the new time is on its way.");
       } else if (result.reason === "slot_taken" || result.reason === "slot_invalid") {
         setPendingSlot(null);
-        setError("That time was just taken — here are fresh options.");
+        setError("That time was just taken. here are fresh options.");
         setAvailNonce((n) => n + 1);
       } else {
         setError("This booking can no longer be changed.");
@@ -131,7 +131,7 @@ export function ManagePanel({ token, state, booking, staff, brand, eventType }: 
           <p className={styles.pageSub}>
             {wasAlreadyCancelled
               ? `The ${eventType.name.toLowerCase()} with ${staff.firstName} was cancelled, so there's nothing more to do here.`
-              : `We've let ${staff.firstName} know — no call will go ahead, and a confirmation email is on its way.`}
+              : `We've let ${staff.firstName} know. no call will go ahead, and a confirmation email is on its way.`}
           </p>
           <div className={styles.btnRow}>
             <a className={styles.primaryBtn} href={bookAgainUrl} style={{ textAlign: "center", textDecoration: "none" }}>
@@ -188,7 +188,7 @@ export function ManagePanel({ token, state, booking, staff, brand, eventType }: 
           )}
           <div>
             <h1 className={styles.bmName}>Your call with {staff.firstName}</h1>
-            <p className={styles.mutedText}>Hi {booking.guestName.split(" ")[0]} — here are your booking details.</p>
+            <p className={styles.mutedText}>Hi {booking.guestName.split(" ")[0]}, here are your booking details.</p>
           </div>
         </div>
 
@@ -277,7 +277,7 @@ export function ManagePanel({ token, state, booking, staff, brand, eventType }: 
                     <div className={styles.notice}>
                       {availData.calendarReachable
                         ? `${staff.firstName} has no other open times right now.`
-                        : `We can't load ${staff.firstName}'s calendar right now — it doesn't mean they're fully booked.`}
+                        : `We can't load ${staff.firstName}'s calendar right now. it doesn't mean they're fully booked.`}
                     </div>
                     {phone && (
                       <div className={styles.phoneBox}>
@@ -291,7 +291,7 @@ export function ManagePanel({ token, state, booking, staff, brand, eventType }: 
                   <SlotPicker slots={availData.slots} timeZone={tz} onPick={setPendingSlot} />
                 )}
                 <button type="button" className={styles.linkBtn} onClick={() => { setMode("summary"); setPendingSlot(null); setError(null); }}>
-                  Never mind — keep the current time
+                  Never mind. keep the current time
                 </button>
               </>
             )}

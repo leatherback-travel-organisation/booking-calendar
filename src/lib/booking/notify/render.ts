@@ -81,7 +81,7 @@ export function renderBrandEmail(shell: BrandShellInput, bodyHtml: string): stri
   const accent = shell.colorPrimary ?? "#1f3d33";
   const secondary = shell.colorAccent ?? accent;
   const logo = shell.logoUrl
-    ? `<img src="${escapeHtml(shell.logoUrl)}" alt="${escapeHtml(shell.brandName)}" style="max-height:56px;max-width:220px;" />`
+    ? `<img src="${escapeHtml(shell.logoUrl)}" alt="${escapeHtml(shell.brandName)}" style="max-height:72px;max-width:340px;" />`
     : `<span style="font-size:22px;font-weight:600;color:${accent};">${escapeHtml(shell.brandName)}</span>`;
   const phone = shell.supportPhone
     ? `<p style="margin:4px 0 0;">Need a hand? Call us on <strong>${escapeHtml(shell.supportPhone)}</strong>.</p>`

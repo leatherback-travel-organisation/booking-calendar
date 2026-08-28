@@ -62,7 +62,7 @@ export function BrandFrame({
           {phone ? (
             <>
               Questions? Call {brand?.name ?? "us"} on{" "}
-              <a href={`tel:${phone.replace(/\s/g, "")}`}>{phone}</a> — we&rsquo;re happy to help.
+              <a href={`tel:${phone.replace(/\s/g, "")}`}>{phone}</a> and we&rsquo;re happy to help.
             </>
           ) : (
             <>We&rsquo;re happy to help with anything at all.</>
