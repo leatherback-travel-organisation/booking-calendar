@@ -6,12 +6,30 @@ import { BookingFlow } from "@/components/booking-public/BookingFlow";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Book a call",
-  description: "Choose a time that suits you — we'd love to talk travel.",
-  referrer: "no-referrer",
-  robots: { index: false },
+// Brands with a current icon asset in Drive get their own favicon on their
+// booking pages; the rest keep the CallTime mark (segment icon.svg).
+const BRAND_FAVICONS: Record<string, string> = {
+  "magnificent-explorers": "/brand-icons/magnificent-explorers.svg",
+  carex: "/brand-icons/carex.svg",
+  "salt-caravan": "/brand-icons/salt-caravan.png",
 };
+
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}): Promise<Metadata> {
+  const params = await searchParams;
+  const brandKey = first(params.brand);
+  const icon = brandKey ? BRAND_FAVICONS[brandKey] : undefined;
+  return {
+    title: "Book a call",
+    description: "Choose a time that suits you. We'd love to talk travel.",
+    referrer: "no-referrer",
+    robots: { index: false },
+    ...(icon ? { icons: { icon } } : {}),
+  };
+}
 
 function first(value: string | string[] | undefined): string | null {
   if (Array.isArray(value)) return value[0] ?? null;
