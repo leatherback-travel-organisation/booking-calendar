@@ -13,6 +13,12 @@ const MAX_RETRIES = 5;
 
 export const AIRTABLE_BOOKING_BASE_ID = process.env.AIRTABLE_BOOKING_BASE_ID ?? "appnRSV0g89whVidp";
 export const AIRTABLE_HR_BASE_ID = process.env.AIRTABLE_HR_BASE_ID ?? "appYP9nVmzqan2PlU";
+/** The company Brands base (logos, palettes) — Cove's /brands page reads the same table. */
+export const AIRTABLE_BRANDS_BASE_ID = process.env.AIRTABLE_BRANDS_BASE_ID ?? "appFKK9f5PuUq27Cl";
+export const AIRTABLE_BRANDS_TABLE = process.env.AIRTABLE_BRANDS_TABLE ?? "tblIQseMMVbh3hIsk";
+export function airtableBrandsToken(): string | null {
+  return process.env.AIRTABLE_BRANDS_TOKEN?.trim() || process.env.AIRTABLE_BOOKING_TOKEN?.trim() || null;
+}
 
 type AirtableListPayload = {
   records: Array<{ id: string; createdTime?: string; fields?: Record<string, unknown> }>;
@@ -53,8 +59,13 @@ async function fetchPage(url: string, token: string): Promise<AirtableListPayloa
  * Paginates at pageSize=100 with a polite delay between pages and backs off
  * on 429s.
  */
-export async function listAll(baseId: string, table: string, fields: string[]): Promise<AirtableRecordLike[]> {
-  const token = process.env.AIRTABLE_BOOKING_TOKEN?.trim();
+export async function listAll(
+  baseId: string,
+  table: string,
+  fields: string[],
+  tokenOverride?: string,
+): Promise<AirtableRecordLike[]> {
+  const token = tokenOverride ?? process.env.AIRTABLE_BOOKING_TOKEN?.trim();
   if (!token) throw new Error("AIRTABLE_BOOKING_TOKEN is not configured.");
 
   const records: AirtableRecordLike[] = [];

@@ -37,6 +37,7 @@ export function isPublicIdentityRoute(pathname: string) {
     pathname.startsWith("/api/booking/cron/") ||
     // BM profile photos appear on public booking pages and in the guest
     // portal; the route serves images only.
-    pathname.startsWith("/api/booking/staff-photo/")
+    pathname.startsWith("/api/booking/staff-photo/") ||
+    pathname.startsWith("/api/booking/brand-logo/")
   );
 }

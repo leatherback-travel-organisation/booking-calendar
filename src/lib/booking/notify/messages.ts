@@ -216,7 +216,8 @@ export async function sendBookingEmail(moment: Moment, ctx: BookingEmailContext)
   const html = renderBrandEmail(
     {
       brandName: ctx.brand.name,
-      logoUrl: ctx.brand.logoUrl,
+      // Blob-backed logos are stored as a path; email clients need it absolute.
+      logoUrl: ctx.brand.logoUrl?.startsWith("/") ? `${appUrl()}${ctx.brand.logoUrl}` : ctx.brand.logoUrl,
       colorPrimary: ctx.brand.colorPrimary,
       supportPhone: ctx.brand.phoneDefault ?? ctx.brand.phoneAu,
       fromName: ctx.brand.fromName,

@@ -9,9 +9,11 @@ import { put } from "@vercel/blob";
 import { getSql } from "@/lib/booking/db";
 import { calendarConfigured } from "@/lib/booking/google/auth";
 import { checkCalendarAccess } from "@/lib/booking/google/calendar";
-import { AIRTABLE_BOOKING_BASE_ID, AIRTABLE_HR_BASE_ID, listAll } from "./airtable.ts";
+import { slugKey } from "../slug.ts";
+import { AIRTABLE_BOOKING_BASE_ID, AIRTABLE_BRANDS_BASE_ID, AIRTABLE_BRANDS_TABLE, AIRTABLE_HR_BASE_ID, airtableBrandsToken, listAll } from "./airtable.ts";
 import { fetchBookingManagerRoster, fetchPodLeads } from "./notion.ts";
 import {
+  parseBrandIdentities,
   brandIdsForNames,
   buildApprovedLeave,
   buildDepartureIndex,
@@ -141,6 +143,48 @@ async function syncStaffPhoto(
     update booking.staff
        set photo_url = ${`/api/booking/staff-photo/${staffId}`}, updated_at = now()
      where id = ${staffId}`;
+  return true;
+}
+
+
+/**
+ * Brand logo from the company Brands base → the private Blob store, served
+ * through /api/booking/brand-logo/[brandId]. Airtable attachment URLs expire
+ * within hours, so bytes are copied out; the (filename, size) pair in the
+ * cache says when the upstream file actually changed.
+ */
+async function syncBrandLogo(
+  brandId: string,
+  logo: { url: string; filename: string; size: number },
+): Promise<boolean> {
+  const sql = getSql();
+  const cached = await sql`
+    select payload from booking.reference_cache where key = ${`brand-logo:${brandId}`}`;
+  const payload = (cached[0]?.payload ?? null) as { filename?: string; size?: number } | null;
+  if (payload?.filename === logo.filename && payload?.size === logo.size) return true;
+
+  const response = await fetch(logo.url, { cache: "no-store" });
+  if (!response.ok) throw new Error(`logo download failed with ${response.status}`);
+  const bytes = Buffer.from(await response.arrayBuffer());
+  if (bytes.length === 0) throw new Error("logo download was empty");
+  const hash = createHash("sha256").update(bytes).digest("hex").slice(0, 16);
+  const contentType = response.headers.get("content-type")?.split(";")[0]?.trim() || "image/png";
+  const blob = await put(`booking/brand/${hash}`, bytes, {
+    access: "private",
+    contentType,
+    addRandomSuffix: false,
+  });
+  await sql`
+    insert into booking.reference_cache (key, payload, fetched_at)
+    values (${`brand-logo:${brandId}`}, ${JSON.stringify({
+      blobUrl: blob.url,
+      contentType,
+      filename: logo.filename,
+      size: logo.size,
+    })}::jsonb, now())
+    on conflict (key) do update set payload = excluded.payload, fetched_at = excluded.fetched_at`;
+  await sql`
+    update booking.brand set logo_url = ${`/api/booking/brand-logo/${brandId}`} where id = ${brandId}`;
   return true;
 }
 
@@ -329,6 +373,37 @@ export async function runReferenceSync(): Promise<ReferenceSyncSummary> {
         on conflict (key) do update set payload = excluded.payload, fetched_at = excluded.fetched_at`;
       return true;
     });
+  }
+
+  // ---- brand identity: logos + palettes from the company Brands base ----
+  // Airtable stays read-only; booking.brand's colours and logo follow it.
+  const brandsToken = airtableBrandsToken();
+  if (brandsToken) {
+    const brandRecords = await attempt("airtable:brand-identity", () =>
+      listAll(AIRTABLE_BRANDS_BASE_ID, AIRTABLE_BRANDS_TABLE, ["Name", "Logo", "Brand Colours"], brandsToken));
+    if (brandRecords) {
+      const bookingBrands = await sql`select id, name, aliases, color_primary, color_accent from booking.brand`;
+      for (const identity of parseBrandIdentities(brandRecords)) {
+        const key = slugKey(identity.name);
+        const target = bookingBrands.find((row) =>
+          slugKey(String(row.name)) === key ||
+          ((row.aliases as string[]) ?? []).some((alias) => slugKey(alias) === key));
+        if (!target) continue;
+        const brandId = String(target.id);
+        if (identity.colorPrimary && (identity.colorPrimary !== target.color_primary || identity.colorAccent !== target.color_accent)) {
+          await attempt(`brand-colours:${identity.name}`, async () => {
+            await sql`
+              update booking.brand
+                 set color_primary = ${identity.colorPrimary}, color_accent = ${identity.colorAccent}
+               where id = ${brandId}`;
+            return true;
+          });
+        }
+        if (identity.logo) {
+          await attempt(`brand-logo:${identity.name}`, () => syncBrandLogo(brandId, identity.logo!));
+        }
+      }
+    }
   }
 
   // ---- calendar reachability self-heals ----------------------------------

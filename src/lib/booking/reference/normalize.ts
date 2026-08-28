@@ -679,3 +679,75 @@ export function computeLeaveCalendarBlockIssues(inputs: LeaveCalendarInputs): Co
   }
   return issues;
 }
+
+// ---------------------------------------------------------------------------
+// Brand identity (logos + palettes from the company Brands base)
+// ---------------------------------------------------------------------------
+
+export type BrandIdentity = {
+  name: string;
+  colorPrimary: string | null;
+  colorAccent: string | null;
+  logo: { url: string; filename: string; size: number } | null;
+};
+
+const HEX_RE = /#?([0-9a-fA-F]{6})\b/g;
+
+/**
+ * The "Brand Colours" field is prose. Every hex is collected in order; when
+ * an entry's surrounding words mention buttons or CTAs (Harriet's palette
+ * documents roles), that hex wins primary — otherwise the first one does.
+ * Accent is the next distinct hex.
+ */
+export function parseBrandColours(text: string | null): { primary: string | null; accent: string | null } {
+  if (!text) return { primary: null, accent: null };
+  const found: Array<{ hex: string; context: string }> = [];
+  const paragraphs = text.split(/\n\s*\n/);
+  for (const paragraph of paragraphs) {
+    for (const match of paragraph.matchAll(HEX_RE)) {
+      found.push({ hex: `#${match[1].toLowerCase()}`, context: paragraph.toLowerCase() });
+    }
+  }
+  if (found.length === 0) return { primary: null, accent: null };
+  // "secondary buttons" (Harriet's Misty Harbour) is not the button colour.
+  const button = found.find((entry) => /button|cta/.test(entry.context) && !/secondary button/.test(entry.context));
+  const primary = (button ?? found[0]).hex;
+  const accent = found.map((entry) => entry.hex).find((hex) => hex !== primary) ?? null;
+  return { primary, accent };
+}
+
+/**
+ * Pick the logo attachment guests should see: images only, and variants
+ * named grayscale/negative/secondary lose to anything else.
+ */
+export function pickBrandLogo(
+  attachments: unknown,
+): { url: string; filename: string; size: number } | null {
+  if (!Array.isArray(attachments)) return null;
+  const images = attachments.filter(
+    (a): a is { url: string; filename: string; size: number; type: string } =>
+      Boolean(a && typeof a === "object" && typeof (a as { url?: unknown }).url === "string" &&
+        /^image\//.test(String((a as { type?: unknown }).type ?? ""))),
+  );
+  if (images.length === 0) return null;
+  const score = (a: { filename: string }) =>
+    (/grayscale|negative|secondary/i.test(a.filename) ? 0 : 2) + (/\.png$/i.test(a.filename) ? 1 : 0);
+  const best = [...images].sort((a, b) => score(b) - score(a))[0];
+  return { url: best.url, filename: best.filename, size: best.size };
+}
+
+export function parseBrandIdentities(records: AirtableRecordLike[]): BrandIdentity[] {
+  const identities: BrandIdentity[] = [];
+  for (const record of records) {
+    const name = firstString(record.fields["Name"]);
+    if (!name) continue;
+    const colours = parseBrandColours(firstString(record.fields["Brand Colours"]));
+    identities.push({
+      name,
+      colorPrimary: colours.primary,
+      colorAccent: colours.accent,
+      logo: pickBrandLogo(record.fields["Logo"]),
+    });
+  }
+  return identities;
+}

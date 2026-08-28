@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  parseBrandColours,
+  pickBrandLogo,
   addDays,
   brandIdsForNames,
   buildApprovedLeave,
@@ -562,4 +564,25 @@ test("buildDepartureIndex carries Countries and Regions Visited for trip search"
   // Absent lookups normalise to empty arrays, never undefined.
   assert.deepEqual(index.departures[1].countries, []);
   assert.deepEqual(index.departures[1].regions, []);
+});
+
+test("brand palette parsing prefers the documented button colour and real logos", () => {
+  // Harriet documents roles: Amber owns "Buttons and the CTA band"; Parchment
+  // is first but is a background. "Secondary button border" must not win.
+  const harriet = parseBrandColours(
+    "Parchment\n#E4D9C0\nDefault page background\n\nRoasted Cacao\n#332E29\nBody text. Secondary button border\n\nAmber\n#D38E35\nButtons and the CTA band\n\nMisty Harbour\n#748CA2\nFills and secondary buttons only",
+  );
+  assert.deepEqual(harriet, { primary: "#d38e35", accent: "#e4d9c0" });
+
+  // Plain lists: first hex is primary, next distinct hex is accent.
+  assert.deepEqual(parseBrandColours("#5d224d (Eggplant)\n#60cb99 (Mint)"), { primary: "#5d224d", accent: "#60cb99" });
+  assert.deepEqual(parseBrandColours(null), { primary: null, accent: null });
+
+  // Grayscale/negative variants lose to the main mark; PDFs are not logos.
+  const logo = pickBrandLogo([
+    { url: "https://x/gray.png", filename: "logo-grayscale.png", size: 10, type: "image/png" },
+    { url: "https://x/main.png", filename: "logo-main-eggplant.png", size: 20, type: "image/png" },
+    { url: "https://x/doc.pdf", filename: "brand.pdf", size: 30, type: "application/pdf" },
+  ]);
+  assert.equal(logo.filename, "logo-main-eggplant.png");
 });
