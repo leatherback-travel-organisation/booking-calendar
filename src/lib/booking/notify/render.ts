@@ -66,6 +66,8 @@ export type BrandShellInput = {
   brandName: string;
   logoUrl: string | null;
   colorPrimary: string | null;
+  /** Secondary brand colour — links and the card's soft wash; primary keeps the top band. */
+  colorAccent: string | null;
   supportPhone: string | null;
   fromName: string;
 };
@@ -77,6 +79,7 @@ export type BrandShellInput = {
  */
 export function renderBrandEmail(shell: BrandShellInput, bodyHtml: string): string {
   const accent = shell.colorPrimary ?? "#1f3d33";
+  const secondary = shell.colorAccent ?? accent;
   const logo = shell.logoUrl
     ? `<img src="${escapeHtml(shell.logoUrl)}" alt="${escapeHtml(shell.brandName)}" style="max-height:56px;max-width:220px;" />`
     : `<span style="font-size:22px;font-weight:600;color:${accent};">${escapeHtml(shell.brandName)}</span>`;
@@ -89,8 +92,10 @@ export function renderBrandEmail(shell: BrandShellInput, bodyHtml: string): stri
     <div style="max-width:600px;margin:0 auto;padding:32px 20px;">
       <div style="padding:8px 0 24px;">${logo}</div>
       <div style="background:#ffffff;border-radius:10px;padding:32px 28px;border-top:4px solid ${accent};font-size:16px;line-height:1.55;">
+        <style>a { color: ${accent}; }</style>
         ${bodyHtml}
       </div>
+      <div style="height:3px;max-width:120px;margin:14px 0 0 8px;background:${secondary};border-radius:2px;"></div>
       <div style="padding:20px 8px;font-size:13px;color:#6b7266;">
         <p style="margin:0;">${escapeHtml(shell.fromName)}</p>
         ${phone}

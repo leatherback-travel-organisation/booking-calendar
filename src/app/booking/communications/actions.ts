@@ -276,6 +276,7 @@ export async function previewRender(input: {
     brandName: "Leatherback Travel",
     logoUrl: null,
     colorPrimary: null,
+    colorAccent: null,
     supportPhone: values["brand.phone"] ?? null,
     fromName: "Leatherback Travel",
   };
@@ -287,6 +288,7 @@ export async function previewRender(input: {
       brandName: brand.name,
       logoUrl: brand.logoUrl,
       colorPrimary: brand.colorPrimary,
+      colorAccent: brand.colorAccent,
       supportPhone: phone,
       fromName: brand.fromName,
     };
