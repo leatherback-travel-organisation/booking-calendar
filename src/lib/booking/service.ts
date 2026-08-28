@@ -313,7 +313,13 @@ export async function createBooking(args: CreateBookingArgs): Promise<CreateBook
           : "") +
         `<p>${args.guestName} booked a ${args.eventType.name} with ${args.staff.fullName}.</p>` +
         (routedVia !== "primary" && args.routedReason ? `<p><strong>Routing note:</strong> ${args.routedReason}</p>` : "") +
-        (args.tripName ? `<p>Trip: ${args.tripName}</p>` : "") +
+        (args.tripName
+          ? `<p>Trip: ${
+              trtlTripUrl(args.airtableTripRecordId)
+                ? `<a href="${trtlTripUrl(args.airtableTripRecordId)}">${args.tripName}</a>`
+                : args.tripName
+            }${args.tripUrl ? ` · <a href="${args.tripUrl}">website</a>` : ""}</p>`
+          : "") +
         (args.guestNotes ? `<p>Guest notes: ${args.guestNotes}</p>` : "") +
         buildCrossoverSectionHtml(crossovers, crossoverCtx),
     });
@@ -386,6 +392,14 @@ export async function createBooking(args: CreateBookingArgs): Promise<CreateBook
   return { ok: true, bookingId, manageUrl, meetUrl, startIso, endIso };
 }
 
+
+/** The trip's page in TRTL (the internal activity timeline) — BM-facing links only. */
+function trtlTripUrl(recordId: string | null | undefined): string | null {
+  return recordId && /^rec[A-Za-z0-9]+$/.test(recordId)
+    ? `https://trtl.leatherbacktravel.com/trips/${recordId}`
+    : null;
+}
+
 function buildEventDescription(args: CreateBookingArgs): string {
   const lines = [
     // Portal bookings lead with their origin so the BM comes prepared: the
@@ -395,6 +409,7 @@ function buildEventDescription(args: CreateBookingArgs): string {
     `Guest: ${args.guestName} <${args.guestEmail}>`,
     args.guestPhone ? `Phone: ${args.guestPhone}` : null,
     args.tripName ? `Trip: ${args.tripName}` : null,
+    trtlTripUrl(args.airtableTripRecordId) ? `Trip in TRTL: ${trtlTripUrl(args.airtableTripRecordId)}` : null,
     args.guestNotes ? `Notes: ${args.guestNotes}` : null,
     args.internalNotes ? `Booker notes: ${args.internalNotes}` : null,
     `Booked via Leatherback Booking (${args.sourceKind}).`,
