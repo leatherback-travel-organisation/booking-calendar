@@ -161,7 +161,15 @@ async function syncBrandLogo(
   const cached = await sql`
     select payload from booking.reference_cache where key = ${`brand-logo:${brandId}`}`;
   const payload = (cached[0]?.payload ?? null) as { filename?: string; size?: number } | null;
-  if (payload?.filename === logo.filename && payload?.size === logo.size) return true;
+  if (payload?.filename === logo.filename && payload?.size === logo.size) {
+    // The blob is in place — but assert the pointer anyway. A prior run once
+    // uploaded successfully and died before this update, leaving a working
+    // blob nobody linked to; skipping here made that permanent.
+    await sql`
+      update booking.brand set logo_url = ${`/api/booking/brand-logo/${brandId}`}
+       where id = ${brandId} and logo_url is distinct from ${`/api/booking/brand-logo/${brandId}`}`;
+    return true;
+  }
 
   const response = await fetch(logo.url, { cache: "no-store" });
   if (!response.ok) throw new Error(`logo download failed with ${response.status}`);
@@ -385,9 +393,20 @@ export async function runReferenceSync(): Promise<ReferenceSyncSummary> {
       const bookingBrands = await sql`select id, name, aliases, color_primary, color_accent from booking.brand`;
       for (const identity of parseBrandIdentities(brandRecords)) {
         const key = slugKey(identity.name);
-        const target = bookingBrands.find((row) =>
+        const firstToken = key.split("-")[0];
+        let target = bookingBrands.find((row) =>
           slugKey(String(row.name)) === key ||
           ((row.aliases as string[]) ?? []).some((alias) => slugKey(alias) === key));
+        if (!target) {
+          // The Brands base and booking disagree on suffixes ("Carex Design
+          // Tours" vs "Carex Garden Tours"). The leading token is distinctive
+          // across both sets, so use it — but only when exactly one brand
+          // matches; ambiguity falls through to the loud failure below.
+          const tokenMatches = bookingBrands.filter((row) =>
+            [String(row.name), ...((row.aliases as string[]) ?? [])].some(
+              (candidate) => slugKey(candidate).split("-")[0] === firstToken));
+          if (tokenMatches.length === 1) target = tokenMatches[0];
+        }
         if (!target) {
           // Loudly, per the house rule: an unmatched Brands-base record is a
           // naming discrepancy someone should see, not a silent skip.
