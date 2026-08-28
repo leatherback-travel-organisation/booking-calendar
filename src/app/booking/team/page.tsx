@@ -5,7 +5,7 @@ import { TeamRoster } from "@/components/booking/team-roster";
 import { requireBookingAccess } from "@/lib/booking/access";
 import { databaseConfigured, getSql } from "@/lib/booking/db";
 import { appUrl as publicAppUrl } from "@/lib/booking/app-url";
-import { getBrands, getDepartureStats, getStaffWithBrands } from "@/lib/booking/reference/queries";
+import { getBrands, getDepartureStats, getPods, getStaffWithBrands } from "@/lib/booking/reference/queries";
 import shellStyles from "@/components/booking/booking-shell.module.css";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +25,7 @@ export default async function BookingTeamPage() {
     );
   }
 
-  const [staff, brands, stats] = await Promise.all([getStaffWithBrands(), getBrands(), getDepartureStats()]);
+  const [staff, brands, stats, pods] = await Promise.all([getStaffWithBrands(), getBrands(), getDepartureStats(), getPods()]);
   const appUrl = publicAppUrl();
   // One copy link per guest-bookable call type, same set for every BM.
   const sql = getSql();
@@ -44,6 +44,7 @@ export default async function BookingTeamPage() {
         fetchedAt={stats.fetchedAt}
         appUrl={appUrl}
         guestTypes={guestTypes}
+        pods={pods}
         canManage={canManage}
         viewerEmail={identity.email}
       />

@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import Link from "next/link";
 import type { Brand, Staff } from "@/lib/booking/model";
 import { BrandTag } from "./brand-tag";
@@ -32,14 +33,33 @@ type TeamRosterProps = {
   appUrl: string;
   /** Guest-bookable call types — one copy link per type per BM. */
   guestTypes: Array<{ key: string; name: string }>;
+  /** Pods (from Notion) — the roster renders one section per pod. */
+  pods: Array<{ key: string; name: string; brandIds: string[] }>;
   /** Pod Leads may open any BM's page; BMs only their own. */
   canManage: boolean;
   viewerEmail: string;
 };
 
-export function TeamRoster({ staff, brands, fetchedAt, appUrl, guestTypes, canManage, viewerEmail }: TeamRosterProps) {
+export function TeamRoster({ staff, brands, fetchedAt, appUrl, guestTypes, pods, canManage, viewerEmail }: TeamRosterProps) {
   const brandById = new Map(brands.map((brand) => [brand.id, brand]));
   const active = staff.filter((member) => member.active).length;
+
+  const podOf = (member: (typeof staff)[number]): string => {
+    const byPrimary = member.primaryBrandId
+      ? pods.find((pod) => pod.brandIds.includes(member.primaryBrandId!))
+      : undefined;
+    const pod = byPrimary ?? pods.find((p) => member.brandIds.some((id) => p.brandIds.includes(id)));
+    return pod?.name ?? "No pod";
+  };
+  const podGroups = new Map<string, typeof staff>();
+  for (const member of staff) {
+    const key = podOf(member);
+    if (!podGroups.has(key)) podGroups.set(key, []);
+    podGroups.get(key)!.push(member);
+  }
+  const orderedPods = [...podGroups.entries()].sort(([a], [b]) =>
+    a === "No pod" ? 1 : b === "No pod" ? -1 : a.localeCompare(b),
+  );
 
   return (
     <div className={styles.roster}>
@@ -67,7 +87,12 @@ export function TeamRoster({ staff, brands, fetchedAt, appUrl, guestTypes, canMa
               </tr>
             </thead>
             <tbody>
-              {staff.map((member) => {
+              {orderedPods.map(([podName, members]) => (
+                <Fragment key={podName}>
+                  <tr className={styles.podRow}>
+                    <td colSpan={4}>{podName}</td>
+                  </tr>
+                  {members.map((member) => {
                 return (
                   <tr key={member.id} className={member.active ? undefined : styles.inactiveRow}>
                     <td>
@@ -169,7 +194,9 @@ export function TeamRoster({ staff, brands, fetchedAt, appUrl, guestTypes, canMa
                     </td>
                   </tr>
                 );
-              })}
+                  })}
+                </Fragment>
+              ))}
             </tbody>
           </table>
         </div>

@@ -211,3 +211,18 @@ export async function getDepartureStats(): Promise<DepartureStats> {
 
   return { totalUpcoming, perBrand, fetchedAt, lastSyncedAt };
 }
+
+/**
+ * The pod a BM belongs to: the pod owning their primary brand, else the
+ * first pod owning any brand of theirs. Null when nothing matches.
+ */
+export function podForStaff(
+  member: { primaryBrandId: string | null; brandIds: string[] },
+  pods: Pod[],
+): Pod | null {
+  if (member.primaryBrandId) {
+    const byPrimary = pods.find((pod) => pod.brandIds.includes(member.primaryBrandId!));
+    if (byPrimary) return byPrimary;
+  }
+  return pods.find((pod) => member.brandIds.some((id) => pod.brandIds.includes(id))) ?? null;
+}

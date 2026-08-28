@@ -13,7 +13,7 @@ import { SettingsSearch } from "@/components/booking/settings-search";
 import { requireBookingAccess } from "@/lib/booking/access";
 import { databaseConfigured, getSql } from "@/lib/booking/db";
 import { appUrl as publicAppUrl } from "@/lib/booking/app-url";
-import { getBrands, getOpenCoverageIssues, getPods, getStaffWithBrands } from "@/lib/booking/reference/queries";
+import { podForStaff, getBrands, getOpenCoverageIssues, getPods, getStaffWithBrands } from "@/lib/booking/reference/queries";
 import shellStyles from "@/components/booking/booking-shell.module.css";
 
 export const dynamic = "force-dynamic";
@@ -163,6 +163,7 @@ export default async function BookingDashboardPage({
     fullName: member.fullName,
     photoUrl: member.photoUrl,
     isSelf: member.email.toLowerCase() === selfEmail,
+    podName: podForStaff(member, pods)?.name ?? null,
   }));
 
   // "Copy scheduling link" copies the signed-in BM's own guest booking URL;

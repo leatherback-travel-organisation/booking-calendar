@@ -39,6 +39,8 @@ export type SchedulingPageLink = {
   fullName: string;
   photoUrl: string | null;
   isSelf: boolean;
+  /** Pod grouping on the panel; null collects under "No pod". */
+  podName: string | null;
 };
 
 export type RecentBooking = {
@@ -164,6 +166,20 @@ function FilterBar({ filters }: { filters: DashboardFilters }) {
   );
 }
 
+
+/** Stable pod grouping: pods alphabetically, "No pod" last, members as given. */
+function groupByPod(members: SchedulingPageLink[]): Array<[string, SchedulingPageLink[]]> {
+  const groups = new Map<string, SchedulingPageLink[]>();
+  for (const member of members) {
+    const key = member.podName ?? "No pod";
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(member);
+  }
+  return [...groups.entries()].sort(([a], [b]) =>
+    a === "No pod" ? 1 : b === "No pod" ? -1 : a.localeCompare(b),
+  );
+}
+
 export function Dashboard({ issues, days, recent, schedulingPages, schedulingLinkUrl, filters }: DashboardProps) {
   const errors = issues.filter((issue) => issue.severity === "error");
   const warnings = issues.filter((issue) => issue.severity !== "error");
@@ -261,8 +277,11 @@ export function Dashboard({ issues, days, recent, schedulingPages, schedulingLin
         <p className={styles.emptyNote}>
           Each Booking Manager&rsquo;s availability, reminders and week calendar live on their own page.
         </p>
-        <ul className={styles.bmLinkList}>
-          {schedulingPages.map((member) => (
+        {groupByPod(schedulingPages).map(([podName, members]) => (
+          <div key={podName}>
+            <h3 className={styles.podHeading}>{podName}</h3>
+            <ul className={styles.bmLinkList}>
+              {members.map((member) => (
             <li key={member.slug}>
               <Link href={`/booking/team/${encodeURIComponent(member.slug)}`} className={styles.bmLink}>
                 {member.photoUrl ? (
@@ -279,8 +298,10 @@ export function Dashboard({ issues, days, recent, schedulingPages, schedulingLin
                 </span>
               </Link>
             </li>
-          ))}
-        </ul>
+              ))}
+            </ul>
+          </div>
+        ))}
       </section>
     </div>
   );
