@@ -49,7 +49,7 @@ export default async function BookingIntegrationsPage() {
   }
 
   const sql = getSql();
-  const [staffRows, cacheRows, recentBookings, notifyAudit] = await Promise.all([
+  const [staffRows, cacheRows, recentBookings, notifyAudit, lastSyncRows] = await Promise.all([
     sql`select id, email, full_name, calendar_ok, calendar_checked_at, aircall_user_id, helpscout_user_id from booking.staff where active order by full_name`,
     sql`
       select key, payload, fetched_at from booking.reference_cache
@@ -70,7 +70,16 @@ export default async function BookingIntegrationsPage() {
          and (action in ('email_rendered_not_sent', 'sms_rendered_not_sent', 'helpscout_stubbed', 'ops_alert')
               or action like '%fail%')
        order by created_at desc limit 30`,
+    sql`
+      select created_at, detail from booking.audit_log
+       where action = 'reference_sync' order by created_at desc limit 1`,
   ]);
+  const lastSync = lastSyncRows[0]
+    ? {
+        at: new Date(lastSyncRows[0].created_at as string).toISOString(),
+        failures: ((lastSyncRows[0].detail as { failures?: Array<{ source: string; error: string }> })?.failures ?? []),
+      }
+    : null;
 
   const cache = new Map(
     cacheRows.map((row) => [
@@ -274,6 +283,18 @@ export default async function BookingIntegrationsPage() {
               </tbody>
             </table>
           )}
+          {lastSync && lastSync.failures.length > 0 ? (
+            <>
+              <h3 className={styles.panelTitle}>Last sync failures</h3>
+              <ul>
+                {lastSync.failures.map((failure, index) => (
+                  <li key={index}>
+                    <strong>{failure.source}</strong> — {failure.error}
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
           {notifyAudit.length > 0 ? (
             <>
               <h3 className={styles.panelTitle}>Rendered-not-sent and failures</h3>

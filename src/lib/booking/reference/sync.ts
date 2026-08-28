@@ -388,7 +388,16 @@ export async function runReferenceSync(): Promise<ReferenceSyncSummary> {
         const target = bookingBrands.find((row) =>
           slugKey(String(row.name)) === key ||
           ((row.aliases as string[]) ?? []).some((alias) => slugKey(alias) === key));
-        if (!target) continue;
+        if (!target) {
+          // Loudly, per the house rule: an unmatched Brands-base record is a
+          // naming discrepancy someone should see, not a silent skip.
+          await attempt(`brand-identity:${identity.name}`, async () => {
+            throw new Error(
+              `Brands base record "${identity.name}" matches no booking brand name or alias.`,
+            );
+          });
+          continue;
+        }
         const brandId = String(target.id);
         if (identity.colorPrimary && (identity.colorPrimary !== target.color_primary || identity.colorAccent !== target.color_accent)) {
           await attempt(`brand-colours:${identity.name}`, async () => {
