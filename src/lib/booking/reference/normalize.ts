@@ -689,6 +689,8 @@ export type BrandIdentity = {
   colorPrimary: string | null;
   colorAccent: string | null;
   logo: { url: string; filename: string; size: number } | null;
+  /** The square mark from the Brands base "Avatar" field — favicons and profile images. */
+  avatar: { url: string; filename: string; size: number } | null;
 };
 
 const HEX_RE = /#?([0-9a-fA-F]{6})\b/g;
@@ -752,6 +754,8 @@ export function parseBrandIdentities(records: AirtableRecordLike[]): BrandIdenti
       colorPrimary: colours.primary,
       colorAccent: colours.accent,
       logo: pickBrandLogo(record.fields["Logo"]),
+      // Avatars are curated one-per-brand; first image attachment wins.
+      avatar: pickBrandLogo(record.fields["Avatar"]),
     });
   }
   return identities;

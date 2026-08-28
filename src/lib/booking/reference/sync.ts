@@ -156,18 +156,22 @@ async function syncStaffPhoto(
 async function syncBrandLogo(
   brandId: string,
   logo: { url: string; filename: string; size: number },
+  kind: "logo" | "avatar" = "logo",
 ): Promise<boolean> {
   const sql = getSql();
+  const cacheKey = kind === "logo" ? `brand-logo:${brandId}` : `brand-avatar:${brandId}`;
   const cached = await sql`
-    select payload from booking.reference_cache where key = ${`brand-logo:${brandId}`}`;
+    select payload from booking.reference_cache where key = ${cacheKey}`;
   const payload = (cached[0]?.payload ?? null) as { filename?: string; size?: number } | null;
   if (payload?.filename === logo.filename && payload?.size === logo.size) {
     // The blob is in place — but assert the pointer anyway. A prior run once
     // uploaded successfully and died before this update, leaving a working
     // blob nobody linked to; skipping here made that permanent.
-    await sql`
-      update booking.brand set logo_url = ${`/api/booking/brand-logo/${brandId}`}
-       where id = ${brandId} and logo_url is distinct from ${`/api/booking/brand-logo/${brandId}`}`;
+    if (kind === "logo") {
+      await sql`
+        update booking.brand set logo_url = ${`/api/booking/brand-logo/${brandId}`}
+         where id = ${brandId} and logo_url is distinct from ${`/api/booking/brand-logo/${brandId}`}`;
+    }
     return true;
   }
 
@@ -177,22 +181,24 @@ async function syncBrandLogo(
   if (bytes.length === 0) throw new Error("logo download was empty");
   const hash = createHash("sha256").update(bytes).digest("hex").slice(0, 16);
   const contentType = response.headers.get("content-type")?.split(";")[0]?.trim() || "image/png";
-  const blob = await put(`booking/brand/${hash}`, bytes, {
+  const blob = await put(`booking/brand/${kind}-${hash}`, bytes, {
     access: "private",
     contentType,
     addRandomSuffix: false,
   });
   await sql`
     insert into booking.reference_cache (key, payload, fetched_at)
-    values (${`brand-logo:${brandId}`}, ${JSON.stringify({
+    values (${cacheKey}, ${JSON.stringify({
       blobUrl: blob.url,
       contentType,
       filename: logo.filename,
       size: logo.size,
     })}::jsonb, now())
     on conflict (key) do update set payload = excluded.payload, fetched_at = excluded.fetched_at`;
-  await sql`
-    update booking.brand set logo_url = ${`/api/booking/brand-logo/${brandId}`} where id = ${brandId}`;
+  if (kind === "logo") {
+    await sql`
+      update booking.brand set logo_url = ${`/api/booking/brand-logo/${brandId}`} where id = ${brandId}`;
+  }
   return true;
 }
 
@@ -388,7 +394,7 @@ export async function runReferenceSync(): Promise<ReferenceSyncSummary> {
   const brandsToken = airtableBrandsToken();
   if (brandsToken) {
     const brandRecords = await attempt("airtable:brand-identity", () =>
-      listAll(AIRTABLE_BRANDS_BASE_ID, AIRTABLE_BRANDS_TABLE, ["Name", "Logo", "Brand Colours"], brandsToken));
+      listAll(AIRTABLE_BRANDS_BASE_ID, AIRTABLE_BRANDS_TABLE, ["Name", "Logo", "Avatar", "Brand Colours"], brandsToken));
     if (brandRecords) {
       const bookingBrands = await sql`select id, name, aliases, color_primary, color_accent from booking.brand`;
       for (const identity of parseBrandIdentities(brandRecords)) {
@@ -429,6 +435,9 @@ export async function runReferenceSync(): Promise<ReferenceSyncSummary> {
         }
         if (identity.logo) {
           await attempt(`brand-logo:${identity.name}`, () => syncBrandLogo(brandId, identity.logo!));
+        }
+        if (identity.avatar) {
+          await attempt(`brand-avatar:${identity.name}`, () => syncBrandLogo(brandId, identity.avatar!, "avatar"));
         }
       }
     }

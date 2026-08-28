@@ -6,22 +6,27 @@ import { BookingFlow } from "@/components/booking-public/BookingFlow";
 
 export const dynamic = "force-dynamic";
 
-// Brands with a current icon asset in Drive get their own favicon on their
-// booking pages; the rest keep the CallTime mark (segment icon.svg).
-const BRAND_FAVICONS: Record<string, string> = {
-  "magnificent-explorers": "/brand-icons/magnificent-explorers.svg",
-  carex: "/brand-icons/carex.svg",
-  "salt-caravan": "/brand-icons/salt-caravan.png",
-};
-
 export async function generateMetadata({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<Metadata> {
   const params = await searchParams;
-  const brandKey = first(params.brand);
-  const icon = brandKey ? BRAND_FAVICONS[brandKey] : undefined;
+  // Every brand's avatar is synced from the Brands base; brand links use it
+  // directly, BM links resolve the BM's primary brand first.
+  let brandKey = first(params.brand);
+  const bm = first(params.bm);
+  if (!brandKey && bm) {
+    try {
+      const { getStaffBySlug, getBrandById } = await import("@/lib/booking/availability/service");
+      const staff = await getStaffBySlug(bm);
+      const brand = staff?.primaryBrandId ? await getBrandById(staff.primaryBrandId) : null;
+      brandKey = brand?.key ?? null;
+    } catch {
+      brandKey = null;
+    }
+  }
+  const icon = brandKey ? `/api/booking/brand-avatar/${encodeURIComponent(brandKey)}` : undefined;
   return {
     title: "Book a call",
     description: "Choose a time that suits you. We'd love to talk travel.",
