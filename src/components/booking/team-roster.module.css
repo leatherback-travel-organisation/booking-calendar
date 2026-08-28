@@ -226,17 +226,30 @@
   font-size: var(--text-body, 15px);
 }
 
+/* The links column carries the most content on the page; give it room so
+   each brand's chips sit on one flowing line instead of a cramped stack. */
+.table th:nth-child(2),
+.table td:nth-child(2) {
+  width: 44%;
+  min-width: 380px;
+}
+
 .copyRow {
-  display: grid;
-  grid-template-columns: repeat(2, max-content);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
 }
 
-/* Brand label opening a multi-brand BM's per-brand link row. */
+.copyRow + .copyRow {
+  margin-top: 10px;
+}
+
+/* Brand heading above a multi-brand BM's link row. */
 .copyRowLabel {
+  flex-basis: 100%;
   color: var(--ink-soft);
   font-size: var(--text-label, 12px);
   font-weight: 500;
-  margin-right: 4px;
   white-space: nowrap;
 }
