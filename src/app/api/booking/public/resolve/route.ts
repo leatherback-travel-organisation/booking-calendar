@@ -6,7 +6,7 @@
 import { resolveManager } from "@/lib/booking/routing";
 import { getBrands, getCachedDepartures } from "@/lib/booking/reference/queries";
 import type { Brand } from "@/lib/booking/model";
-import { guestEventTypeName } from "@/lib/booking/model";
+import { guestEventTypeDescription, guestEventTypeName } from "@/lib/booking/model";
 import { getBrandByKey, getEventTypesForBrand } from "@/lib/booking/availability/service";
 import { jsonResponse, supportPhone } from "@/lib/booking/public-api";
 
@@ -82,7 +82,7 @@ export async function GET(request: Request): Promise<Response> {
     eventTypes: eventTypes.map((t) => ({
       key: t.key,
       name: guestEventTypeName(t.key, t.name),
-      description: t.description,
+      description: guestEventTypeDescription(t.key, t.description),
       durationMin: t.durationMin,
     })),
     departures: resolved.departures.map((d) => ({

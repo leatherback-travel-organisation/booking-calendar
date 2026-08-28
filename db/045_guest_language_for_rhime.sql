@@ -7,8 +7,8 @@
 -- from anywhere.
 
 update booking.message_template
-   set subject   = replace(replace(subject,  'RHIME Call', 'Trip Planning Call'), 'RHIME call', 'planning call'),
-       body_html = replace(replace(body_html,'RHIME Call', 'Trip Planning Call'), 'RHIME call', 'planning call')
+   set subject   = replace(replace(subject,  'RHIME Call', 'Booking Call'), 'RHIME call', 'booking call'),
+       body_html = replace(replace(body_html,'RHIME Call', 'Booking Call'), 'RHIME call', 'booking call')
  where subject like '%RHIME%' or body_html like '%RHIME%';
 
 insert into booking.audit_log (actor, action, subject, detail)

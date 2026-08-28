@@ -67,7 +67,18 @@ export type Staff = {
  * see plain language; BM pages keep the internal name.
  */
 export function guestEventTypeName(key: string, name: string): string {
-  return key === "rhime" ? "Trip Planning Call" : name;
+  return key === "rhime" ? "Booking Call" : name;
+}
+
+/**
+ * Guest-facing description. The stored description for the RHIME call is the
+ * internal definition (the acronym, "qualifying call") — guests instead get
+ * told plainly what the call is for: booking their spot.
+ */
+export function guestEventTypeDescription(key: string, description: string | null): string | null {
+  return key === "rhime"
+    ? "Ready to book? We'll walk through the trip together, answer your questions and reserve your spot."
+    : description;
 }
 
 /** "Senior Booking Manager" in Notion grants comms editing; matched loosely. */

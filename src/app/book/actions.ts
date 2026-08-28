@@ -5,7 +5,7 @@
 // behave exactly like a resolve→pool response.
 
 import { headers } from "next/headers";
-import { guestEventTypeName } from "@/lib/booking/model";
+import { guestEventTypeDescription, guestEventTypeName } from "@/lib/booking/model";
 import { getBrandByKey, getEventTypesForBrand } from "@/lib/booking/availability/service";
 import { phoneForCountry } from "@/components/booking-public/phone";
 import type { PublicBrand, PublicEventType } from "@/components/booking-public/types";
@@ -34,7 +34,7 @@ export async function resolveBrandPoolAction(brandKey: string): Promise<PoolReso
     eventTypes: eventTypes.map((t) => ({
       key: t.key,
       name: guestEventTypeName(t.key, t.name),
-      description: t.description,
+      description: guestEventTypeDescription(t.key, t.description),
       durationMin: t.durationMin,
     })),
   };

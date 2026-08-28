@@ -5,6 +5,10 @@ const nextConfig: NextConfig = {
   // PGlite (the opt-in local demo database) ships WASM assets it locates via
   // import.meta.url — bundling it breaks that resolution, so load it natively.
   serverExternalPackages: ["@electric-sql/pglite"],
+  // The production-side migration runner reads db/*.sql at request time.
+  outputFileTracingIncludes: {
+    "/api/booking/cron/migrate": ["./db/*.sql"],
+  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "caminowomen.com.au" },
