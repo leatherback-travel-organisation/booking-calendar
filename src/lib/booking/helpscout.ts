@@ -115,6 +115,9 @@ export type HelpscoutEmailInput = {
   guestEmail: string;
   subject: string;
   bodyHtml: string;
+  /** BM crib sheet, added as an internal note ABOVE the guest email — just
+      the facts they need to make the call, reach the guest, log the CRM. */
+  internalNote?: string | null;
   ics?: { filename: string; content: string } | null;
 };
 
@@ -158,6 +161,7 @@ export async function sendCustomerEmail(input: HelpscoutEmailInput): Promise<str
               }
             : {}),
         },
+        ...(input.internalNote ? [{ type: "note", text: input.internalNote }] : []),
       ],
     }),
   });

@@ -27,6 +27,8 @@ export type OutboundMessage = {
     content: string;
     method: "REQUEST" | "CANCEL";
   };
+  /** BM-facing crib sheet; Help Scout attaches it as an internal note. */
+  internalNote?: string | null;
   /** For audit/debug context — the Help Scout fields also route the send. */
   meta: {
     moment: string;
@@ -128,6 +130,7 @@ class HelpScoutNotifier implements Notifier {
         guestEmail: message.to,
         subject: message.subject,
         bodyHtml: message.html,
+        internalNote: message.internalNote ?? null,
         ics: message.ics ? { filename: message.ics.filename, content: message.ics.content } : null,
       });
       return { ok: true, id: conversationId ?? "helpscout" };

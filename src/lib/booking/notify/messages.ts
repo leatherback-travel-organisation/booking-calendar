@@ -208,6 +208,32 @@ export async function sendBookingSms(moment: Moment, ctx: BookingEmailContext): 
   return { ok: true, id };
 }
 
+
+/**
+ * The BM's crib sheet for a state-changing email (confirmation, reschedule,
+ * cancellation): only what they need to make the call, reach the guest and
+ * log the CRM — none of the guest-facing warmth. Attached as an internal
+ * note above the guest email in Help Scout.
+ */
+function bmCribSheet(moment: Moment, ctx: BookingEmailContext): string | null {
+  if (moment !== "confirmation" && moment !== "reschedule" && moment !== "cancellation") return null;
+  const start = DateTime.fromISO(ctx.startIso, { zone: ctx.brand.schedulingTimezone });
+  const headline =
+    moment === "cancellation"
+      ? "CANCELLED"
+      : `${guestEventTypeName(ctx.eventType.key, ctx.eventType.name)}${moment === "reschedule" ? " (rescheduled)" : ""}`;
+  const lines = [
+    `<p><strong>${headline}: ${start.toFormat("cccc d LLLL yyyy, h:mma").toLowerCase()} ${start.toFormat("ZZZZ")} · ${ctx.durationMin} min</strong></p>`,
+    "<ul>",
+    `<li>Guest: ${escapeHtml(ctx.guestName)} · ${escapeHtml(ctx.guestEmail)}${ctx.guestPhone ? ` · ${escapeHtml(ctx.guestPhone)}` : ""}</li>`,
+    ctx.callMedium === "phone"
+      ? `<li>Phone call: you ring the guest${ctx.guestPhone ? ` on ${escapeHtml(ctx.guestPhone)}` : " (no number on file!)"}</li>`
+      : `<li>Video call: ${ctx.meetUrl ? escapeHtml(ctx.meetUrl) : "Meet link on the calendar event"}</li>`,
+    "</ul>",
+  ];
+  return lines.filter(Boolean).join("");
+}
+
 export async function sendBookingEmail(moment: Moment, ctx: BookingEmailContext): Promise<SendResult> {
   const template = await resolveTemplate(moment, ctx.brand.id, ctx.eventType.key);
   const values = buildVariableValues(ctx);
@@ -258,6 +284,7 @@ export async function sendBookingEmail(moment: Moment, ctx: BookingEmailContext)
           },
         }
       : {}),
+    internalNote: bmCribSheet(moment, ctx),
     meta: {
       moment,
       brandKey: ctx.brand.key,
