@@ -5,6 +5,7 @@
 // out, CORS-open — safe to call from the portal's client or server.
 
 import { resolveManager } from "@/lib/booking/routing";
+import { guestEventTypeName } from "@/lib/booking/model";
 import { getEventTypesForBrand } from "@/lib/booking/availability/service";
 import { appUrl, jsonResponse } from "@/lib/booking/public-api";
 
@@ -69,7 +70,7 @@ export async function GET(request: Request): Promise<Response> {
           : null,
       poolLabel: resolved.kind === "pool" ? `the ${resolved.brand.name} team` : null,
       callType: eventType
-        ? { key: eventType.key, name: eventType.name, durationMin: eventType.durationMin }
+        ? { key: eventType.key, name: guestEventTypeName(eventType.key, eventType.name), durationMin: eventType.durationMin }
         : null,
     },
     { headers: CORS },

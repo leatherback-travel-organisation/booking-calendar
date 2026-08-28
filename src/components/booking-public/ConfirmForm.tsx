@@ -47,6 +47,52 @@ function makeIdempotencyKey(): string {
   });
 }
 
+
+// The notes prompt speaks to what THIS call is for, instead of one generic
+// "anything you'd like us to know". Keys match booking.event_type; unknown
+// keys (new types added later) fall back to the generic wording.
+function notesPrompt(eventTypeKey: string, tripName: string | null): { label: string; placeholder: string } {
+  switch (eventTypeKey) {
+    case "rhime":
+      return tripName
+        ? {
+            label: `Anything you'd like to cover about ${tripName}?`,
+            placeholder: "Questions about the itinerary, fitness, timing — nothing is too small.",
+          }
+        : {
+            label: "Which trip are you interested in?",
+            placeholder: "e.g. Balkans Rail Explorer, and anything you'd like to cover on the call.",
+          };
+    case "enquiry":
+      return {
+        label: "What would you like to talk about?",
+        placeholder: "Destinations you're dreaming of, rough dates, travel style…",
+      };
+    case "lead-up":
+      return {
+        label: "Anything you'd like covered before your trip?",
+        placeholder: "Packing, fitness, itinerary details, dietaries…",
+      };
+    case "pre-trip":
+      return {
+        label: "Any last questions before departure?",
+        placeholder: "Meeting point, what to bring, final details…",
+      };
+    case "feedback":
+      return {
+        label: "Anything in particular you'd like to share about your trip?",
+        placeholder: "Highlights, guides, what we could do better…",
+      };
+    case "chat":
+      return {
+        label: "What's on your mind?",
+        placeholder: "Whatever you'd like to chat about — big or small.",
+      };
+    default:
+      return { label: "Anything you\u2019d like us to know?", placeholder: "" };
+  }
+}
+
 export function ConfirmForm({
   slot,
   timeZone,
@@ -232,12 +278,14 @@ export function ConfirmForm({
 
       <div className={styles.field}>
         <label className={styles.fieldLabel} htmlFor="bp-notes">
-          Anything you&rsquo;d like us to know? <span className={styles.optionalTag}>(optional)</span>
+          {notesPrompt(meta.eventTypeKey, meta.tripName).label}{" "}
+          <span className={styles.optionalTag}>(optional)</span>
         </label>
         <textarea
           id="bp-notes"
           className={styles.textarea}
           maxLength={2000}
+          placeholder={notesPrompt(meta.eventTypeKey, meta.tripName).placeholder}
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
         />

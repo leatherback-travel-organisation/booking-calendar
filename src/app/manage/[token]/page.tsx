@@ -2,6 +2,7 @@
 // an unknown token gets a deliberately generic answer with no detail.
 
 import type { Metadata } from "next";
+import { guestEventTypeName } from "@/lib/booking/model";
 import { headers } from "next/headers";
 import { bookingManageable, findBookingByToken } from "@/lib/booking/service";
 import { getBrandById, getEventTypeById, getStaffById } from "@/lib/booking/availability/service";
@@ -86,7 +87,7 @@ export default async function ManagePage({ params }: { params: Promise<{ token: 
         colorAccent: brand.colorAccent,
         phone: phoneForCountry(brand, country),
       }}
-      eventType={{ key: eventType.key, name: eventType.name, durationMin: eventType.durationMin }}
+      eventType={{ key: eventType.key, name: guestEventTypeName(eventType.key, eventType.name), durationMin: eventType.durationMin }}
     />
   );
 }

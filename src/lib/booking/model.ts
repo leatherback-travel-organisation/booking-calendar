@@ -61,6 +61,15 @@ export type Staff = {
   calendarOk: boolean;
 };
 
+/**
+ * Guest-facing display name for an event type. "RHIME" is an internal
+ * acronym (Relationship, Health, Information, Match, Expectations) — guests
+ * see plain language; BM pages keep the internal name.
+ */
+export function guestEventTypeName(key: string, name: string): string {
+  return key === "rhime" ? "Trip Planning Call" : name;
+}
+
 /** "Senior Booking Manager" in Notion grants comms editing; matched loosely. */
 export function isSeniorTitle(jobTitle: string | null): boolean {
   return /senior booking manager/i.test(jobTitle ?? "");

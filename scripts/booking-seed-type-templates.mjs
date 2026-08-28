@@ -26,7 +26,7 @@ const VOICES = {
   "camino-women": {
     confirmLead: "Wonderful",
     hug: "you're one step closer already",
-    signoff: "One foot in front of the other — you've got this",
+    signoff: "One foot in front of the other, you've got this",
     emoji: " 🥾",
   },
   "magnificent-explorers": {
@@ -65,46 +65,46 @@ const VOICES = {
 const TYPES = {
   enquiry: {
     noun: "trip enquiry chat",
-    purpose: "a chance to dream up where you might go next — no commitments, just possibilities",
-    prep: "Bring the destinations on your shortlist, or none at all — that's half the fun.",
+    purpose: "a chance to dream up where you might go next: no commitments, just possibilities",
+    prep: "Bring the destinations on your shortlist, or none at all; that's half the fun.",
   },
   rhime: {
     noun: "RHIME call",
-    purpose: "we'll make sure this trip is the right match for you — expectations, fitness, and all the little details",
+    purpose: "we'll make sure this trip is the right match for you: expectations, fitness, and all the little details",
     prep: "Have your questions about the itinerary handy; nothing is too small to ask.",
   },
   "lead-up": {
     noun: "lead-up call",
     purpose: "a pre-departure check-in so you're fully set before you go",
-    prep: "Gather any last questions — packing, paperwork, meeting the group.",
+    prep: "Gather any last questions: packing, paperwork, meeting the group.",
   },
   feedback: {
     noun: "feedback call",
-    purpose: "we'd love to hear how your trip went — the stories and the honest bits alike",
+    purpose: "we'd love to hear how your trip went: the stories and the honest bits alike",
     prep: "Bring your favourite moment, and anything we could have done better.",
   },
   chat: {
     noun: "quick chat",
     purpose: "fifteen minutes for whatever's on your mind",
-    prep: "No prep needed — just bring your questions.",
+    prep: "No prep needed, just bring your questions.",
   },
 };
 
 const WHEN =
-  "<p><strong>{{booking.meeting_date}}</strong> at <strong>{{booking.meeting_time}}</strong> ({{booking.timezone}}) — we've set aside {{booking.duration}} just for you.</p>";
+  "<p><strong>{{booking.meeting_date}}</strong> at <strong>{{booking.meeting_time}}</strong> ({{booking.timezone}}). We've set aside {{booking.duration}} just for you.</p>";
 const JOIN = "<p>{{booking.join_details}}</p>";
 const MANAGE =
-  '<p>Life happens — you can <a href="{{booking.reschedule_link}}">reschedule</a> or <a href="{{booking.cancel_link}}">cancel</a> whenever you need, no fuss.</p>';
-const RESCHED = '<p>Day looking different than planned? <a href="{{booking.reschedule_link}}">Reschedule here</a> — takes seconds.</p>';
+  '<p>Life happens. You can <a href="{{booking.reschedule_link}}">reschedule</a> or <a href="{{booking.cancel_link}}">cancel</a> whenever you need, no fuss.</p>';
+const RESCHED = '<p>Day looking different than planned? <a href="{{booking.reschedule_link}}">Reschedule here</a>. Takes seconds.</p>';
 
 function templates(voice, type) {
   const signoff = `<p>${voice.signoff},<br/>{{host.first_name}} at {{brand.name}}</p>`;
   return {
     confirmation: {
-      subject: `${voice.confirmLead}, {{guest.first_name}} — your ${type.noun} with {{host.first_name}} is locked in`,
+      subject: `${voice.confirmLead}, {{guest.first_name}}, your ${type.noun} with {{host.first_name}} is locked in`,
       bodyHtml:
         `<p>Hi {{guest.first_name}},</p>` +
-        `<p>${voice.confirmLead} — your ${type.noun} with {{host.first_name}} is locked in, and ${voice.hug}!${voice.emoji}</p>` +
+        `<p>${voice.confirmLead}, your ${type.noun} with {{host.first_name}} is locked in, and ${voice.hug}!${voice.emoji}</p>` +
         `<p>This one's ${type.purpose}.</p>` +
         WHEN +
         JOIN +
@@ -116,35 +116,35 @@ function templates(voice, type) {
       subject: `Tomorrow: your ${type.noun} with {{host.first_name}} at {{booking.meeting_time}}`,
       bodyHtml:
         `<p>Hi {{guest.first_name}},</p>` +
-        `<p>Just a friendly nudge — your ${type.noun} with {{host.first_name}} is tomorrow, {{booking.meeting_date}}, at <strong>{{booking.meeting_time}}</strong> ({{booking.timezone}}).</p>` +
+        `<p>Just a friendly nudge, your ${type.noun} with {{host.first_name}} is tomorrow, {{booking.meeting_date}}, at <strong>{{booking.meeting_time}}</strong> ({{booking.timezone}}).</p>` +
         JOIN +
         `<p>${type.prep}</p>` +
         RESCHED +
         signoff,
     },
     reminder_1h: {
-      subject: `Nearly time — your ${type.noun} starts at {{booking.meeting_time}}`,
+      subject: `Nearly time, your ${type.noun} starts at {{booking.meeting_time}}`,
       bodyHtml:
         `<p>Hi {{guest.first_name}},</p>` +
-        `<p>Nearly time! Your ${type.noun} with {{host.first_name}} starts at <strong>{{booking.meeting_time}}</strong> ({{booking.timezone}}) — about an hour from now.</p>` +
+        `<p>Nearly time! Your ${type.noun} with {{host.first_name}} starts at <strong>{{booking.meeting_time}}</strong> ({{booking.timezone}}), about an hour from now.</p>` +
         JOIN +
         `<p>See you very soon!${voice.emoji}</p>`,
     },
     reschedule: {
-      subject: `All sorted — your ${type.noun} has moved to {{booking.meeting_date}}`,
+      subject: `All sorted, your ${type.noun} has moved to {{booking.meeting_date}}`,
       bodyHtml:
         `<p>Hi {{guest.first_name}},</p>` +
-        `<p>All sorted — your ${type.noun} with {{host.first_name}} has moved to <strong>{{booking.meeting_date}}</strong> at <strong>{{booking.meeting_time}}</strong> ({{booking.timezone}}).</p>` +
+        `<p>All sorted, your ${type.noun} with {{host.first_name}} has moved to <strong>{{booking.meeting_date}}</strong> at <strong>{{booking.meeting_time}}</strong> ({{booking.timezone}}).</p>` +
         JOIN +
-        `<p>Need to juggle it again? <a href="{{booking.reschedule_link}}">Reschedule</a> · <a href="{{booking.cancel_link}}">Cancel</a> — whatever works for you.</p>` +
+        `<p>Need to juggle it again? <a href="{{booking.reschedule_link}}">Reschedule</a> · <a href="{{booking.cancel_link}}">Cancel</a>, whatever works for you.</p>` +
         signoff,
     },
     cancellation: {
       subject: `Your ${type.noun} on {{booking.meeting_date}} has been cancelled`,
       bodyHtml:
         `<p>Hi {{guest.first_name}},</p>` +
-        `<p>Your ${type.noun} with {{host.first_name}} on {{booking.meeting_date}} at {{booking.meeting_time}} ({{booking.timezone}}) is cancelled — all taken care of, nothing more for you to do.</p>` +
-        `<p>If you'd still love to talk, we're easy to reach: call {{brand.name}} on {{brand.phone}}, or book a new time whenever suits you.</p>` +
+        `<p>Your ${type.noun} with {{host.first_name}} on {{booking.meeting_date}} at {{booking.meeting_time}} ({{booking.timezone}}) is cancelled. All taken care of, nothing more for you to do.</p>` +
+        `<p>If you'd still love to talk, you can <a href="{{booking.book_link}}">book a new time</a> whenever suits you.</p>` +
         `<p>${voice.signoff},<br/>The {{brand.name}} team</p>`,
     },
   };

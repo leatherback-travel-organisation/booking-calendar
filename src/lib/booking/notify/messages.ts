@@ -6,8 +6,9 @@
 import "server-only";
 
 import { DateTime } from "luxon";
+import { appUrl } from "../app-url";
 import { getSql } from "../db";
-import type { Brand, EventType, Staff } from "../model";
+import { guestEventTypeName, type Brand, type EventType, type Staff } from "../model";
 import { icsCancel, icsRequest } from "./ics.ts";
 import { escapeHtml, htmlToText, renderBrandEmail, renderTemplate } from "./render.ts";
 import type { VariableName } from "./variables.ts";
@@ -23,27 +24,27 @@ export const DEFAULT_TEMPLATES: Record<Moment, { subject: string; bodyHtml: stri
     subject: "You're booked, {{guest.first_name}}! {{booking.meeting_date}} at {{booking.meeting_time}} with {{host.first_name}}",
     bodyHtml:
       "<p>Hi {{guest.first_name}},</p>" +
-      "<p>Lovely news — your call with {{host.first_name}} is locked in! 🎉</p>" +
-      "<p><strong>{{booking.meeting_date}}</strong> at <strong>{{booking.meeting_time}}</strong> ({{booking.timezone}}) — we've set aside {{booking.duration}} just for you.</p>" +
+      "<p>Lovely news, your call with {{host.first_name}} is locked in! 🎉</p>" +
+      "<p><strong>{{booking.meeting_date}}</strong> at <strong>{{booking.meeting_time}}</strong> ({{booking.timezone}}). We've set aside {{booking.duration}} just for you.</p>" +
       "<p>{{booking.join_details}}</p>" +
-      "<p>Life happens — if that time stops working you can <a href=\"{{booking.reschedule_link}}\">reschedule</a> or <a href=\"{{booking.cancel_link}}\">cancel</a> whenever you need, no fuss.</p>" +
+      "<p>Life happens. If that time stops working you can <a href=\"{{booking.reschedule_link}}\">reschedule</a> or <a href=\"{{booking.cancel_link}}\">cancel</a> whenever you need, no fuss.</p>" +
       "<p>We can't wait to hear what you're dreaming up.</p>" +
       "<p>Talk soon,<br/>{{host.first_name}} at {{brand.name}}</p>",
   },
   reminder_24h: {
-    subject: "Tomorrow's the day — your call with {{host.first_name}} at {{booking.meeting_time}}",
+    subject: "Tomorrow's the day, your call with {{host.first_name}} at {{booking.meeting_time}}",
     bodyHtml:
       "<p>Hi {{guest.first_name}},</p>" +
-      "<p>Just a friendly nudge — you're chatting with {{host.first_name}} tomorrow, {{booking.meeting_date}}, at <strong>{{booking.meeting_time}}</strong> ({{booking.timezone}}).</p>" +
+      "<p>Just a friendly nudge: you're chatting with {{host.first_name}} tomorrow, {{booking.meeting_date}}, at <strong>{{booking.meeting_time}}</strong> ({{booking.timezone}}).</p>" +
       "<p>{{booking.join_details}}</p>" +
-      "<p>Day looking different than planned? <a href=\"{{booking.reschedule_link}}\">Reschedule here</a> — takes seconds.</p>" +
+      "<p>Day looking different than planned? <a href=\"{{booking.reschedule_link}}\">Reschedule here</a>. Takes seconds.</p>" +
       "<p>See you tomorrow!<br/>{{host.first_name}} at {{brand.name}}</p>",
   },
   reminder_1h: {
     subject: "Nearly time! Your call with {{host.first_name}} starts at {{booking.meeting_time}}",
     bodyHtml:
       "<p>Hi {{guest.first_name}},</p>" +
-      "<p>Nearly time! You and {{host.first_name}} are talking at <strong>{{booking.meeting_time}}</strong> ({{booking.timezone}}) — about an hour from now.</p>" +
+      "<p>Nearly time! You and {{host.first_name}} are talking at <strong>{{booking.meeting_time}}</strong> ({{booking.timezone}}), about an hour from now.</p>" +
       "<p>Pop the kettle on. {{booking.join_details}}</p>" +
       "<p>See you very soon! ☕</p>",
   },
@@ -51,17 +52,17 @@ export const DEFAULT_TEMPLATES: Record<Moment, { subject: string; bodyHtml: stri
     subject: "Your call on {{booking.meeting_date}} has been cancelled",
     bodyHtml:
       "<p>Hi {{guest.first_name}},</p>" +
-      "<p>Your call with {{host.first_name}} on {{booking.meeting_date}} at {{booking.meeting_time}} ({{booking.timezone}}) is cancelled — all taken care of, nothing more for you to do.</p>" +
-      "<p>If you'd still love a chat, we're easy to reach: call {{brand.name}} on {{brand.phone}}, or book a new time whenever suits you.</p>" +
+      "<p>Your call with {{host.first_name}} on {{booking.meeting_date}} at {{booking.meeting_time}} ({{booking.timezone}}) is cancelled. All taken care of, nothing more for you to do.</p>" +
+      "<p>If you'd still love a chat, <a href=\"{{booking.book_link}}\">book a new time</a> whenever suits you.</p>" +
       "<p>Hope we get to talk soon,<br/>The {{brand.name}} team</p>",
   },
   reschedule: {
-    subject: "All sorted — new time locked in: {{booking.meeting_date}} at {{booking.meeting_time}}",
+    subject: "All sorted. New time locked in: {{booking.meeting_date}} at {{booking.meeting_time}}",
     bodyHtml:
       "<p>Hi {{guest.first_name}},</p>" +
-      "<p>All sorted — your call with {{host.first_name}} has moved to <strong>{{booking.meeting_date}}</strong> at <strong>{{booking.meeting_time}}</strong> ({{booking.timezone}}).</p>" +
+      "<p>All sorted, your call with {{host.first_name}} has moved to <strong>{{booking.meeting_date}}</strong> at <strong>{{booking.meeting_time}}</strong> ({{booking.timezone}}).</p>" +
       "<p>{{booking.join_details}}</p>" +
-      "<p>Need to juggle it again? <a href=\"{{booking.reschedule_link}}\">Reschedule</a> · <a href=\"{{booking.cancel_link}}\">Cancel</a> — whatever works for you.</p>" +
+      "<p>Need to juggle it again? <a href=\"{{booking.reschedule_link}}\">Reschedule</a> · <a href=\"{{booking.cancel_link}}\">Cancel</a>, whatever works for you.</p>" +
       "<p>See you then!<br/>{{host.first_name}} at {{brand.name}}</p>",
   },
 };
@@ -121,14 +122,14 @@ function buildJoinDetails(ctx: BookingEmailContext): string {
   if ((ctx.callMedium ?? "video") === "phone") {
     const phone = ctx.guestPhone?.trim();
     return phone
-      ? `${escapeHtml(ctx.staff.firstName)} will call you on <strong>${escapeHtml(phone)}</strong> — keep your phone nearby.`
-      : `${escapeHtml(ctx.staff.firstName)} will call you — keep your phone nearby.`;
+      ? `${escapeHtml(ctx.staff.firstName)} will call you on <strong>${escapeHtml(phone)}</strong>. Keep your phone nearby.`
+      : `${escapeHtml(ctx.staff.firstName)} will call you. Keep your phone nearby.`;
   }
   if (ctx.meetUrl) {
     const url = escapeHtml(ctx.meetUrl);
     return `When it's time, join here: <a href="${url}">${url}</a>`;
   }
-  return "Your video link is on its way — it'll be in your reminder emails too.";
+  return "Your video link is on its way. It'll be in your reminder emails too.";
 }
 
 export function buildVariableValues(ctx: BookingEmailContext): Partial<Record<VariableName, string>> {
@@ -149,6 +150,7 @@ export function buildVariableValues(ctx: BookingEmailContext): Partial<Record<Va
     "booking.join_details": buildJoinDetails(ctx),
     "booking.reschedule_link": ctx.manageUrlRaw,
     "booking.cancel_link": `${ctx.manageUrlRaw}#cancel`,
+    "booking.book_link": `${appUrl()}/book?bm=${encodeURIComponent(ctx.staff.slug)}&type=${encodeURIComponent(ctx.eventType.key)}`,
     "host.first_name": ctx.staff.firstName,
     "host.full_name": ctx.staff.fullName,
     "host.email": ctx.staff.email,
@@ -176,14 +178,14 @@ export async function sendBookingSms(moment: Moment, ctx: BookingEmailContext): 
   const values = buildVariableValues(ctx);
   const joinLine =
     (ctx.callMedium ?? "video") === "phone"
-      ? `${ctx.staff.firstName} will call you — keep your phone nearby.`
+      ? `${ctx.staff.firstName} will call you. Keep your phone nearby.`
       : ctx.meetUrl
         ? `Join: ${ctx.meetUrl}`
         : "";
   const when =
     moment === "reminder_24h"
       ? `tomorrow at ${values["booking.meeting_time"]}`
-      : `at ${values["booking.meeting_time"]} — about an hour away`;
+      : `at ${values["booking.meeting_time"]}, about an hour away`;
   const text = [
     `${ctx.brand.name}: Hi ${values["guest.first_name"]}, your call with ${ctx.staff.firstName} is ${when} (${values["booking.timezone"]}).`,
     joinLine,
@@ -227,7 +229,7 @@ export async function sendBookingEmail(moment: Moment, ctx: BookingEmailContext)
     sequence: ctx.icalSequence ?? 0,
     startIso: ctx.startIso,
     endIso: ctx.endIso,
-    summary: `${ctx.eventType.name} — ${ctx.brand.name}`,
+    summary: `${guestEventTypeName(ctx.eventType.key, ctx.eventType.name)} — ${ctx.brand.name}`,
     description: `Your call with ${ctx.staff.firstName} from ${ctx.brand.name}.${ctx.meetUrl ? ` Join: ${ctx.meetUrl}` : ""}`,
     organizerName: ctx.staff.fullName,
     organizerEmail: ctx.staff.email,

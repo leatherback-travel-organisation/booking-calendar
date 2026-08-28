@@ -25,6 +25,7 @@ export const VARIABLES = {
     },
     reschedule_link: { label: "Reschedule link", sample: "https://cove.leatherbacktravel.com/manage/sample" },
     cancel_link: { label: "Cancel link", sample: "https://cove.leatherbacktravel.com/manage/sample#cancel" },
+    book_link: { label: "Book-again link (same BM, same call type)", sample: "https://cove.leatherbacktravel.com/book?bm=lisa-hartley&type=enquiry" },
   },
   host: {
     first_name: { label: "BM first name", sample: "Lisa" },
