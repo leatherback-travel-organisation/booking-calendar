@@ -302,7 +302,6 @@ span.bmLinkAvatar[data-fallback] {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
   padding: 7px 0;
   border-bottom: 1px solid var(--line);
@@ -313,6 +312,9 @@ span.bmLinkAvatar[data-fallback] {
 }
 
 .recentMain {
+  /* Fills the row so guest and detail sit flush left by the avatar; the
+     timestamp keeps the right edge. */
+  flex: 1;
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
