@@ -30,6 +30,7 @@ export const emergencyApplicationDirectory = [
     url: "https://docs.google.com/spreadsheets/d/1KuxRxUy5MlUNof1dC7oGuHRomsb5wDqBJC3fFPTeXN0/edit?gid=0#gid=0",
   },
   { slug: "money", name: "Your Money", url: "https://cove.leatherbacktravel.com/money" },
+  { slug: "garden", name: "The Garden", url: "https://cove.leatherbacktravel.com/garden" },
   {
     slug: "injuries",
     name: "Injury Reporting",

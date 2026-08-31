@@ -13,7 +13,7 @@ test("team access exposes the preview super admin applications", () => {
   });
   assert.deepEqual(
     apps.map((app) => app.id),
-    ["app-booking", APP_BUILDER_APPLICATION_ID, RECRUITMENT_APPLICATION_ID, SUPERPANEL_APPLICATION_ID, "app-trtl", "app-answers", "app-supplier-portal", "app-1mwu", "app-money", "app-injuries"],
+    ["app-booking", APP_BUILDER_APPLICATION_ID, RECRUITMENT_APPLICATION_ID, SUPERPANEL_APPLICATION_ID, "app-trtl", "app-answers", "app-supplier-portal", "app-1mwu", "app-money", "app-garden", "app-injuries"],
   );
 });
 

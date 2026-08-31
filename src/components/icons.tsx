@@ -73,3 +73,14 @@ export function AppsIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+export function GardenIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 21v-8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 13c0-3.6-2.7-6.5-6.5-6.5 0 3.6 2.9 6.5 6.5 6.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 10.5c0-3 2.3-5.5 5.5-5.5 0 3-2.5 5.5-5.5 5.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M5.5 21h13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
