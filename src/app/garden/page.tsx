@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { GardenWorkspace } from "@/components/garden/garden-workspace";
 import { requireApplicationPermission } from "@/lib/access/server";
@@ -14,7 +15,13 @@ export const metadata: Metadata = {
 
 export default async function GardenPage() {
   const identity = await requireEmployeeIdentity();
-  await requireApplicationPermission(identity, "garden", "garden.read");
+  try {
+    await requireApplicationPermission(identity, "garden", "garden.read");
+  } catch {
+    // Pre-launch (application status: maintenance) or no entitlement:
+    // the Garden simply doesn't exist yet for this viewer.
+    notFound();
+  }
   const workspace = await getGardenWorkspace(identity);
   return (
     <AppShell active="garden">

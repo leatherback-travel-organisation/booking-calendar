@@ -38,12 +38,15 @@ test("project drawer opens with editable fields and last-modified metadata", asy
   await expect(page.getByText("Demonstration data — changes stay in this tab only.")).toBeVisible();
 });
 
-test("cancelled project shows red acknowledgement state and Got it settles it for the viewer", async ({ page }) => {
+test("cancelling a project via the drawer requires a reason and shows the acknowledgement state", async ({ page }) => {
   await page.goto("/garden");
-  await page.getByRole("heading", { name: "Online Booking Portal", level: 3 }).click();
+  await page.getByRole("heading", { name: "The Helm - Pod Lead Dashboard", level: 3 }).click();
   const drawer = page.getByRole("dialog");
+  page.once("dialog", (dialog) => dialog.accept("Superseded by the Databox dashboards."));
+  await drawer.getByLabel("Growth stage").selectOption("Cancelled or replaced");
   await expect(drawer.getByText("This project has been cancelled or replaced.")).toBeVisible();
-  await expect(drawer.getByText("Functionality incorporated into Guest Portal.").first()).toBeVisible();
+  await expect(drawer.getByText("Superseded by the Databox dashboards.").first()).toBeVisible();
+  await expect(drawer.getByText("Justin Kelaher").first()).toBeVisible();
 });
 
 test("create project flow validates required fields and plants a project", async ({ page }) => {
@@ -69,9 +72,9 @@ test("create project flow validates required fields and plants a project", async
   await expect(page.getByRole("heading", { name: "E2E Compost Rollout", level: 3 })).toBeVisible();
 });
 
-test("archive holds completed and cancelled work with reasons", async ({ page }) => {
+test("archive starts empty — every supplied project is current", async ({ page }) => {
   await page.goto("/garden");
   await page.getByRole("tab", { name: /Archive/ }).click();
-  await expect(page.getByRole("heading", { name: "Exploring Web Design Capabilities", level: 3 })).toBeVisible();
-  await expect(page.getByText("Superseded by the Automations Index project.")).toBeVisible();
+  await expect(page.getByText("The Archive is empty for now.")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 3 })).toHaveCount(0);
 });

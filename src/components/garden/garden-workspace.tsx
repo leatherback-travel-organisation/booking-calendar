@@ -478,13 +478,22 @@ export function GardenWorkspace({ workspace }: { workspace: GardenWorkspaceData 
 
       {visible.length === 0 ? (
         <div className={styles.empty}>
-          <strong>No projects match these filters.</strong>
-          <span>Try widening the search{filtersActive ? " or clear the filters" : ""}.</span>
-          {filtersActive ? (
-            <button type="button" className={styles.clearFilters} onClick={clearFilters}>
-              Clear filters
-            </button>
-          ) : null}
+          {view === "archive" && !filtersActive ? (
+            <>
+              <strong>The Archive is empty for now.</strong>
+              <span>Completed projects move here a month after they finish; cancelled or replaced projects keep their reason here.</span>
+            </>
+          ) : (
+            <>
+              <strong>No projects match these filters.</strong>
+              <span>Try widening the search{filtersActive ? " or clear the filters" : ""}.</span>
+              {filtersActive ? (
+                <button type="button" className={styles.clearFilters} onClick={clearFilters}>
+                  Clear filters
+                </button>
+              ) : null}
+            </>
+          )}
         </div>
       ) : view === "archive" ? (
         <>

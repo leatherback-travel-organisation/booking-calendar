@@ -3,7 +3,7 @@ import Link from "next/link";
 import { BrandsIcon, CompassIcon, GardenIcon, PeopleIcon } from "./icons";
 import { AccountMenu } from "./account-menu";
 import { identityMode, requireEmployeeIdentity } from "@/lib/identity/server";
-import { requireCoveUser } from "@/lib/access/server";
+import { accessibleApplicationsFor, requireCoveUser } from "@/lib/access/server";
 
 type AppShellProps = {
   active: "home" | "people" | "brands" | "garden" | "money" | "recruitment" | "app-builder" | "admin" | "systems" | "booking";
@@ -17,6 +17,10 @@ export async function AppShell({ active, adminSection = "people", systemsSection
   const mode = identityMode();
   const accessUser = await requireCoveUser(identity);
   const canManageAccess = accessUser.platformRoles.some((role) => role === "super_admin" || role === "access_admin");
+  // The Garden link keys off the live application registry, so pre-launch
+  // (status: maintenance) it stays hidden without a code change.
+  const applications = await accessibleApplicationsFor(identity).catch(() => []);
+  const showGarden = applications.some((application) => application.slug === "garden");
   const canManageSystems = accessUser.platformRoles.some((role) => role === "super_admin" || role === "systems_admin");
   const adminHref = adminSection === "money" ? "/admin/money" : adminSection === "injuries" ? "/admin/injuries" : `/admin${adminSection === "audit" ? "?view=audit" : ""}`;
   const systemsHref = systemsSection === "websites" ? "/systems?view=websites" : "/systems";
@@ -42,7 +46,7 @@ export async function AppShell({ active, adminSection = "people", systemsSection
           <Link href="/" aria-current={active === "home" ? "page" : undefined} className={`cove-nav-link ${active === "home" ? "active" : ""}`}><CompassIcon className="cove-nav-icon" /><span>Home</span></Link>
           <Link href="/people" aria-current={active === "people" ? "page" : undefined} className={`cove-nav-link ${active === "people" ? "active" : ""}`}><PeopleIcon className="cove-nav-icon" /><span>People</span></Link>
           <Link href="/brands" aria-current={active === "brands" ? "page" : undefined} className={`cove-nav-link ${active === "brands" ? "active" : ""}`}><BrandsIcon className="cove-nav-icon" /><span>Brands</span></Link>
-          <Link href="/garden" aria-current={active === "garden" ? "page" : undefined} className={`cove-nav-link ${active === "garden" ? "active" : ""}`}><GardenIcon className="cove-nav-icon" /><span>Garden</span></Link>
+          {showGarden ? <Link href="/garden" aria-current={active === "garden" ? "page" : undefined} className={`cove-nav-link ${active === "garden" ? "active" : ""}`}><GardenIcon className="cove-nav-icon" /><span>Garden</span></Link> : null}
         </nav>
 
         <div className="cove-profile-area">
