@@ -42,9 +42,10 @@ export async function getBrands(): Promise<Brand[]> {
     fromEmail: row.from_email as string,
     fromName: row.from_name as string,
     replyTo: (row.reply_to as string | null) ?? null,
-    // Default true so an un-migrated database behaves like the schema default.
-    reminder24hEnabled: row.reminder_24h_enabled === undefined ? true : Boolean(row.reminder_24h_enabled),
-    reminder1hEnabled: row.reminder_1h_enabled === undefined ? true : Boolean(row.reminder_1h_enabled),
+    // Default false so an un-migrated database behaves like the schema
+    // default (off since 050 — reminders send only where deliberately enabled).
+    reminder24hEnabled: Boolean(row.reminder_24h_enabled),
+    reminder1hEnabled: Boolean(row.reminder_1h_enabled),
     smsRemindersEnabled: Boolean(row.sms_reminders_enabled),
     active: row.active as boolean,
   }));
