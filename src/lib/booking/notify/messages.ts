@@ -153,7 +153,9 @@ export function buildVariableValues(ctx: BookingEmailContext): Partial<Record<Va
     "booking.book_link": `${appUrl()}/book?bm=${encodeURIComponent(ctx.staff.slug)}&type=${encodeURIComponent(ctx.eventType.key)}`,
     "host.first_name": ctx.staff.firstName,
     "host.full_name": ctx.staff.fullName,
-    "host.email": ctx.staff.email,
+    // The brand's monitored inbox, NOT the BM's own address — guests must
+    // never be handed an email nobody reads.
+    "host.email": ctx.brand.replyTo ?? ctx.brand.fromEmail,
     "host.photo": ctx.staff.photoUrl ?? "",
     "host.bio": ctx.staff.bio ?? "",
     "brand.name": ctx.brand.name,
@@ -259,8 +261,10 @@ export async function sendBookingEmail(moment: Moment, ctx: BookingEmailContext)
     endIso: ctx.endIso,
     summary: `${guestEventTypeName(ctx.eventType.key, ctx.eventType.name)} — ${ctx.brand.name}`,
     description: `Your call with ${ctx.staff.firstName} from ${ctx.brand.name}.${ctx.meetUrl ? ` Join: ${ctx.meetUrl}` : ""}`,
-    organizerName: ctx.staff.fullName,
-    organizerEmail: ctx.staff.email,
+    // Organizer is the BRAND mailbox, never the BM: BM inboxes are
+    // unmonitored, and calendar apps offer "email organizer" to the guest.
+    organizerName: ctx.brand.fromName,
+    organizerEmail: ctx.brand.replyTo ?? ctx.brand.fromEmail,
     attendeeName: ctx.guestName,
     attendeeEmail: ctx.guestEmail,
     url: ctx.meetUrl ?? undefined,

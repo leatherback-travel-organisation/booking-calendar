@@ -193,7 +193,9 @@ export async function createBooking(args: CreateBookingArgs): Promise<CreateBook
         startIso,
         endIso,
         timezone: resolveSchedulingZone(args.staff, args.brand),
-        attendees: [{ email: args.guestEmail, displayName: args.guestName }],
+        // The guest is NOT a Google attendee (same rule as group sessions):
+        // an attendee's RSVP or reply goes to the organizer — the BM's
+        // unmonitored Gmail. Guests get the branded email + ICS instead.
         // Phone calls get a calendar event but no Meet link — the BM rings
         // the guest on the number they left.
         ...((args.callMedium ?? "video") === "video" ? { conferenceRequestId: bookingId } : {}),

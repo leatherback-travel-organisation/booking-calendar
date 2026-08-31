@@ -30,7 +30,9 @@ export const VARIABLES = {
   host: {
     first_name: { label: "BM first name", sample: "Lisa" },
     full_name: { label: "BM full name", sample: "Lisa Hartley" },
-    email: { label: "BM email", sample: "lisa@patchadventures.com.au" },
+    // Renders the BRAND inbox (Help Scout), never the BM's own address —
+    // BM inboxes are unmonitored, so guests are never given one.
+    email: { label: "Contact email (brand inbox)", sample: "hello@patchadventures.com.au" },
     photo: { label: "BM photo", sample: "https://cove.leatherbacktravel.com/images/sample-bm.jpg" },
     bio: { label: "BM bio", sample: "Lisa has led trips across four continents." },
   },
