@@ -106,6 +106,7 @@ export function GardenWorkspace({ workspace }: { workspace: GardenWorkspaceData 
   const [themeFilter, setThemeFilter] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [attentionOpen, setAttentionOpen] = useState<boolean | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
   const [, startTransition] = useTransition();
   const demoNoticeShown = useRef(false);
@@ -335,8 +336,22 @@ export function GardenWorkspace({ workspace }: { workspace: GardenWorkspaceData 
       ) : null}
 
       {view === "garden" && attention.length > 0 ? (
-        <section className={styles.attention} aria-label="Needs your attention">
-          <span className={styles.attentionKicker}>Needs your attention</span>
+        <section
+          className={`${styles.attention} ${attention.some((item) => item.kind === "ack") ? styles.attentionUrgent : ""}`}
+          aria-label="Needs your attention"
+        >
+          {(() => {
+            // Acknowledgements are the one thing that must not be missed —
+            // they force the panel open; everything else starts tucked away.
+            const isOpen = attentionOpen ?? attention.some((item) => item.kind === "ack");
+            return (
+              <>
+                <button type="button" className={styles.attentionToggle} aria-expanded={isOpen} onClick={() => setAttentionOpen(!isOpen)}>
+                  <span className={styles.attentionKicker}>Needs your attention</span>
+                  <em>{attention.length}</em>
+                  <span className={`${styles.attentionChevron} ${isOpen ? styles.attentionChevronOpen : ""}`} aria-hidden="true" />
+                </button>
+                {!isOpen ? null : (
           <ul>
             {attention.map((item) => (
               <li key={item.key} className={styles[`attention-${item.kind}`]}>
@@ -351,6 +366,10 @@ export function GardenWorkspace({ workspace }: { workspace: GardenWorkspaceData 
               </li>
             ))}
           </ul>
+                )}
+              </>
+            );
+          })()}
         </section>
       ) : null}
 

@@ -160,6 +160,9 @@ export function BookingFlow({
       params.set("tripRecord", tripRecord);
     } else if (bm) {
       params.set("bm", bm);
+      // Per-brand personal links (?bm=&brand=) frame the page in that brand;
+      // without it a multi-brand BM's link falls back to their primary brand.
+      if (brand) params.set("brand", brand);
     } else if (brand) {
       params.set("brand", brand);
     }

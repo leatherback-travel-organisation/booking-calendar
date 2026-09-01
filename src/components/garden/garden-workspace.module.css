@@ -19,9 +19,16 @@
 .notice-info { border-color: #efd5a8; color: #6f5426; background: #fff9ef; }
 .notice-ok { border-color: #b9d6d2; color: #1d5f59; background: #edf8f6; }
 
-.attention { padding: 14px 16px; border: 1px solid #efd5a8; border-radius: 13px; background: #fff9ef; }
-.attentionKicker { display: block; margin-bottom: 8px; color: #96733b; font-size: 11px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; }
-.attention ul { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.attention { padding: 10px 16px 12px; border: 1px solid #efd5a8; border-radius: 13px; background: #fff9ef; }
+.attentionUrgent { border-color: #e5b9bd; background: #fdf6f2; }
+.attentionToggle { display: flex; align-items: center; gap: 9px; width: 100%; padding: 4px 0; border: 0; background: none; cursor: pointer; font: inherit; text-align: left; }
+.attentionToggle em { padding: 1px 9px; border-radius: 999px; color: #96733b; background: #f8e9c8; font-size: 12px; font-style: normal; font-weight: 500; }
+.attentionUrgent .attentionToggle em { color: #8f3238; background: #f8dcde; }
+.attentionChevron { width: 8px; height: 8px; margin-left: auto; border-right: 1.5px solid #96733b; border-bottom: 1.5px solid #96733b; transform: rotate(-45deg); transition: transform .16s ease; }
+.attentionChevronOpen { transform: rotate(45deg); }
+.attentionKicker { display: block; color: #96733b; font-size: 11px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; }
+.attentionUrgent .attentionKicker { color: #8f3238; }
+.attention ul { display: grid; gap: 6px; margin: 8px 0 0; padding: 0; list-style: none; }
 .attention li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; border-radius: 9px; background: white; border: 1px solid #f0e4cd; }
 .attention-ack { border-color: #ecc8cb; }
 .attentionText { padding: 0; border: 0; color: var(--navy); background: none; cursor: pointer; font: inherit; font-size: 13px; text-align: left; }
