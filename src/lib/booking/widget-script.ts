@@ -58,7 +58,7 @@ export const WIDGET_SOURCE = `(function () {
     }
     var pageHost = window.location.hostname;
 
-    // Trip hero (og:image) tops the overlay; /book validates the URL.
+    // Trip hero for the overlay top.
     var hm = document.querySelector('meta[property="og:image"]');
     var hv = hm && hm.getAttribute('content');
     var heroQ = hv ? '&hero=' + encodeURIComponent(hv) : '';
@@ -83,7 +83,7 @@ export const WIDGET_SOURCE = `(function () {
       if (event.data && event.data.type === 'leatherback-booking-close') closeOverlay();
     }
 
-    // 5. Full-screen overlay with the /book page in an iframe.
+    // 5. Overlay iframe.
     function openOverlay() {
       if (overlayHost) return;
       overlayHost = mk('div');
@@ -182,7 +182,7 @@ export const WIDGET_SOURCE = `(function () {
       return hostEl;
     }
 
-    // 4c. Floating card; with a docked row it waits till that scrolls away.
+    // 4c. Floating card.
     function render(data) {
       var brand = data.brand || {};
       var staff = data.staff || {};
@@ -215,6 +215,7 @@ export const WIDGET_SOURCE = `(function () {
         'box-sizing:border-box;z-index:2147483000}',
         '.head{display:flex;align-items:center;gap:12px;margin-bottom:8px;padding-right:20px}',
         '.photo{width:52px;height:52px;border-radius:50%;object-fit:cover;flex:none;background:#f3f4f6}',
+        '.tsub{font-size:13px;color:#6b7280;margin:0 0 2px}',
         '.title{font-size:16px;font-weight:700;color:#111827}',
         '.bio{font-size:14px;color:#4b5563;margin-bottom:10px;display:-webkit-box;',
         '-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}',
@@ -259,9 +260,14 @@ export const WIDGET_SOURCE = `(function () {
       var card = mk('div', 'card');
       var head = mk('div', 'head');
       if (photo) head.appendChild(pic('photo', photo));
+      var tw = mk('div');
+      var tsub = mk('div', 'tsub');
+      tsub.textContent = 'Got questions?';
+      tw.appendChild(tsub);
       var titleEl = mk('div', 'title');
       titleEl.textContent = title;
-      head.appendChild(titleEl);
+      tw.appendChild(titleEl);
+      head.appendChild(tw);
       card.appendChild(head);
       if (bio) {
         var bioEl = mk('div', 'bio');
@@ -282,7 +288,7 @@ export const WIDGET_SOURCE = `(function () {
       close.setAttribute('aria-label', 'Dismiss');
       close.textContent = '×';
       close.addEventListener('click', function () {
-        // Session-only dismiss: in-memory state, nothing persisted.
+        // Session-only dismiss.
         dismissed = true;
         expanded = false;
         sync();
@@ -342,7 +348,7 @@ export const WIDGET_SOURCE = `(function () {
       })
       .then(function (data) {
         if (!data || (data.kind !== 'primary' && data.kind !== 'pool')) return;
-        // Fallback pages: the API pins the overlay to the BM or brand.
+        // Fallback: API pins the overlay target.
         if (data.bookQuery) bookUrl = origin + '/book?' + data.bookQuery + '&embed=1' + heroQ;
         try {
           if (document.body) render(data);
