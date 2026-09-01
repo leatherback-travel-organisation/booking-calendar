@@ -222,8 +222,13 @@ export async function createBooking(args: CreateBookingArgs): Promise<CreateBook
   }
 
   const manageUrl = `${args.appUrl}/manage/${token.raw}`;
+  // The confirmation email's Help Scout conversation doubles as the
+  // booking's conversation: Help Scout refuses note-only conversations
+  // (400, ValidThreadCombination), so the rich internal note below threads
+  // onto this one instead of creating its own.
+  let emailConversationId: string | null = null;
   try {
-    await sendBookingEmail("confirmation", {
+    const emailResult = await sendBookingEmail("confirmation", {
       bookingId,
       guestName: args.guestName,
       guestEmail: args.guestEmail,
@@ -241,6 +246,7 @@ export async function createBooking(args: CreateBookingArgs): Promise<CreateBook
       tripName: args.tripName,
       tripUrl: args.tripUrl,
     });
+    if (emailResult.ok && /^\d+$/.test(emailResult.id)) emailConversationId = emailResult.id;
   } catch (error) {
     await sendBookingAlert(
       `confirmation-email-failed:${bookingId}`,
@@ -303,6 +309,7 @@ export async function createBooking(args: CreateBookingArgs): Promise<CreateBook
     const viaPortal = args.sourceKind === "portal";
     const conversationTags = [...(viaPortal ? ["portal"] : []), ...(crossovers.length > 0 ? ["crossover"] : [])];
     const conversationId = await createOrThreadConversation({
+      existingConversationId: emailConversationId,
       mailboxId: args.brand.helpscoutMailboxId ?? "",
       assignToUserId: routedVia === "primary" ? args.staff.helpscoutUserId : null,
       guestName: args.guestName,

@@ -139,7 +139,14 @@ export async function createOrThreadConversation(input: HelpscoutNoteInput): Pro
       ],
     }),
   });
-  if (response.status !== 201) throw new Error(`Help Scout conversation failed (${response.status})`);
+  if (response.status !== 201) {
+    // NB Help Scout refuses note-only conversations (ValidThreadCombination),
+    // so a booking's note must thread onto its email conversation via
+    // existingConversationId. Standalone callers (crossover heads-ups) still
+    // hit this create path and need the real reason in the alert.
+    const text = (await response.text().catch(() => "")).slice(0, 300);
+    throw new Error(`Help Scout conversation failed (${response.status}) ${text}`);
+  }
   const location = response.headers.get("Resource-ID") ?? response.headers.get("Location")?.split("/").pop();
   return location ?? null;
 }

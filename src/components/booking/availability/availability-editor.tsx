@@ -7,7 +7,27 @@
 // Guest Communications.
 
 import { useState } from "react";
+import { useFormStatus } from "react-dom";
 import styles from "./availability.module.css";
+
+/** Submit button that reports progress, with a tick once the save landed.
+ * `saved` comes from the post-save redirect (?saved=hours|settings) and the
+ * parent hides it again the moment the form is edited. */
+function SaveButton({ label, saved }: { label: string; saved: boolean }) {
+  const { pending } = useFormStatus();
+  return (
+    <>
+      <button type="submit" className={styles.saveButton} disabled={pending}>
+        {pending ? "Saving…" : label}
+      </button>
+      {saved && !pending ? (
+        <span className={styles.savedNote} role="status">
+          ✓ Saved
+        </span>
+      ) : null}
+    </>
+  );
+}
 
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 const DAY_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -91,15 +111,17 @@ export function AvailabilityEditor({
     return initial;
   });
   const [timezone, setTimezone] = useState(selected.timezoneOverride ?? "");
+  // Editing a form hides its "✓ Saved" tick until the next save lands.
+  const [hoursEdited, setHoursEdited] = useState(false);
+  const [settingsEdited, setSettingsEdited] = useState(false);
 
   function patchDay(day: number, patch: Partial<DayState>) {
+    setHoursEdited(true);
     setDays((current) => current.map((state, index) => (index === day ? { ...state, ...patch } : state)));
   }
 
   return (
     <div className={styles.editor}>
-      {savedFlag ? <p className={styles.savedNote}>Saved.</p> : null}
-
       <form action={saveWorkingHoursAction} className={styles.card}>
         <input type="hidden" name="staffId" value={selected.id} />
         <h2 className={styles.cardTitle}>Working hours</h2>
@@ -155,14 +177,12 @@ export function AvailabilityEditor({
         </div>
         {canEditHours ? (
           <div className={styles.actions}>
-            <button type="submit" className={styles.saveButton}>
-              Save working hours
-            </button>
+            <SaveButton label="Save working hours" saved={savedFlag === "hours" && !hoursEdited} />
           </div>
         ) : null}
       </form>
 
-      <form action={saveSettingsAction} className={styles.card}>
+      <form action={saveSettingsAction} className={styles.card} onInput={() => setSettingsEdited(true)}>
         <input type="hidden" name="staffId" value={selected.id} />
         <h2 className={styles.cardTitle}>Scheduling settings</h2>
         {!canManage && !isSelf ? (
@@ -259,9 +279,7 @@ export function AvailabilityEditor({
 
         {canEditOwnBits ? (
           <div className={styles.actions}>
-            <button type="submit" className={styles.saveButton}>
-              Save settings
-            </button>
+            <SaveButton label="Save settings" saved={savedFlag === "settings" && !settingsEdited} />
             {!canManage ? <span className={styles.cardHint}>You can change your buffer, bio and video calls.</span> : null}
           </div>
         ) : null}
