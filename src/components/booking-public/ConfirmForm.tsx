@@ -212,7 +212,7 @@ export function ConfirmForm({
   return (
     <form className={styles.form} onSubmit={submit}>
       <div className={styles.slotSummary}>
-        {eventTypeName} with {staffFirstName}. {meta.callMedium === "phone" ? "phone call" : "video call"}
+        {eventTypeName} with {staffFirstName} · {meta.callMedium === "phone" ? "phone call" : "video call"}
         <br />
         <strong>{formatFullDateTime(slot.start, timeZone)}</strong>
       </div>
