@@ -53,6 +53,41 @@ function guestCustomer(fullName: string, email: string): { email: string; firstN
   return lastName ? { email, firstName, lastName } : { email, firstName };
 }
 
+/**
+ * Help Scout keeps an existing customer's stored name and ignores the one on
+ * a new conversation — a record first created from a bare email has no name,
+ * so the mailbox lists the address instead. Fill the name from the booking
+ * ONLY when Help Scout has none; a name someone curated is never overwritten.
+ * Cosmetic and best-effort: failures never block the email.
+ */
+async function ensureCustomerName(
+  token: string,
+  customer: { email: string; firstName: string; lastName?: string },
+): Promise<void> {
+  try {
+    const query = encodeURIComponent(`(email:"${customer.email}")`);
+    const found = await fetch(`https://api.helpscout.net/v2/customers?query=${query}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!found.ok) return;
+    const body = (await found.json()) as {
+      _embedded?: { customers?: Array<{ id: number; firstName?: string | null }> };
+    };
+    const existing = body._embedded?.customers?.[0];
+    if (!existing || (existing.firstName ?? "").trim() !== "") return;
+    await fetch(`https://api.helpscout.net/v2/customers/${existing.id}`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        firstName: customer.firstName,
+        ...(customer.lastName ? { lastName: customer.lastName } : {}),
+      }),
+    });
+  } catch {
+    // Never let a naming nicety break a guest email.
+  }
+}
+
 export async function createOrThreadConversation(input: HelpscoutNoteInput): Promise<string | null> {
   if (!helpscoutConfigured()) {
     const sql = getSql();
@@ -83,6 +118,8 @@ export async function createOrThreadConversation(input: HelpscoutNoteInput): Pro
     return input.existingConversationId;
   }
 
+  const noteCustomer = guestCustomer(input.guestName, input.guestEmail);
+  await ensureCustomerName(token, noteCustomer);
   const response = await fetch("https://api.helpscout.net/v2/conversations", {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -91,7 +128,7 @@ export async function createOrThreadConversation(input: HelpscoutNoteInput): Pro
       mailboxId: Number(input.mailboxId),
       type: "email",
       status: "active",
-      customer: guestCustomer(input.guestName, input.guestEmail),
+      customer: noteCustomer,
       ...(input.tags && input.tags.length > 0 ? { tags: input.tags } : {}),
       ...(input.assignToUserId ? { assignTo: Number(input.assignToUserId) } : {}),
       threads: [
@@ -132,6 +169,8 @@ export async function sendCustomerEmail(input: HelpscoutEmailInput): Promise<str
   if (!helpscoutConfigured()) throw new Error("Help Scout is not configured");
   const token = await helpscoutToken();
   const userId = input.sentByUserId ? Number(input.sentByUserId) : undefined;
+  const emailCustomer = guestCustomer(input.guestName, input.guestEmail);
+  await ensureCustomerName(token, emailCustomer);
   const response = await fetch("https://api.helpscout.net/v2/conversations", {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -141,7 +180,7 @@ export async function sendCustomerEmail(input: HelpscoutEmailInput): Promise<str
       type: "email",
       status: "active",
       tags: ["calltime-auto"],
-      customer: guestCustomer(input.guestName, input.guestEmail),
+      customer: emailCustomer,
       ...(userId ? { user: userId, assignTo: userId } : {}),
       threads: [
         {

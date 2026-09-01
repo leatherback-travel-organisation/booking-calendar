@@ -4,6 +4,7 @@
 // Reschedule keeps the SAME BM — the picker only ever shows their calendar.
 
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { usesAmericanEnglish } from "@/lib/booking/english";
 import styles from "./bp.module.css";
 import { BrandFrame, type FrameBrand } from "./BrandFrame";
 import { SlotPicker } from "./SlotPicker";
@@ -103,7 +104,7 @@ export function ManagePanel({ token, state, booking, staff, brand, eventType }: 
         setNotice("All moved! A confirmation email with the new time is on its way.");
       } else if (result.reason === "slot_taken" || result.reason === "slot_invalid") {
         setPendingSlot(null);
-        setError("That time was just taken. here are fresh options.");
+        setError("That time was just taken. Here are fresh options.");
         setAvailNonce((n) => n + 1);
       } else {
         setError("This booking can no longer be changed.");
@@ -122,15 +123,17 @@ export function ManagePanel({ token, state, booking, staff, brand, eventType }: 
 
   if (mode === "cancelled") {
     const wasAlreadyCancelled = state === "cancelled";
+    // US-market brands read American English.
+    const cancelledWord = usesAmericanEnglish(brand.key) ? "canceled" : "cancelled";
     return (
       <BrandFrame brand={brand}>
         <section className={styles.card}>
           <h1 className={styles.pageTitle}>
-            {wasAlreadyCancelled ? "This booking was cancelled" : "Your booking is cancelled"}
+            {wasAlreadyCancelled ? `This booking was ${cancelledWord}` : `Your booking is ${cancelledWord}`}
           </h1>
           <p className={styles.pageSub}>
             {wasAlreadyCancelled
-              ? `The ${eventType.name.toLowerCase()} with ${staff.firstName} was cancelled, so there's nothing more to do here.`
+              ? `The ${eventType.name.toLowerCase()} with ${staff.firstName} was ${cancelledWord}, so there's nothing more to do here.`
               : `We've let ${staff.firstName} know. No call will go ahead, and a confirmation email is on its way.`}
           </p>
           <div className={styles.btnRow}>

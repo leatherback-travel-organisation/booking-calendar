@@ -42,21 +42,27 @@ const VOICES = {
     emoji: "",
   },
   carex: {
+    us: true,
     confirmLead: "Lovely",
     hug: "something beautiful is taking root",
     signoff: "Happy wandering",
     emoji: " 🌿",
   },
   "salt-caravan": {
+    us: true,
     confirmLead: "Wonderful news",
     hug: "the road is already humming",
     signoff: "Until the road calls again",
     emoji: " ✨",
   },
   harriet: {
+    us: true,
     confirmLead: "Yes",
     hug: "this is going to be a good one",
-    signoff: "Onward",
+    // Moment-aware (Nicola, 1 Sep): a call is coming -> "Talk soon";
+    // a cancellation gets a warm goodbye instead.
+    signoff: "Talk soon",
+    signoffCancel: "Best wishes",
     emoji: " 🎉",
   },
 };
@@ -98,13 +104,16 @@ const MANAGE =
 const RESCHED = '<p>Day looking different than planned? <a href="{{booking.reschedule_link}}">Reschedule here</a>. Takes seconds.</p>';
 
 function templates(voice, type) {
+  // US-market brands read American English (Nicola, 1 Sep).
+  const noun = voice.us ? type.noun.replace("enquiry", "inquiry") : type.noun;
+  const cancelled = voice.us ? "canceled" : "cancelled";
   const signoff = `<p>${voice.signoff},<br/>{{host.first_name}} at {{brand.name}}</p>`;
   return {
     confirmation: {
-      subject: `${voice.confirmLead}, {{guest.first_name}}: your ${type.noun} with {{host.first_name}} is locked in`,
+      subject: `${voice.confirmLead}, {{guest.first_name}}: your ${noun} with {{host.first_name}} is locked in`,
       bodyHtml:
         `<p>Hi {{guest.first_name}},</p>` +
-        `<p>${voice.confirmLead}! Your ${type.noun} with {{host.first_name}} is locked in, and ${voice.hug}.${voice.emoji}</p>` +
+        `<p>${voice.confirmLead}! Your ${noun} with {{host.first_name}} is locked in, and ${voice.hug}.${voice.emoji}</p>` +
         `<p>This one's ${type.purpose}.</p>` +
         WHEN +
         JOIN +
@@ -113,39 +122,39 @@ function templates(voice, type) {
         signoff,
     },
     reminder_24h: {
-      subject: `Tomorrow: your ${type.noun} with {{host.first_name}} at {{booking.meeting_time}}`,
+      subject: `Tomorrow: your ${noun} with {{host.first_name}} at {{booking.meeting_time}}`,
       bodyHtml:
         `<p>Hi {{guest.first_name}},</p>` +
-        `<p>Just a friendly nudge: your ${type.noun} with {{host.first_name}} is tomorrow ({{booking.meeting_date}}) at <strong>{{booking.meeting_time}}</strong> {{booking.timezone}}.</p>` +
+        `<p>Just a friendly nudge: your ${noun} with {{host.first_name}} is tomorrow ({{booking.meeting_date}}) at <strong>{{booking.meeting_time}}</strong> {{booking.timezone}}.</p>` +
         JOIN +
         `<p>${type.prep}</p>` +
         RESCHED +
         signoff,
     },
     reminder_1h: {
-      subject: `Nearly time! Your ${type.noun} starts at {{booking.meeting_time}}`,
+      subject: `Nearly time! Your ${noun} starts at {{booking.meeting_time}}`,
       bodyHtml:
         `<p>Hi {{guest.first_name}},</p>` +
-        `<p>Nearly time! Your ${type.noun} with {{host.first_name}} starts at <strong>{{booking.meeting_time}}</strong> ({{booking.timezone}}), about an hour from now.</p>` +
+        `<p>Nearly time! Your ${noun} with {{host.first_name}} starts at <strong>{{booking.meeting_time}}</strong> ({{booking.timezone}}), about an hour from now.</p>` +
         JOIN +
         `<p>See you very soon!${voice.emoji}</p>`,
     },
     reschedule: {
-      subject: `All sorted: your ${type.noun} has moved to {{booking.meeting_date}}`,
+      subject: `All sorted: your ${noun} has moved to {{booking.meeting_date}}`,
       bodyHtml:
         `<p>Hi {{guest.first_name}},</p>` +
-        `<p>All sorted! Your ${type.noun} with {{host.first_name}} has moved to <strong>{{booking.meeting_date}}</strong> at <strong>{{booking.meeting_time}}</strong> ({{booking.timezone}}).</p>` +
+        `<p>All sorted! Your ${noun} with {{host.first_name}} has moved to <strong>{{booking.meeting_date}}</strong> at <strong>{{booking.meeting_time}}</strong> ({{booking.timezone}}).</p>` +
         JOIN +
         `<p>Need to juggle it again? <a href="{{booking.reschedule_link}}">Reschedule</a> · <a href="{{booking.cancel_link}}">Cancel</a>, whatever works for you.</p>` +
         signoff,
     },
     cancellation: {
-      subject: `Your ${type.noun} on {{booking.meeting_date}} has been cancelled`,
+      subject: `Your ${noun} on {{booking.meeting_date}} has been ${cancelled}`,
       bodyHtml:
         `<p>Hi {{guest.first_name}},</p>` +
-        `<p>Your ${type.noun} with {{host.first_name}} on {{booking.meeting_date}} at {{booking.meeting_time}} ({{booking.timezone}}) is cancelled. All taken care of, nothing more for you to do.</p>` +
+        `<p>Your ${noun} with {{host.first_name}} on {{booking.meeting_date}} at {{booking.meeting_time}} ({{booking.timezone}}) is ${cancelled}. All taken care of, nothing more for you to do.</p>` +
         `<p>If you'd still love to talk, you can <a href="{{booking.book_link}}">book a new time</a> whenever suits you.</p>` +
-        `<p>${voice.signoff},<br/>The {{brand.name}} team</p>`,
+        `<p>${voice.signoffCancel ?? voice.signoff},<br/>The {{brand.name}} team</p>`,
     },
   };
 }
@@ -199,8 +208,13 @@ if (process.argv.includes("--emit-migration")) {
     `   and t.event_type_key = v.event_type_key\n` +
     `   and t.moment = v.moment\n` +
     `   and t.updated_by = 'seed:type-voice';\n`;
-  writeFileSync("db/049_type_templates_writing_guide.sql", migration);
-  console.log(`wrote db/049_type_templates_writing_guide.sql (${rows.length} rows)`);
+  const target = process.argv[process.argv.indexOf("--emit-migration") + 1];
+  if (!target || !target.startsWith("db/")) {
+    console.error("usage: --emit-migration db/NNN_name.sql (already-applied migrations never re-run)");
+    process.exit(1);
+  }
+  writeFileSync(target, migration);
+  console.log(`wrote ${target} (${rows.length} rows)`);
   process.exit(0);
 }
 

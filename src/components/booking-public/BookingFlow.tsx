@@ -5,6 +5,7 @@
 // are fetched once per BM+type; paging is client-side.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { usesAmericanEnglish } from "@/lib/booking/english";
 import styles from "./bp.module.css";
 import { BrandFrame } from "./BrandFrame";
 import { ConfirmForm, type BookMeta, type BookedResult } from "./ConfirmForm";
@@ -639,7 +640,8 @@ export function BookingFlow({
         {tripSlug && ctx.departures.length > 0 && !selected && (
           <div className={styles.selectWrap}>
             <p className={styles.pageSub}>
-              You&rsquo;re enquiring about <strong>{ctx.departures[0].title}</strong>.
+              You&rsquo;re {usesAmericanEnglish(ctx.brand.key) ? "inquiring" : "enquiring"} about{" "}
+              <strong>{ctx.departures[0].title}</strong>.
             </p>
             {ctx.brandTrips.length > 1 && (
               <button

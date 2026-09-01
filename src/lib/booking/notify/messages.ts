@@ -228,6 +228,11 @@ function bmCribSheet(moment: Moment, ctx: BookingEmailContext): string | null {
     `<p><strong>${headline}: ${start.toFormat("cccc d LLLL yyyy, h:mma").toLowerCase()} ${start.toFormat("ZZZZ")} · ${ctx.durationMin} min</strong></p>`,
     "<ul>",
     `<li>Guest: ${escapeHtml(ctx.guestName)} · ${escapeHtml(ctx.guestEmail)}${ctx.guestPhone ? ` · ${escapeHtml(ctx.guestPhone)}` : ""}</li>`,
+    // Which destination the call is about — present when the booking came
+    // from a trip page or the portal; a bare BM link has no trip context.
+    ctx.tripName
+      ? `<li>Trip: ${escapeHtml(ctx.tripName)}${ctx.tripUrl ? ` · <a href="${escapeHtml(ctx.tripUrl)}">trip page</a>` : ""}</li>`
+      : null,
     ctx.callMedium === "phone"
       ? `<li>Phone call: you ring the guest${ctx.guestPhone ? ` on ${escapeHtml(ctx.guestPhone)}` : " (no number on file!)"}</li>`
       : `<li>Video call: ${ctx.meetUrl ? escapeHtml(ctx.meetUrl) : "Meet link on the calendar event"}</li>`,
