@@ -8,7 +8,7 @@
 
 import { resolveManager } from "@/lib/booking/routing";
 import { getBrandByKey } from "@/lib/booking/availability/service";
-import { supportPhone } from "@/lib/booking/public-api";
+import { appUrl, supportPhone } from "@/lib/booking/public-api";
 import { getSql } from "@/lib/booking/db";
 import type { Brand } from "@/lib/booking/model";
 
@@ -56,13 +56,18 @@ function payloadResponse(body: unknown, cors: Record<string, string>): Response 
   });
 }
 
+/** The widget renders on brand sites, so path-only URLs must be absolute. */
+function absolute(url: string | null): string | null {
+  return url?.startsWith("/") ? `${appUrl()}${url}` : url;
+}
+
 function brandPayload(brand: Brand) {
   return {
     key: brand.key,
     name: brand.name,
     colorPrimary: brand.colorPrimary,
     colorAccent: brand.colorAccent,
-    logoUrl: brand.logoUrl,
+    logoUrl: absolute(brand.logoUrl),
   };
 }
 
@@ -100,7 +105,7 @@ export async function GET(request: Request): Promise<Response> {
           staff: {
             firstName: resolved.staff.firstName,
             bio: resolved.staff.bio,
-            photoUrl: resolved.staff.photoUrl,
+            photoUrl: absolute(resolved.staff.photoUrl),
             slug: resolved.staff.slug,
           },
           brand: brandPayload(resolved.brand),
