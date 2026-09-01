@@ -15,6 +15,7 @@ import {
   type PersonRef,
 } from "./model.ts";
 import { GARDEN_SEED_PROJECTS, NIC } from "./seed-data.ts";
+import { timezonesByEmail } from "./attention.ts";
 
 export type GardenPerson = {
   id: string;
@@ -41,6 +42,7 @@ export type GardenWorkspaceData = {
   viewer: GardenViewer;
   dismissedKeys: string[];
   awareness: OverlapAwareness[];
+  timezoneByEmail: Record<string, string>;
   writesEnabled: boolean;
 };
 
@@ -241,6 +243,13 @@ export async function getGardenWorkspace(identity: VerifiedIdentity): Promise<Ga
     }
   }
 
+  let timezoneByEmail: Record<string, string> = {};
+  try {
+    timezoneByEmail = Object.fromEntries(await timezonesByEmail());
+  } catch (error) {
+    console.error("garden timezone map failed", error);
+  }
+
   let dismissedKeys: string[] = [];
   if (loaded.origin === "database" && keys.size > 0) {
     try {
@@ -267,6 +276,7 @@ export async function getGardenWorkspace(identity: VerifiedIdentity): Promise<Ga
     },
     dismissedKeys,
     awareness,
+    timezoneByEmail,
     writesEnabled: loaded.origin === "database",
   };
 }

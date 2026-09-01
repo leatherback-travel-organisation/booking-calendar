@@ -379,15 +379,16 @@ export async function proposeAttentionMeeting(rawInput: unknown): Promise<Meetin
   const context = await resolveAttentionContext(rawInput);
   if (context.error) return { ok: false, message: context.error.message };
   const title = `Garden: ${context.item.projects.map((project) => project.name).join(" ↔ ")}`;
-  if (identityMode() === "preview") return { ok: false, message: "Demo environment — calendars aren't connected here." };
   if (!meetingConfigured()) return { ok: false, message: "Google Calendar isn't configured (GOOGLE_SA_KEY_B64)." };
+  const preview = identityMode() === "preview";
   const email = identity.email?.trim().toLowerCase();
-  if (!email) return { ok: false, message: "Your account has no verified email to organise from." };
+  if (!preview && !email) return { ok: false, message: "Your account has no verified email to organise from." };
 
-  const people = context.item.people;
-  const result = await proposeMeeting(email, people, new Date());
+  // Preview runs a REAL read-only proposal (free/busy + timezones) so demo
+  // times are always genuine; only the confirm step stays disabled there.
+  const result = await proposeMeeting(preview ? null : (email ?? null), context.item.people, new Date());
   if ("error" in result) return { ok: false, message: result.error };
-  return { ok: true, proposal: result.proposal, title };
+  return { ok: true, proposal: { ...result.proposal, demo: preview }, title };
 }
 
 const confirmMeetingSchema = z.object({

@@ -22,13 +22,42 @@ export function slackConfigured(): boolean {
   return Boolean(process.env.GARDEN_SLACK_WEBHOOK_URL);
 }
 
-let slackMapCache: { at: number; map: Map<string, string> } | null = null;
+// Notion Location values → IANA timezones. Google Calendar settings remain
+// the first source of truth; this is the fallback so nobody is ever assumed
+// into the wrong hemisphere.
+const LOCATION_TIMEZONES: Array<[RegExp, string]> = [
+  [/melbourne|victoria/i, "Australia/Melbourne"],
+  [/nsw/i, "Australia/Sydney"],
+  [/qld|queensland|sunshine coast/i, "Australia/Brisbane"],
+  [/tasmania/i, "Australia/Hobart"],
+  [/northern territory/i, "Australia/Darwin"],
+  [/serbia|belgrade/i, "Europe/Belgrade"],
+  [/bulgaria|sofia|varna/i, "Europe/Sofia"],
+  [/bosnia/i, "Europe/Sarajevo"],
+  [/montenegro/i, "Europe/Podgorica"],
+  [/croatia/i, "Europe/Zagreb"],
+  [/skopje|macedonia/i, "Europe/Skopje"],
+  [/bali|indonesia/i, "Asia/Makassar"],
+  [/colombia/i, "America/Bogota"],
+  [/mexico/i, "America/Mexico_City"],
+  [/uruguay|montevideo/i, "America/Montevideo"],
+  [/united states|usa/i, "America/Denver"],
+];
 
-/** email (lowercased) → Slack member ID, from the Notion team directory. */
-export async function slackIdsByEmail(): Promise<Map<string, string>> {
-  if (slackMapCache && Date.now() - slackMapCache.at < 10 * 60 * 1000) return slackMapCache.map;
+export function timezoneForLocation(location: string): string | null {
+  for (const [pattern, timezone] of LOCATION_TIMEZONES) {
+    if (pattern.test(location)) return timezone;
+  }
+  return null;
+}
+
+type NotionPerson = { slackId: string | null; location: string | null };
+let notionCache: { at: number; map: Map<string, NotionPerson> } | null = null;
+
+async function notionPeople(): Promise<Map<string, NotionPerson>> {
+  if (notionCache && Date.now() - notionCache.at < 10 * 60 * 1000) return notionCache.map;
   const token = process.env.NOTION_TOKEN;
-  const map = new Map<string, string>();
+  const map = new Map<string, NotionPerson>();
   if (!token) return map;
   try {
     let cursor: string | undefined;
@@ -46,7 +75,9 @@ export async function slackIdsByEmail(): Promise<Map<string, string>> {
       });
       if (!response.ok) return map;
       const payload = (await response.json()) as {
-        results?: Array<{ properties?: Record<string, { email?: string; rich_text?: Array<{ plain_text?: string }> }> }>;
+        results?: Array<{
+          properties?: Record<string, { email?: string; select?: { name?: string }; rich_text?: Array<{ plain_text?: string }> }>;
+        }>;
         has_more?: boolean;
         next_cursor?: string;
       };
@@ -55,14 +86,35 @@ export async function slackIdsByEmail(): Promise<Map<string, string>> {
         const email = (props.Email?.email ?? props.Email?.rich_text?.map((t) => t.plain_text ?? "").join("") ?? "")
           .trim()
           .toLowerCase();
+        if (!email) continue;
         const slack = (props["Slack ID"]?.rich_text?.map((t) => t.plain_text ?? "").join("") ?? "").trim();
-        if (email && /^U[A-Z0-9]{8,}$/.test(slack)) map.set(email, slack);
+        const location = props.Location?.select?.name ?? props.Location?.rich_text?.map((t) => t.plain_text ?? "").join("") ?? null;
+        map.set(email, { slackId: /^U[A-Z0-9]{8,}$/.test(slack) ? slack : null, location: location || null });
       }
       cursor = payload.has_more ? payload.next_cursor : undefined;
     } while (cursor);
-    slackMapCache = { at: Date.now(), map };
+    notionCache = { at: Date.now(), map };
   } catch (error) {
-    console.error("garden slack-id lookup failed", error);
+    console.error("garden notion directory lookup failed", error);
+  }
+  return map;
+}
+
+/** email (lowercased) → Slack member ID, from the Notion team directory. */
+export async function slackIdsByEmail(): Promise<Map<string, string>> {
+  const people = await notionPeople();
+  const map = new Map<string, string>();
+  for (const [email, person] of people) if (person.slackId) map.set(email, person.slackId);
+  return map;
+}
+
+/** email → IANA timezone derived from the Notion Location field. */
+export async function timezonesByEmail(): Promise<Map<string, string>> {
+  const people = await notionPeople();
+  const map = new Map<string, string>();
+  for (const [email, person] of people) {
+    const timezone = person.location ? timezoneForLocation(person.location) : null;
+    if (timezone) map.set(email, timezone);
   }
   return map;
 }
@@ -183,23 +235,25 @@ export function meetingConfigured(): boolean {
   return calendarConfigured();
 }
 
-async function primaryTimezone(email: string): Promise<string> {
+async function primaryTimezone(email: string, notionFallback: Map<string, string>): Promise<string> {
   try {
     const token = await accessTokenFor(email);
     const response = await fetch("https://www.googleapis.com/calendar/v3/calendars/primary", {
       headers: { authorization: `Bearer ${token}` },
       signal: AbortSignal.timeout(10_000),
     });
-    if (!response.ok) return DEFAULT_TIMEZONE;
-    const body = (await response.json()) as { timeZone?: string };
-    return body.timeZone ?? DEFAULT_TIMEZONE;
+    if (response.ok) {
+      const body = (await response.json()) as { timeZone?: string };
+      if (body.timeZone) return body.timeZone;
+    }
   } catch {
-    return DEFAULT_TIMEZONE;
+    // fall through to the directory location
   }
+  return notionFallback.get(email) ?? DEFAULT_TIMEZONE;
 }
 
 export async function proposeMeeting(
-  viewerEmail: string,
+  viewerEmail: string | null,
   people: PersonRef[],
   now: Date,
 ): Promise<{ proposal: MeetingProposal } | { error: string }> {
@@ -213,13 +267,23 @@ export async function proposeMeeting(
 
   const timeMin = now.toISOString();
   const timeMax = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
-  const { busyByEmail, unreachable } = await freeBusy(
-    viewerEmail,
-    emails.map((entry) => entry.email),
-    timeMin,
-    timeMax,
-  );
+  // The free/busy query impersonates the viewer; when the viewer has no
+  // tenant identity (preview mode), impersonate the first attendee instead.
+  let subject = viewerEmail ?? emails[0].email;
+  let busyResult;
+  try {
+    busyResult = await freeBusy(subject, emails.map((entry) => entry.email), timeMin, timeMax);
+  } catch (error) {
+    if (subject !== emails[0].email) {
+      subject = emails[0].email;
+      busyResult = await freeBusy(subject, emails.map((entry) => entry.email), timeMin, timeMax);
+    } else {
+      throw error;
+    }
+  }
+  const { busyByEmail, unreachable } = busyResult;
 
+  const notionFallback = await timezonesByEmail();
   const attendees: MeetingAttendee[] = [];
   const withTimezone: Array<{ name: string; email: string; timezone: string }> = [];
   for (const entry of emails) {
@@ -227,7 +291,7 @@ export async function proposeMeeting(
       skipped.push(`${entry.name} (calendar unreachable)`);
       continue;
     }
-    const timezone = await primaryTimezone(entry.email);
+    const timezone = await primaryTimezone(entry.email, notionFallback);
     attendees.push({ email: entry.email, timezone, busy: busyByEmail.get(entry.email) ?? [] });
     withTimezone.push({ name: entry.name, email: entry.email, timezone });
   }
