@@ -131,7 +131,7 @@ export function ManagePanel({ token, state, booking, staff, brand, eventType }: 
           <p className={styles.pageSub}>
             {wasAlreadyCancelled
               ? `The ${eventType.name.toLowerCase()} with ${staff.firstName} was cancelled, so there's nothing more to do here.`
-              : `We've let ${staff.firstName} know. no call will go ahead, and a confirmation email is on its way.`}
+              : `We've let ${staff.firstName} know. No call will go ahead, and a confirmation email is on its way.`}
           </p>
           <div className={styles.btnRow}>
             <a className={styles.primaryBtn} href={bookAgainUrl} style={{ textAlign: "center", textDecoration: "none" }}>
