@@ -23,8 +23,12 @@ test("listens for the overlay close message", () => {
   assert.ok(WIDGET_SOURCE.includes("leatherback-booking-close"));
 });
 
-test("gates the floating card on the docked row's visibility", () => {
-  assert.ok(WIDGET_SOURCE.includes("IntersectionObserver"));
+test("scopes the UI: trip pages dock, home floats, other pages get nothing", () => {
+  // The 1 Sep rule: the floating card exists only on the home page; trip
+  // pages get only the docked row; every other page renders nothing.
+  assert.ok(WIDGET_SOURCE.includes("if (!isTrip && !isHome) return;"));
+  assert.ok(WIDGET_SOURCE.includes("if (isTrip) {"));
+  assert.ok(!WIDGET_SOURCE.includes("IntersectionObserver"), "dock-visibility gating is retired");
 });
 
 test("is syntactically valid JavaScript", () => {

@@ -48,13 +48,16 @@ export const WIDGET_SOURCE = `(function () {
     var tripAttr = script.getAttribute('data-trip') || '';
     var typeAttr = script.getAttribute('data-type') || '';
 
-    // 2. Trip slug: data-trip wins, else /tour/<slug>/.
+    // 2. Trip pages dock a row; home floats the card; other pages: nothing.
+    var segs = window.location.pathname.split('/').filter(function (p) { return p.length > 0; });
+    var at = segs.indexOf('tour');
+    var isTrip = at !== -1;
+    var isHome = segs.length === 0;
+    if (!isTrip && !isHome) return;
     var trip = tripAttr;
     if (!trip) {
-      var parts = window.location.pathname.split('/').filter(function (p) { return p.length > 0; });
-      var at = parts.indexOf('tour');
-      if (at !== -1 && parts[at + 1]) trip = parts[at + 1];
-      else if (parts.length > 0) trip = parts[parts.length - 1];
+      if (isTrip && segs[at + 1]) trip = segs[at + 1];
+      else if (segs.length > 0) trip = segs[segs.length - 1];
     }
     var pageHost = window.location.hostname;
 
@@ -197,12 +200,13 @@ export const WIDGET_SOURCE = `(function () {
       var phone = typeof data.phone === 'string' ? data.phone : '';
       var initial = ((isPrimary ? staff.firstName : (brand.name || '')) + 'B').charAt(0).toUpperCase();
 
-      var docked = null;
-      try { docked = renderDocked(title, photo, color, initial); } catch (e) { debug('dock failed'); }
+      if (isTrip) {
+        try { renderDocked(title, photo, color, initial); } catch (e) { debug('dock failed'); }
+        return;
+      }
 
       var dismissed = false;
       var expanded = false;
-      var floatHidden = !!docked;
 
       var hostEl = mk('div');
       var sh = hostEl.attachShadow({ mode: 'closed' });
@@ -247,13 +251,12 @@ export const WIDGET_SOURCE = `(function () {
       sh.appendChild(st);
 
       var root = mk('div');
-      root.className = floatHidden ? 'root hidden' : 'root';
+      root.className = 'root';
 
       function sync() {
         var cls = 'root';
         if (dismissed) cls += ' dismissed';
         if (expanded) cls += ' expanded';
-        if (floatHidden) cls += ' hidden';
         if (root.className !== cls) root.className = cls;
       }
 
@@ -321,21 +324,6 @@ export const WIDGET_SOURCE = `(function () {
 
       sh.appendChild(root);
       document.body.appendChild(hostEl);
-
-      // 4d. Float only once the docked row is out of view.
-      if (docked && typeof IntersectionObserver === 'function') {
-        var dockInView = true;
-        var update = function () {
-          floatHidden = dockInView || (window.scrollY || 0) <= 200;
-          sync();
-        };
-        var io = new IntersectionObserver(function (entries) {
-          dockInView = entries[entries.length - 1].isIntersecting;
-          update();
-        });
-        io.observe(docked);
-        window.addEventListener('scroll', update, { passive: true });
-      }
     }
 
     // 3. Ask the API who fronts this trip.
