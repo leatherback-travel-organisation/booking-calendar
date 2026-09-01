@@ -108,6 +108,16 @@
   font-size: 16px;
 }
 
+/* Trip hero atop the embed overlay card — bleeds to the card edges. */
+.heroImg {
+  width: calc(100% + 48px);
+  margin: -24px -24px 0;
+  height: 150px;
+  object-fit: cover;
+  border-radius: 18px 18px 0 0;
+  flex: none;
+}
+
 /* ---- Booking manager card ---- */
 
 .bmCard {

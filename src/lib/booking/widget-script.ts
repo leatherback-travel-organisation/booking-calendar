@@ -30,7 +30,7 @@ export const WIDGET_SOURCE = `(function () {
     return i;
   }
   try {
-    // 1. Find our own <script> tag (currentScript, else last matching src).
+    // 1. Find our own <script> tag.
     var script = document.currentScript;
     if (!script || !script.src) {
       script = null;
@@ -48,7 +48,7 @@ export const WIDGET_SOURCE = `(function () {
     var tripAttr = script.getAttribute('data-trip') || '';
     var typeAttr = script.getAttribute('data-type') || '';
 
-    // 2. Trip slug: data-trip wins; else Tourism Tiger /tour/<slug>/ URLs.
+    // 2. Trip slug: data-trip wins, else /tour/<slug>/.
     var trip = tripAttr;
     if (!trip) {
       var parts = window.location.pathname.split('/').filter(function (p) { return p.length > 0; });
@@ -58,9 +58,14 @@ export const WIDGET_SOURCE = `(function () {
     }
     var pageHost = window.location.hostname;
 
+    // Trip hero (og:image) tops the overlay; /book validates the URL.
+    var hm = document.querySelector('meta[property="og:image"]');
+    var hv = hm && hm.getAttribute('content');
+    var heroQ = hv ? '&hero=' + encodeURIComponent(hv) : '';
+
     var bookUrl = origin + '/book?trip=' + encodeURIComponent(trip) +
       '&host=' + encodeURIComponent(pageHost) + '&embed=1' +
-      '&type=' + encodeURIComponent(typeAttr || 'enquiry');
+      '&type=' + encodeURIComponent(typeAttr || 'enquiry') + heroQ;
 
     function safeColor(value, fallback) {
       return (typeof value === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(value)) ? value : fallback;
@@ -116,8 +121,7 @@ export const WIDGET_SOURCE = `(function () {
       document.body.appendChild(overlayHost);
     }
 
-    // 4a. The host page's enquiry control: an <a>/<button> whose visible
-    // text says enquire / book now / get in touch.
+    // 4a. The host page's enquiry/book-now control.
     function findEnquiry() {
       var re = /enquire|book now|get in touch/i;
       var els = document.querySelectorAll('a,button');
@@ -130,8 +134,7 @@ export const WIDGET_SOURCE = `(function () {
       return null;
     }
 
-    // 4b. Docked row: blends into the host card under the enquiry control —
-    // divider + one compact clickable row, no card chrome of its own.
+    // 4b. Docked row under the enquiry control.
     function renderDocked(title, photo, color, initial) {
       var target = findEnquiry();
       if (!target || !target.parentNode) return null;
@@ -179,8 +182,7 @@ export const WIDGET_SOURCE = `(function () {
       return hostEl;
     }
 
-    // 4c. Floating card (closed shadow root). With a docked row it only
-    // shows once that row scrolls out of view; else it floats always.
+    // 4c. Floating card; with a docked row it waits till that scrolls away.
     function render(data) {
       var brand = data.brand || {};
       var staff = data.staff || {};
@@ -314,8 +316,7 @@ export const WIDGET_SOURCE = `(function () {
       sh.appendChild(root);
       document.body.appendChild(hostEl);
 
-      // 4d. Floating UI appears only once the docked row is out of view
-      // and the page has actually been scrolled.
+      // 4d. Float only once the docked row is out of view.
       if (docked && typeof IntersectionObserver === 'function') {
         var dockInView = true;
         var update = function () {
@@ -331,7 +332,7 @@ export const WIDGET_SOURCE = `(function () {
       }
     }
 
-    // 3. Ask the API who fronts this trip; anything unhappy renders nothing.
+    // 3. Ask the API who fronts this trip.
     var api = origin + '/api/booking/widget?brand=' + encodeURIComponent(brandKey) +
       '&trip=' + encodeURIComponent(trip) + '&host=' + encodeURIComponent(pageHost);
     fetch(api)
@@ -341,6 +342,8 @@ export const WIDGET_SOURCE = `(function () {
       })
       .then(function (data) {
         if (!data || (data.kind !== 'primary' && data.kind !== 'pool')) return;
+        // Fallback pages: the API pins the overlay to the BM or brand.
+        if (data.bookQuery) bookUrl = origin + '/book?' + data.bookQuery + '&embed=1' + heroQ;
         try {
           if (document.body) render(data);
         } catch (e) { debug('render failed'); }

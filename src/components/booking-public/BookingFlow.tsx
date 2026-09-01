@@ -75,6 +75,7 @@ export function BookingFlow({
   tripRecord = null,
   source = null,
   typeParam,
+  hero = null,
   embed,
 }: {
   trip: string | null;
@@ -86,6 +87,8 @@ export function BookingFlow({
   /** Booking origin, e.g. "portal"; recorded as the booking's source_kind. */
   source?: string | null;
   typeParam: string | null;
+  /** Trip hero image (the host page's og:image), shown atop the embed card. */
+  hero?: string | null;
   embed: boolean;
 }) {
   // SSR only ever renders the loading card (resolution is a client fetch), so
@@ -351,6 +354,10 @@ export function BookingFlow({
   const eventType = ctx?.eventTypes.find((t) => t.key === eventTypeKey) ?? null;
   const phone = ctx?.brand.phone ?? null;
 
+  // Embed overlay only, and only a real http(s) image URL — the param is
+  // guest-controllable, so nothing else is ever rendered.
+  const heroUrl = embed && hero && /^https?:\/\//.test(hero) ? hero : null;
+
   const meta: BookMeta | null =
     ctx && active && eventTypeKey && effectiveMedium !== null
       ? {
@@ -559,6 +566,10 @@ export function BookingFlow({
   return (
     <BrandFrame brand={ctx.brand} embed={embed}>
       <section className={styles.card}>
+        {heroUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={heroUrl} alt="" className={styles.heroImg} aria-hidden="true" />
+        )}
         {/* Who the guest is booking with */}
         {active && active.routedVia === "primary" && ctx.primary ? (
           <div className={styles.bmCard}>
@@ -630,7 +641,7 @@ export function BookingFlow({
             <p className={styles.pageSub}>
               You&rsquo;re enquiring about <strong>{ctx.departures[0].title}</strong>.
             </p>
-            {(ctx.brandTrips.length > 1 || ctx.departures.length > 1) && (
+            {ctx.brandTrips.length > 1 && (
               <button
                 type="button"
                 className={styles.linkBtn}
@@ -659,28 +670,9 @@ export function BookingFlow({
                 ))}
               </select>
             )}
-            {/* Departure choice, only when this trip runs more than once
-                (informational — same calendar either way). Tucked behind
-                "Not the right trip?" — the first departure is assumed until
-                the guest asks to change it (Nicola, 1 Sep). */}
-            {changeTripOpen && ctx.departures.length > 1 && (
-              <>
-                <label className={styles.fieldLabel} htmlFor="bp-departure">Which departure are you interested in?</label>
-                <select
-                  id="bp-departure"
-                  className={styles.select}
-                  value={selectedDeparture?.airtableId ?? ""}
-                  onChange={(e) => setDepartureId(e.target.value)}
-                >
-                  {ctx.departures.map((d) => (
-                    <option key={d.airtableId} value={d.airtableId}>
-                      {d.title}
-                      {d.startDate ? ` (departs ${formatDateOnly(d.startDate)})` : ""}
-                    </option>
-                  ))}
-                </select>
-              </>
-            )}
+            {/* No guest-facing departure choice (Nicola, 1 Sep): the guest
+                deals with the trip; the first upcoming departure quietly
+                anchors the booking's internal trip metadata. */}
           </div>
         )}
 

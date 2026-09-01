@@ -126,17 +126,45 @@ export async function GET(request: Request): Promise<Response> {
       );
     }
 
-    // Unresolved trip: fall back to the brand from the script tag and offer
-    // the pool — /book shows the picker, and resolveManager already logged
-    // the slug miss on the coverage map.
+    // Unresolved trip (or a non-trip page): fall back to the brand from the
+    // script tag. A brand fronted by exactly one primary BM goes STRAIGHT to
+    // them — never a picker (Nicola, 1 Sep); their backups already surface
+    // through "see who else can help" when they have no times. Only a brand
+    // with several primaries keeps the pool, and `bookQuery` pins the
+    // overlay to the brand so guests never see the all-brands picker.
     if (!brandKey) return payloadResponse({ kind: "none" }, cors);
     const brand = await getBrandByKey(brandKey);
     if (!brand) return payloadResponse({ kind: "none" }, cors);
+    const sql = getSql();
+    const primaries = await sql`
+      select s.slug, s.first_name, s.bio, s.photo_url
+        from booking.staff s
+        join booking.staff_brand sb on sb.staff_id = s.id
+       where sb.brand_id = ${brand.id} and s.active and not sb.is_backup`;
+    if (primaries.length === 1) {
+      const solo = primaries[0];
+      return payloadResponse(
+        {
+          kind: "primary",
+          staff: {
+            firstName: String(solo.first_name),
+            bio: solo.bio == null ? null : String(solo.bio),
+            photoUrl: absolute(solo.photo_url == null ? null : String(solo.photo_url)),
+            slug: String(solo.slug),
+          },
+          brand: brandPayload(brand),
+          phone: supportPhone(brand, request),
+          bookQuery: `bm=${encodeURIComponent(String(solo.slug))}&brand=${encodeURIComponent(brand.key)}`,
+        },
+        cors,
+      );
+    }
     return payloadResponse(
       {
         kind: "pool",
         brand: brandPayload(brand),
         phone: supportPhone(brand, request),
+        bookQuery: `brand=${encodeURIComponent(brand.key)}`,
       },
       cors,
     );

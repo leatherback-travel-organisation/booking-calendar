@@ -56,6 +56,7 @@ export default async function BookPage({
       tripRecord={first(params.tripRecord)}
       source={first(params.source)}
       typeParam={first(params.type)}
+      hero={first(params.hero)}
       embed={first(params.embed) === "1"}
     />
   );
