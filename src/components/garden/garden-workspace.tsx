@@ -8,6 +8,7 @@ import {
   QUARTER_THEMES,
   SYSTEM_GROUPS,
   involvedPeople,
+  attentionItemKey,
   isActiveStage,
   personKey,
   stageChipTone,
@@ -18,7 +19,17 @@ import {
   type PersonRef,
 } from "@/lib/garden/model.ts";
 import { detectOverlaps, detectTestingConflicts, type ProjectOverlap } from "@/lib/garden/overlaps.ts";
-import { acknowledgeCancellation, createGardenProject, updateGardenProject, type GardenProjectInput } from "@/lib/garden/actions.ts";
+import {
+  acknowledgeCancellation,
+  confirmAttentionMeeting,
+  createGardenProject,
+  dismissAttention,
+  notifyAttentionTeam,
+  proposeAttentionMeeting,
+  updateGardenProject,
+  type AttentionActionInput,
+  type GardenProjectInput,
+} from "@/lib/garden/actions.ts";
 import type { GardenWorkspaceData } from "@/lib/garden/server.ts";
 import styles from "./garden-workspace.module.css";
 
@@ -107,6 +118,17 @@ export function GardenWorkspace({ workspace }: { workspace: GardenWorkspaceData 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [attentionOpen, setAttentionOpen] = useState<boolean | null>(null);
+  const [dismissed, setDismissed] = useState<Set<string>>(() => new Set(workspace.dismissedKeys));
+  const [proposing, setProposing] = useState<string | null>(null);
+  const [proposal, setProposal] = useState<{
+    itemKey: string;
+    title: string;
+    startIso: string;
+    endIso: string;
+    attendees: Array<{ name: string; email: string; timezone: string }>;
+    skipped: string[];
+    demo: boolean;
+  } | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
   const [, startTransition] = useTransition();
   const demoNoticeShown = useRef(false);
@@ -198,6 +220,101 @@ export function GardenWorkspace({ workspace }: { workspace: GardenWorkspaceData 
     });
   }
 
+  function noted(item: { key: string; kind: "overlap" | "testing" | "stale"; projectIds: string[]; subject?: string }) {
+    setDismissed((current) => new Set([...current, item.key]));
+    if (proposal?.itemKey === item.key) setProposal(null);
+    if (!workspace.writesEnabled) {
+      flashDemoNotice();
+      return;
+    }
+    const input: AttentionActionInput = { kind: item.kind, projectIds: item.projectIds, subject: item.subject };
+    startTransition(async () => {
+      const result = await dismissAttention(input);
+      if (!result.ok) setNotice({ tone: "error", message: result.message });
+    });
+  }
+
+  function notifyTeam(item: { key: string; kind: "overlap" | "testing" | "stale"; projectIds: string[]; subject?: string; text: string }) {
+    const people = new Set(
+      item.projectIds.flatMap((id) => {
+        const project = byId.get(id);
+        return project ? involvedPeople(project).map((person) => person.name) : [];
+      }),
+    );
+    if (!window.confirm(`Post this to #notion-automation-testing, tagging ${people.size} project team member${people.size === 1 ? "" : "s"}?`)) return;
+    if (!workspace.writesEnabled) {
+      setNotice({ tone: "info", message: "Demo environment — the Slack message wasn't sent." });
+      return;
+    }
+    const input: AttentionActionInput = { kind: item.kind, projectIds: item.projectIds, subject: item.subject };
+    startTransition(async () => {
+      const result = await notifyAttentionTeam(input);
+      setNotice({ tone: result.ok ? "ok" : "error", message: result.message });
+    });
+  }
+
+  function scheduleDiscussion(item: { key: string; kind: "overlap" | "testing" | "stale"; projectIds: string[]; subject?: string }) {
+    const projectNames = item.projectIds.map((id) => byId.get(id)?.name).filter(Boolean).join(" ↔ ");
+    if (!workspace.writesEnabled) {
+      // Demo proposal: next weekday at 10:00 Sydney, so the flow is walkable.
+      const start = new Date();
+      start.setUTCHours(0, 0, 0, 0);
+      do {
+        start.setUTCDate(start.getUTCDate() + 1);
+      } while ([0, 6].includes(new Date(start.getTime() + 10 * 3600_000).getUTCDay()));
+      const attendees = [
+        ...new Map(
+          item.projectIds.flatMap((id) => {
+            const project = byId.get(id);
+            return project ? involvedPeople(project).filter((person) => person.email) : [];
+          }).map((person) => [person.email, { name: person.name, email: person.email!, timezone: "Australia/Sydney" }]),
+        ).values(),
+      ];
+      setProposal({
+        itemKey: item.key,
+        title: `Garden: ${projectNames}`,
+        startIso: new Date(start.getTime()).toISOString(),
+        endIso: new Date(start.getTime() + 30 * 60 * 1000).toISOString(),
+        attendees,
+        skipped: [],
+        demo: true,
+      });
+      return;
+    }
+    const input: AttentionActionInput = { kind: item.kind, projectIds: item.projectIds, subject: item.subject };
+    setProposing(item.key);
+    startTransition(async () => {
+      const result = await proposeAttentionMeeting(input);
+      setProposing(null);
+      if (!result.ok) {
+        setNotice({ tone: "error", message: result.message });
+        return;
+      }
+      setProposal({ itemKey: item.key, title: result.title, ...result.proposal });
+    });
+  }
+
+  function confirmDiscussion() {
+    if (!proposal) return;
+    if (proposal.demo) {
+      setNotice({ tone: "info", message: "Demo environment — no calendar invites were sent." });
+      setProposal(null);
+      return;
+    }
+    const payload = {
+      title: proposal.title,
+      description: "A 30-minute Garden overlap conversation. Booked from The Garden in Cove.",
+      startIso: proposal.startIso,
+      endIso: proposal.endIso,
+      attendees: proposal.attendees.map((attendee) => ({ name: attendee.name, email: attendee.email })),
+    };
+    setProposal(null);
+    startTransition(async () => {
+      const result = await confirmAttentionMeeting(payload);
+      setNotice({ tone: result.ok ? "ok" : "error", message: result.message });
+    });
+  }
+
   const filtersActive =
     query !== "" || stageFilter !== "" || teamFilter !== "" || brandFilter !== "" || systemFilter !== "" || personFilter !== "" || themeFilter !== "";
 
@@ -244,14 +361,14 @@ export function GardenWorkspace({ workspace }: { workspace: GardenWorkspaceData 
   }, [view, live, archived, query, stageFilter, teamFilter, brandFilter, systemFilter, personFilter, themeFilter]);
 
   const attention = useMemo(() => {
-    const items: { key: string; kind: "ack" | "overlap" | "testing" | "stale"; text: string; projectIds: string[]; project?: GardenProject }[] = [];
+    const items: { key: string; kind: "ack" | "overlap" | "testing" | "stale"; text: string; projectIds: string[]; subject?: string; project?: GardenProject }[] = [];
     for (const project of live) {
       if (project.growthStage !== "Cancelled or replaced") continue;
       const state = ackState(project);
       const me = state.outstanding.find(isViewer);
       if (me) {
         items.push({
-          key: `ack:${project.id}`,
+          key: attentionItemKey("ack", [project.id]),
           kind: "ack",
           text: `${project.name} has been cancelled or replaced${project.cancellationReason ? ` — ${project.cancellationReason}` : ""}`,
           projectIds: [project.id],
@@ -266,7 +383,7 @@ export function GardenWorkspace({ workspace }: { workspace: GardenWorkspaceData 
       if (!a || !b) continue;
       if (!involvesViewer(a) && !involvesViewer(b)) continue;
       items.push({
-        key: `overlap:${overlap.projectA}:${overlap.projectB}`,
+        key: attentionItemKey("overlap", [a.id, b.id]),
         kind: "overlap",
         text: `Possible overlap: ${a.name} ↔ ${b.name}`,
         projectIds: [a.id, b.id],
@@ -278,11 +395,13 @@ export function GardenWorkspace({ workspace }: { workspace: GardenWorkspaceData 
         return project ? involvesViewer(project) : false;
       });
       if (!relevant) continue;
+      const subject = `${conflict.subjectKind}:${conflict.subject}`;
       items.push({
-        key: `testing:${conflict.subject}`,
+        key: attentionItemKey("testing", conflict.projectIds, subject),
         kind: "testing",
         text: `Testing overlap — ${conflict.subject} ${conflict.subjectKind === "team" ? "are" : "is"} testing ${conflict.projectIds.length} projects at once`,
         projectIds: conflict.projectIds,
+        subject,
       });
     }
     for (const project of live) {
@@ -291,7 +410,7 @@ export function GardenWorkspace({ workspace }: { workspace: GardenWorkspaceData 
       const mine = isViewer(project.owner) || project.teammates.some(isViewer) || (project.sponsor ? isViewer(project.sponsor) : false);
       if (!mine) continue;
       items.push({
-        key: `stale:${project.id}`,
+        key: attentionItemKey("stale", [project.id]),
         kind: "stale",
         text:
           flag === "overdue"
@@ -300,9 +419,11 @@ export function GardenWorkspace({ workspace }: { workspace: GardenWorkspaceData 
         projectIds: [project.id],
       });
     }
-    return items;
+    // Acknowledgements can never be Noted away; everything else respects the
+    // viewer's dismissals.
+    return items.filter((item) => item.kind === "ack" || !dismissed.has(item.key));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [live, overlaps, testingConflicts, acks]);
+  }, [live, overlaps, testingConflicts, acks, dismissed]);
 
   const recentlyCompleted = live.filter((project) => project.growthStage === "Complete");
   const stageCounts = new Map<GrowthStage, number>();
@@ -355,13 +476,55 @@ export function GardenWorkspace({ workspace }: { workspace: GardenWorkspaceData 
           <ul>
             {attention.map((item) => (
               <li key={item.key} className={styles[`attention-${item.kind}`]}>
-                <button type="button" className={styles.attentionText} onClick={() => setSelectedId(item.projectIds[0])}>
-                  {item.text}
-                </button>
-                {item.kind === "ack" && item.project ? (
-                  <button type="button" className={styles.gotIt} onClick={() => acknowledge(item.project!)}>
-                    Got it
+                <div className={styles.attentionRow}>
+                  <button type="button" className={styles.attentionText} onClick={() => setSelectedId(item.projectIds[0])}>
+                    {item.text}
                   </button>
+                  {item.kind === "ack" && item.project ? (
+                    <button type="button" className={styles.gotIt} onClick={() => acknowledge(item.project!)}>
+                      Got it
+                    </button>
+                  ) : item.kind !== "ack" ? (
+                    <span className={styles.attentionActions}>
+                      <button type="button" onClick={() => noted(item as Parameters<typeof noted>[0])} title="Dismiss — you're aware, no further action needed">
+                        Noted
+                      </button>
+                      <button type="button" onClick={() => notifyTeam(item as Parameters<typeof notifyTeam>[0])} title="Slack the project team in #notion-automation-testing">
+                        Notify team
+                      </button>
+                      <button
+                        type="button"
+                        disabled={proposing === item.key}
+                        onClick={() => scheduleDiscussion(item as Parameters<typeof scheduleDiscussion>[0])}
+                        title="Find a 30-minute slot that suits everyone and confirm before sending"
+                      >
+                        {proposing === item.key ? "Checking calendars…" : "Schedule 30 min"}
+                      </button>
+                    </span>
+                  ) : null}
+                </div>
+                {proposal && proposal.itemKey === item.key ? (
+                  <div className={styles.proposalCard}>
+                    <strong>Provisional: {formatStamp(proposal.startIso)} – {new Intl.DateTimeFormat("en-AU", { hour: "numeric", minute: "2-digit" }).format(Date.parse(proposal.endIso))}</strong>
+                    {[...new Set(proposal.attendees.map((attendee) => attendee.timezone))].map((timezone) => (
+                      <span key={timezone}>
+                        {new Intl.DateTimeFormat("en-AU", { timeZone: timezone, weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(Date.parse(proposal.startIso))}
+                        {" in "}
+                        {timezone}
+                        {" — "}
+                        {proposal.attendees.filter((attendee) => attendee.timezone === timezone).map((attendee) => attendee.name).join(", ")}
+                      </span>
+                    ))}
+                    {proposal.skipped.length > 0 ? <span className={styles.proposalSkipped}>Not invited: {proposal.skipped.join(", ")}</span> : null}
+                    <div className={styles.proposalButtons}>
+                      <button type="button" className={styles.gotIt} onClick={confirmDiscussion}>
+                        Confirm — send invites
+                      </button>
+                      <button type="button" className={styles.proposalCancel} onClick={() => setProposal(null)}>
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
                 ) : null}
               </li>
             ))}

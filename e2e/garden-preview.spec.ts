@@ -78,3 +78,18 @@ test("archive starts empty — every supplied project is current", async ({ page
   await expect(page.getByText("The Archive is empty for now.")).toBeVisible();
   await expect(page.getByRole("heading", { level: 3 })).toHaveCount(0);
 });
+
+test("attention actions: Noted dismisses an item, Schedule proposes a provisional time", async ({ page }) => {
+  await page.goto("/garden");
+  await page.getByRole("button", { name: /Needs your attention/ }).click();
+  const items = page.locator("li", { hasText: "Possible overlap" });
+  const before = await items.count();
+  await page.getByTitle("Dismiss — you're aware, no further action needed").first().click();
+  await expect(items).toHaveCount(before - 1);
+
+  await page.getByTitle("Find a 30-minute slot that suits everyone and confirm before sending").first().click();
+  await expect(page.getByText(/Provisional:/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Confirm — send invites" })).toBeVisible();
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(page.getByText(/Provisional:/)).toHaveCount(0);
+});

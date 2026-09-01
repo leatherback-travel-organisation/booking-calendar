@@ -38,6 +38,7 @@ export type GardenWorkspaceData = {
   origin: "database" | "preview" | "unavailable";
   directoryOrigin: "airtable" | "database" | "preview" | "unavailable";
   viewer: GardenViewer;
+  dismissedKeys: string[];
   writesEnabled: boolean;
 };
 
@@ -223,6 +224,19 @@ export async function getGardenWorkspace(identity: VerifiedIdentity): Promise<Ga
   // flags have something to show.
   if (identityMode() === "preview") keys.add(personKey(NIC));
 
+  let dismissedKeys: string[] = [];
+  if (loaded.origin === "database" && keys.size > 0) {
+    try {
+      const sql = getSql();
+      const rows = (await sql`
+        select item_key from garden.attention_dismissals where person_key = any(${[...keys]})
+      `) as { item_key: string }[];
+      dismissedKeys = rows.map((row) => row.item_key);
+    } catch (error) {
+      console.error("garden dismissals load failed", error);
+    }
+  }
+
   return {
     projects: loaded.projects,
     acknowledgements,
@@ -234,6 +248,7 @@ export async function getGardenWorkspace(identity: VerifiedIdentity): Promise<Ga
       email,
       keys: [...keys],
     },
+    dismissedKeys,
     writesEnabled: loaded.origin === "database",
   };
 }

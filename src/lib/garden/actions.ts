@@ -275,3 +275,150 @@ async function refreshOverlapLedger(): Promise<void> {
     console.error("garden overlap notification failed", error);
   }
 }
+
+// --- Attention-item actions ------------------------------------------------
+
+import { attentionItemKey } from "./model.ts";
+import {
+  attentionSlackMessage,
+  createMeeting,
+  meetingConfigured,
+  postGardenSlack,
+  proposeMeeting,
+  resolveAttentionItem,
+  slackConfigured,
+  slackIdsByEmail,
+  type MeetingProposal,
+} from "./attention.ts";
+
+const attentionInputSchema = z.object({
+  kind: z.enum(["overlap", "testing", "stale"]),
+  projectIds: z.array(z.string().uuid()).min(1).max(6),
+  subject: z.string().trim().max(80).optional(),
+});
+
+export type AttentionActionInput = z.infer<typeof attentionInputSchema>;
+
+type AttentionContext =
+  | { error: { ok: false; message: string }; input?: undefined; item?: undefined }
+  | { error?: undefined; input: AttentionActionInput; item: NonNullable<ReturnType<typeof resolveAttentionItem>> };
+
+async function resolveAttentionContext(rawInput: unknown): Promise<AttentionContext> {
+  const parsed = attentionInputSchema.safeParse(rawInput);
+  if (!parsed.success) return { error: { ok: false, message: "That attention item didn't validate." } };
+  const { projects } = await loadProjects();
+  const matched = parsed.data.projectIds
+    .map((id) => projects.find((project) => project.id === id))
+    .filter((project): project is NonNullable<typeof project> => Boolean(project));
+  const item = resolveAttentionItem(parsed.data.kind, matched, parsed.data.subject, new Date());
+  if (!item) return { error: { ok: false, message: "That attention item no longer applies." } };
+  item.key = attentionItemKey(parsed.data.kind, parsed.data.projectIds, parsed.data.subject);
+  return { input: parsed.data, item };
+}
+
+export async function dismissAttention(rawInput: unknown): Promise<GardenActionResult> {
+  const identity = await requireEmployeeIdentity();
+  await requireApplicationPermission(identity, "garden", "garden.write");
+  if (identityMode() === "preview" || !databaseConfigured()) return { ok: true, message: "Noted." };
+  const parsed = attentionInputSchema.safeParse(rawInput);
+  if (!parsed.success) return { ok: false, message: "That attention item didn't validate." };
+  const viewer = await resolveViewerKeys(identity);
+  const personKeyValue = viewer.email ?? [...viewer.keys][0];
+  if (!personKeyValue) return { ok: false, message: "Couldn't work out who you are in the directory." };
+  const key = attentionItemKey(parsed.data.kind, parsed.data.projectIds, parsed.data.subject);
+  try {
+    const sql = getSql();
+    await sql`
+      insert into garden.attention_dismissals (person_key, item_key)
+      values (${personKeyValue}, ${key})
+      on conflict (person_key, item_key) do nothing
+    `;
+  } catch (error) {
+    console.error("garden dismissal failed", error);
+    return { ok: false, message: "That didn't save — try again." };
+  }
+  revalidatePath("/garden");
+  return { ok: true, message: "Noted." };
+}
+
+export async function notifyAttentionTeam(rawInput: unknown): Promise<GardenActionResult> {
+  const identity = await requireEmployeeIdentity();
+  await requireApplicationPermission(identity, "garden", "garden.write");
+  if (identityMode() === "preview") return { ok: false, message: "Demo environment — Slack isn't connected here." };
+  if (!slackConfigured()) {
+    return { ok: false, message: "Slack isn't connected yet — set GARDEN_SLACK_WEBHOOK_URL (webhook for #notion-automation-testing)." };
+  }
+  const context = await resolveAttentionContext(rawInput);
+  if (context.error) return context.error;
+
+  const slackIds = await slackIdsByEmail();
+  const viewer = await resolveViewerKeys(identity);
+  const sent = await postGardenSlack(attentionSlackMessage(context.item, slackIds, viewer.name));
+  if (!sent) return { ok: false, message: "Slack didn't accept the message — nothing was posted." };
+
+  if (databaseConfigured()) {
+    try {
+      const sql = getSql();
+      await sql`
+        insert into garden.attention_notifications (item_key, sent_by)
+        values (${context.item.key}, ${viewer.email ?? viewer.name})
+      `;
+    } catch (error) {
+      console.error("garden notification log failed", error);
+    }
+  }
+  const tagged = context.item.people.filter((person) => person.email && slackIds.has(person.email.trim().toLowerCase())).length;
+  return { ok: true, message: `Posted to #notion-automation-testing, tagging ${tagged} of ${context.item.people.length} team members.` };
+}
+
+export type MeetingProposalResult = { ok: true; proposal: MeetingProposal; title: string } | { ok: false; message: string };
+
+export async function proposeAttentionMeeting(rawInput: unknown): Promise<MeetingProposalResult> {
+  const identity = await requireEmployeeIdentity();
+  await requireApplicationPermission(identity, "garden", "garden.write");
+  const context = await resolveAttentionContext(rawInput);
+  if (context.error) return { ok: false, message: context.error.message };
+  const title = `Garden: ${context.item.projects.map((project) => project.name).join(" ↔ ")}`;
+  if (identityMode() === "preview") return { ok: false, message: "Demo environment — calendars aren't connected here." };
+  if (!meetingConfigured()) return { ok: false, message: "Google Calendar isn't configured (GOOGLE_SA_KEY_B64)." };
+  const email = identity.email?.trim().toLowerCase();
+  if (!email) return { ok: false, message: "Your account has no verified email to organise from." };
+
+  const people = context.item.people;
+  const result = await proposeMeeting(email, people, new Date());
+  if ("error" in result) return { ok: false, message: result.error };
+  return { ok: true, proposal: result.proposal, title };
+}
+
+const confirmMeetingSchema = z.object({
+  title: z.string().trim().min(1).max(160),
+  description: z.string().trim().max(1000),
+  startIso: z.string().datetime(),
+  endIso: z.string().datetime(),
+  attendees: z.array(z.object({ name: z.string().trim().min(1).max(120), email: z.string().trim().toLowerCase().email() })).min(1).max(15),
+});
+
+export async function confirmAttentionMeeting(rawInput: unknown): Promise<GardenActionResult> {
+  const identity = await requireEmployeeIdentity();
+  await requireApplicationPermission(identity, "garden", "garden.write");
+  if (identityMode() === "preview") return { ok: false, message: "Demo environment — no invites are sent from here." };
+  const parsed = confirmMeetingSchema.safeParse(rawInput);
+  if (!parsed.success) return { ok: false, message: "That meeting didn't validate." };
+  const email = identity.email?.trim().toLowerCase();
+  if (!email) return { ok: false, message: "Your account has no verified email to organise from." };
+  const result = await createMeeting(
+    email,
+    parsed.data.title,
+    parsed.data.description,
+    parsed.data.startIso,
+    parsed.data.endIso,
+    parsed.data.attendees,
+  );
+  if ("error" in result) return { ok: false, message: result.error };
+  return {
+    ok: true,
+    message: result.meetUrl
+      ? `Invites sent — Google Meet: ${result.meetUrl}`
+      : "Invites sent (Meet link will appear on the calendar event).",
+  };
+}

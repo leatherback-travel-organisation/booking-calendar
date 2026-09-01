@@ -198,3 +198,12 @@ export function stageChipTone(stage: GrowthStage): "planning" | "active" | "test
       return "cancelled";
   }
 }
+
+export type AttentionKind = "ack" | "overlap" | "testing" | "stale";
+
+// Stable identity for an attention item, shared by the client list, the
+// per-person "Noted" dismissals and the notification log.
+export function attentionItemKey(kind: AttentionKind, projectIds: string[], subject?: string): string {
+  const ids = [...projectIds].sort();
+  return [kind, ...(subject ? [subject] : []), ...ids].join("|");
+}
