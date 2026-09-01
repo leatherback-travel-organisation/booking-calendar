@@ -630,7 +630,7 @@ export function BookingFlow({
             <p className={styles.pageSub}>
               You&rsquo;re enquiring about <strong>{ctx.departures[0].title}</strong>.
             </p>
-            {ctx.brandTrips.length > 1 && (
+            {(ctx.brandTrips.length > 1 || ctx.departures.length > 1) && (
               <button
                 type="button"
                 className={styles.linkBtn}
@@ -639,7 +639,7 @@ export function BookingFlow({
                 Not the right trip? Change it
               </button>
             )}
-            {changeTripOpen && (
+            {changeTripOpen && ctx.brandTrips.length > 1 && (
               <select
                 className={styles.select}
                 aria-label="Choose a different trip"
@@ -660,8 +660,10 @@ export function BookingFlow({
               </select>
             )}
             {/* Departure choice, only when this trip runs more than once
-                (informational — same calendar either way). */}
-            {ctx.departures.length > 1 && (
+                (informational — same calendar either way). Tucked behind
+                "Not the right trip?" — the first departure is assumed until
+                the guest asks to change it (Nicola, 1 Sep). */}
+            {changeTripOpen && ctx.departures.length > 1 && (
               <>
                 <label className={styles.fieldLabel} htmlFor="bp-departure">Which departure are you interested in?</label>
                 <select
@@ -687,7 +689,38 @@ export function BookingFlow({
         <hr className={styles.divider} />
 
         {/* Main area */}
-        {selected && active && eventType && meta ? (
+        {selected && active && eventType && !meta ? (
+          // Time chosen, medium not yet — the one question between the time
+          // and the details form (video-enabled BMs only; phone-only BMs
+          // skip straight to the form).
+          <div className={styles.dayGroup}>
+            <p className={styles.pageSub}>{formatFullDateTime(selected.start, tz)}</p>
+            <div className={styles.mediumRow} role="radiogroup" aria-label="How would you like to take the call?">
+              <span className={styles.sectionLabel}>How should we meet?</span>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={callMedium === "video"}
+                className={callMedium === "video" ? `${styles.mediumBtn} ${styles.mediumBtnActive}` : styles.mediumBtn}
+                onClick={() => setCallMedium("video")}
+              >
+                Video call
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={callMedium === "phone"}
+                className={callMedium === "phone" ? `${styles.mediumBtn} ${styles.mediumBtnActive}` : styles.mediumBtn}
+                onClick={() => setCallMedium("phone")}
+              >
+                Phone call
+              </button>
+            </div>
+            <button type="button" className={styles.linkBtn} onClick={() => setSelected(null)}>
+              Pick a different time
+            </button>
+          </div>
+        ) : selected && active && eventType && meta ? (
           <ConfirmForm
           guestCountry={ctx?.guestCountry ?? tripPicker?.guestCountry ?? null}
             slot={selected}
@@ -760,40 +793,17 @@ export function BookingFlow({
             )}
             {availData !== null && availData.slots.length > 0 && (
               <>
-                {active.videoCallsEnabled ? (
-                  <div className={styles.mediumRow} role="radiogroup" aria-label="How would you like to take the call?">
-                    <span className={styles.sectionLabel}>How should we meet?</span>
-                    <button
-                      type="button"
-                      role="radio"
-                      aria-checked={callMedium === "video"}
-                      className={callMedium === "video" ? `${styles.mediumBtn} ${styles.mediumBtnActive}` : styles.mediumBtn}
-                      onClick={() => setCallMedium("video")}
-                    >
-                      Video call
-                    </button>
-                    <button
-                      type="button"
-                      role="radio"
-                      aria-checked={callMedium === "phone"}
-                      className={callMedium === "phone" ? `${styles.mediumBtn} ${styles.mediumBtnActive}` : styles.mediumBtn}
-                      onClick={() => setCallMedium("phone")}
-                    >
-                      Phone call
-                    </button>
-                  </div>
-                ) : (
+                {/* Straight into times (Nicola, 1 Sep) — video/phone is asked
+                    AFTER a time is picked. Phone-only BMs keep the one-line
+                    heads-up since they are never asked at all. */}
+                {!active.videoCallsEnabled && (
                   <div className={styles.mediumRow}>
                     <span className={styles.sectionLabel}>
                       This is a phone call: {active.firstName} will ring you at your chosen time.
                     </span>
                   </div>
                 )}
-                {effectiveMedium === null ? (
-                  <p className={styles.mutedText}>Choose video or phone above to see {active.firstName}&rsquo;s times.</p>
-                ) : (
-                  <SlotPicker slots={availData.slots} timeZone={tz} onPick={pickSlot} />
-                )}
+                <SlotPicker slots={availData.slots} timeZone={tz} onPick={pickSlot} />
                 {active.routedVia === "primary" && !showBackups && (
                   <button type="button" className={styles.linkBtn} onClick={openBackups}>
                     Can&rsquo;t find a time that works?
