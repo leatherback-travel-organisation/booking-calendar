@@ -21,6 +21,7 @@ import {
   type PersonRef,
 } from "@/lib/garden/model.ts";
 import { detectOverlaps, detectTestingConflicts, type ProjectOverlap } from "@/lib/garden/overlaps.ts";
+import { findBestMeetingSlot, suggestOmissions, type MeetingAttendee, type ScoredSlot } from "@/lib/garden/meeting.ts";
 import {
   acknowledgeCancellation,
   confirmAttentionMeeting,
@@ -278,39 +279,50 @@ export function GardenWorkspace({ workspace }: { workspace: GardenWorkspaceData 
   function scheduleDiscussion(item: { key: string; kind: "overlap" | "testing" | "stale"; projectIds: string[]; subject?: string }) {
     const projectNames = item.projectIds.map((id) => byId.get(id)?.name).filter(Boolean).join(" ↔ ");
     if (!workspace.writesEnabled) {
-      // Demo proposal: next weekday, one attendee stretched to early Belgrade
-      // hours plus an omit-them alternative, so the whole flow is walkable.
-      const start = new Date();
-      start.setUTCHours(0, 0, 0, 0);
-      do {
-        start.setUTCDate(start.getUTCDate() + 1);
-      } while ([0, 6].includes(new Date(start.getTime() + 10 * 3600_000).getUTCDay()));
-      const attendees = [
+      // Demo proposal: fabricate a mixed-timezone team (last person Belgrade
+      // when the group is big enough) but run the REAL slot engine over it,
+      // so the demo can only ever show times the engine would actually book.
+      const people = [
         ...new Map(
           item.projectIds.flatMap((id) => {
             const project = byId.get(id);
             return project ? involvedPeople(project).filter((person) => person.email) : [];
-          }).map((person) => [person.email, { name: person.name, email: person.email!, timezone: "Australia/Sydney", band: "comfortable" as const }]),
+          }).map((person) => [person.email, { name: person.name, email: person.email! }]),
         ).values(),
       ];
-      const stretched = attendees.length > 2 ? attendees[attendees.length - 1] : null;
-      const options: ProposalOptionView[] = [
-        {
-          omitName: null,
-          startIso: new Date(start.getTime()).toISOString(),
-          endIso: new Date(start.getTime() + 30 * 60 * 1000).toISOString(),
-          attendees: attendees.map((attendee) =>
-            stretched && attendee.email === stretched.email ? { ...attendee, timezone: "Europe/Belgrade", band: "early" } : attendee,
-          ),
-        },
-      ];
-      if (stretched) {
-        options.push({
-          omitName: stretched.name,
-          startIso: new Date(start.getTime() + 60 * 60 * 1000).toISOString(),
-          endIso: new Date(start.getTime() + 90 * 60 * 1000).toISOString(),
-          attendees: attendees.filter((attendee) => attendee.email !== stretched.email),
-        });
+      const attendees: MeetingAttendee[] = people.map((person, index) => ({
+        email: person.email,
+        timezone: people.length > 2 && index === people.length - 1 ? "Europe/Belgrade" : "Australia/Sydney",
+        busy: [],
+      }));
+      const nameByEmail = new Map(people.map((person) => [person.email, person.name]));
+      const tzByEmail = new Map(attendees.map((attendee) => [attendee.email, attendee.timezone]));
+      const toView = (slot: ScoredSlot, omitEmail: string | null): ProposalOptionView => ({
+        omitName: omitEmail ? (nameByEmail.get(omitEmail) ?? omitEmail) : null,
+        startIso: slot.startIso,
+        endIso: slot.endIso,
+        attendees: slot.perAttendee.map((entry) => ({
+          name: nameByEmail.get(entry.email) ?? entry.email,
+          email: entry.email,
+          timezone: tzByEmail.get(entry.email) ?? "Australia/Sydney",
+          band: entry.band,
+        })),
+      });
+      const search = {
+        fromIso: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+        horizonDays: 7,
+        durationMinutes: 30,
+      };
+      const full = findBestMeetingSlot({ ...search, attendees });
+      const options: ProposalOptionView[] = full ? [toView(full, null)] : [];
+      if (!full || full.tier > 0) {
+        for (const omission of suggestOmissions({ ...search, attendees, fullGroupSlot: full })) {
+          options.push(toView(omission.slot, omission.omitEmail));
+        }
+      }
+      if (options.length === 0) {
+        setNotice({ tone: "info", message: "Demo — no slot fits this group in the next week." });
+        return;
       }
       setProposal({ itemKey: item.key, title: `Garden: ${projectNames}`, options, skipped: [], demo: true });
       return;
