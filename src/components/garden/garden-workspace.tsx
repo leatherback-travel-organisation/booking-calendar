@@ -10,6 +10,8 @@ import {
   involvedPeople,
   attentionItemKey,
   isActiveStage,
+  overlapPairKey,
+  structurallyAware,
   personKey,
   stageChipTone,
   stalenessFlag,
@@ -146,8 +148,24 @@ export function GardenWorkspace({ workspace }: { workspace: GardenWorkspaceData 
   const live = useMemo(() => projects.filter((project) => project.archivedAt === null), [projects]);
   const archived = useMemo(() => projects.filter((project) => project.archivedAt !== null), [projects]);
   const overlaps = useMemo(() => detectOverlaps(projects), [projects]);
+  const awareByPair = useMemo(
+    () => new Map(workspace.awareness.map((entry) => [entry.pairKey, entry])),
+    [workspace.awareness],
+  );
   const testingConflicts = useMemo(() => detectTestingConflicts(projects), [projects]);
   const byId = useMemo(() => new Map(projects.map((project) => [project.id, project])), [projects]);
+
+  // A crossover the whole team demonstrably already knows about (from the
+  // Slack sweep, or because the same people run both projects) raises no
+  // notifications — it lives on quietly as the overlap pill and drawer note.
+  const overlapAwareness = (overlap: ProjectOverlap): { source: string; note: string | null } | null => {
+    const recorded = awareByPair.get(overlapPairKey(overlap.projectA, overlap.projectB));
+    if (recorded) return { source: recorded.source, note: recorded.note };
+    const a = byId.get(overlap.projectA);
+    const b = byId.get(overlap.projectB);
+    if (a && b && structurallyAware(a, b)) return { source: "same people", note: "The same people run both projects" };
+    return null;
+  };
 
   const ackedKeys = useMemo(() => {
     const map = new Map<string, Set<string>>();
@@ -400,6 +418,7 @@ export function GardenWorkspace({ workspace }: { workspace: GardenWorkspaceData 
     }
     for (const overlap of overlaps) {
       if (overlap.severity !== "material") continue;
+      if (overlapAwareness(overlap)) continue;
       const a = byId.get(overlap.projectA);
       const b = byId.get(overlap.projectB);
       if (!a || !b) continue;
@@ -453,7 +472,7 @@ export function GardenWorkspace({ workspace }: { workspace: GardenWorkspaceData 
 
   const selected = selectedId ? (byId.get(selectedId) ?? null) : null;
 
-  const materialOverlaps = overlaps.filter((overlap) => overlap.severity === "material");
+  const materialOverlaps = overlaps.filter((overlap) => overlap.severity === "material" && !overlapAwareness(overlap));
 
   return (
     <div className={`people-page ${styles.garden}`}>
@@ -774,6 +793,7 @@ export function GardenWorkspace({ workspace }: { workspace: GardenWorkspaceData 
           workspace={workspace}
           projects={projects}
           overlaps={overlaps}
+          awarenessFor={overlapAwareness}
           ackState={ackState(selected)}
           isViewer={isViewer}
           onClose={() => setSelectedId(null)}
@@ -1085,6 +1105,7 @@ function ProjectDrawer({
   workspace,
   projects,
   overlaps,
+  awarenessFor,
   ackState,
   isViewer,
   onClose,
@@ -1096,6 +1117,7 @@ function ProjectDrawer({
   workspace: GardenWorkspaceData;
   projects: GardenProject[];
   overlaps: ProjectOverlap[];
+  awarenessFor: (overlap: ProjectOverlap) => { source: string; note: string | null } | null;
   ackState: AckState;
   isViewer: (person: PersonRef) => boolean;
   onClose: () => void;
@@ -1157,16 +1179,22 @@ function ProjectDrawer({
               const otherId = overlap.projectA === project.id ? overlap.projectB : overlap.projectA;
               const other = byId.get(otherId);
               if (!other) return null;
+              const aware = awarenessFor(overlap);
               return (
-                <div key={otherId} className={overlap.severity === "material" ? styles.overlapMaterial : styles.overlapPossible}>
+                <div key={otherId} className={overlap.severity === "material" && !aware ? styles.overlapMaterial : styles.overlapPossible}>
                   <button type="button" onClick={() => onOpen(otherId)}>
-                    {overlap.severity === "material" ? "Possible overlap" : "Worth knowing"}: {other.name}
+                    {aware ? "Known crossover" : overlap.severity === "material" ? "Possible overlap" : "Worth knowing"}: {other.name}
                   </button>
                   <ul>
                     {overlap.reasons.map((why) => (
                       <li key={why}>{why}</li>
                     ))}
                   </ul>
+                  {aware ? (
+                    <span className={styles.awareTag}>
+                      Team already aware{aware.note ? ` — ${aware.note}` : ""}{aware.source === "slack" ? " (from Slack)" : ""}
+                    </span>
+                  ) : null}
                 </div>
               );
             })}

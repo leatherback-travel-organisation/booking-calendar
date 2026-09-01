@@ -7,6 +7,7 @@ import { identityMode } from "@/lib/identity/server";
 import type { VerifiedIdentity } from "@/lib/identity/types";
 import {
   isArchiveDue,
+  overlapPairKey,
   personKey,
   type AcknowledgementRecord,
   type GardenProject,
@@ -39,8 +40,11 @@ export type GardenWorkspaceData = {
   directoryOrigin: "airtable" | "database" | "preview" | "unavailable";
   viewer: GardenViewer;
   dismissedKeys: string[];
+  awareness: OverlapAwareness[];
   writesEnabled: boolean;
 };
+
+export type OverlapAwareness = { pairKey: string; source: string; note: string | null };
 
 type ProjectRow = {
   id: string;
@@ -224,6 +228,19 @@ export async function getGardenWorkspace(identity: VerifiedIdentity): Promise<Ga
   // flags have something to show.
   if (identityMode() === "preview") keys.add(personKey(NIC));
 
+  let awareness: OverlapAwareness[] = [];
+  if (loaded.origin === "database") {
+    try {
+      const sql = getSql();
+      const rows = (await sql`
+        select project_a, project_b, source, note from garden.overlap_awareness
+      `) as { project_a: string; project_b: string; source: string; note: string | null }[];
+      awareness = rows.map((row) => ({ pairKey: overlapPairKey(row.project_a, row.project_b), source: row.source, note: row.note }));
+    } catch (error) {
+      console.error("garden awareness load failed", error);
+    }
+  }
+
   let dismissedKeys: string[] = [];
   if (loaded.origin === "database" && keys.size > 0) {
     try {
@@ -249,6 +266,7 @@ export async function getGardenWorkspace(identity: VerifiedIdentity): Promise<Ga
       keys: [...keys],
     },
     dismissedKeys,
+    awareness,
     writesEnabled: loaded.origin === "database",
   };
 }

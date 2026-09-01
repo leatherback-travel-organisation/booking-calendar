@@ -207,3 +207,19 @@ export function attentionItemKey(kind: AttentionKind, projectIds: string[], subj
   const ids = [...projectIds].sort();
   return [kind, ...(subject ? [subject] : []), ...ids].join("|");
 }
+
+export function overlapPairKey(a: string, b: string): string {
+  return [a, b].sort().join(":");
+}
+
+// When every involved person on either project is involved in BOTH projects,
+// the whole "team" already knows the two interact — the overlap is real but
+// carries no news for anyone. Such pairs never raise attention items.
+export function structurallyAware(a: GardenProject, b: GardenProject): boolean {
+  const keysA = new Set(involvedPeople(a).map(personKey));
+  const keysB = new Set(involvedPeople(b).map(personKey));
+  if (keysA.size === 0 || keysB.size === 0) return false;
+  for (const key of keysA) if (!keysB.has(key)) return false;
+  for (const key of keysB) if (!keysA.has(key)) return false;
+  return true;
+}

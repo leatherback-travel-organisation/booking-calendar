@@ -143,3 +143,17 @@ test("staleness flags overdue and quiet projects, never finished ones", () => {
   const editedAfterDue = makeProject({ estimatedCompletion: "2026-08-15", lastEditedAt: "2026-08-20T00:00:00Z" });
   assert.equal(stalenessFlag(editedAfterDue, now), null);
 });
+
+test("overlaps whose people fully coincide are structurally aware", async () => {
+  const { structurallyAware } = await import("./model.ts");
+  const solo = makeProject({ owner: kat });
+  const soloToo = makeProject({ owner: kat });
+  assert.equal(structurallyAware(solo, soloToo), true);
+
+  const withCsilla = makeProject({ owner: kat, teammates: [csilla] });
+  assert.equal(structurallyAware(solo, withCsilla), false);
+
+  const sameSet = makeProject({ owner: csilla, teammates: [kat] });
+  const sameSetToo = makeProject({ owner: kat, teammates: [csilla] });
+  assert.equal(structurallyAware(sameSet, sameSetToo), true);
+});

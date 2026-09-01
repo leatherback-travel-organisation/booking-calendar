@@ -210,3 +210,5 @@
 
 .proposalOption { display: grid; gap: 3px; padding: 9px 11px; border: 1px solid #d8e9e6; border-radius: 9px; background: white; }
 .proposalOption strong { font-size: 13px; font-weight: 500; }
+
+.awareTag { display: inline-flex; align-self: start; padding: 2px 9px; border-radius: 999px; color: #33691e; background: #eef7e6; font-size: 11px; font-weight: 500; }

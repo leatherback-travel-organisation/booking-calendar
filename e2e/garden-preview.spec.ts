@@ -95,3 +95,12 @@ test("attention actions: Noted dismisses an item, Schedule proposes a provisiona
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(page.getByText(/Everyone:|Provisional:/)).toHaveCount(0);
 });
+
+test("known crossovers raise no notifications but stay tagged in the drawer", async ({ page }) => {
+  await page.goto("/garden");
+  await expect(page.getByText("HelpScout Side Panel ↔ Activity feed in HS")).toHaveCount(0);
+  await page.getByRole("heading", { name: "Activity feed in HS", level: 3 }).click();
+  const drawer = page.getByRole("dialog");
+  await expect(drawer.getByText(/Known crossover: HelpScout Side Panel/)).toBeVisible();
+  await expect(drawer.getByText(/Team already aware — The same people run both projects/)).toBeVisible();
+});
