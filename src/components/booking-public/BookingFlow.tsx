@@ -544,6 +544,11 @@ export function BookingFlow({
   const calendarDown = availData !== null && !availData.calendarReachable && availData.slots.length === 0;
   const fullyBooked = availData !== null && availData.calendarReachable && availData.slots.length === 0;
 
+  // The type chooser shows durations per option; whenever it is NOT on
+  // screen (fixed-type link, embed, single type, or a chosen type) the call
+  // duration is stated at the top instead so the guest always sees it.
+  const typeChooserVisible = !typeParam && !embed && ctx.eventTypes.length > 1 && !selected;
+
   const backupsLoading = backupsKey !== null && backupsResult?.key !== backupsKey;
   const backupsFailed = backupsKey !== null && backupsResult?.key === backupsKey && backupsResult.failed;
   const backupsList =
@@ -591,10 +596,16 @@ export function BookingFlow({
           <h1 className={styles.pageTitle}>{ctx.poolLabel ?? `Book a call with the ${ctx.brand.name} team`}</h1>
         )}
 
+        {eventType && !typeChooserVisible && (
+          <p className={styles.pageSub}>
+            {eventType.name} · {eventType.durationMin} minutes
+          </p>
+        )}
+
         {/* Event type choice — hidden when the entry link fixed the type OR
             we're inside the trip-page widget overlay: straight to times
             (embed defaults to the 30-minute enquiry call). */}
-        {!typeParam && !embed && ctx.eventTypes.length > 1 && !selected && (
+        {typeChooserVisible && (
           <div>
             <p className={styles.sectionLabel}>What kind of call?</p>
             <div className={styles.typeGrid}>
