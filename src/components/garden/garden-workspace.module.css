@@ -207,3 +207,6 @@
 .proposalButtons { display: flex; gap: 8px; margin-top: 5px; }
 .proposalCancel { min-height: 30px; padding: 5px 14px; border: 1px solid #d5e2e4; border-radius: 999px; color: #3f536e; background: white; cursor: pointer; font: inherit; font-size: 12px; font-weight: 500; }
 .proposalCancel:hover { background: #f7fbfa; }
+
+.proposalOption { display: grid; gap: 3px; padding: 9px 11px; border: 1px solid #d8e9e6; border-radius: 9px; background: white; }
+.proposalOption strong { font-size: 13px; font-weight: 500; }

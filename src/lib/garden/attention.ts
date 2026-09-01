@@ -10,7 +10,7 @@ import { accessTokenFor, calendarConfigured } from "@/lib/booking/google/auth";
 import { freeBusy } from "@/lib/booking/google/calendar";
 import { involvedPeople, personKey, stalenessFlag, type GardenProject, type PersonRef } from "./model.ts";
 import { scorePair } from "./overlaps.ts";
-import { findMeetingSlot, type MeetingAttendee } from "./meeting.ts";
+import { findBestMeetingSlot, suggestOmissions, type ComfortBand, type MeetingAttendee, type ScoredSlot } from "./meeting.ts";
 
 const TEAM_DIRECTORY_DATABASE_ID = "3563b112-a0e0-80fe-8ccc-fd3667a0807f";
 const GARDEN_URL = "https://cove.leatherbacktravel.com/garden";
@@ -162,10 +162,19 @@ export function attentionSlackMessage(item: ResolvedAttentionItem, slackIds: Map
 
 // --- Meeting proposal -------------------------------------------------------
 
-export type MeetingProposal = {
+export type ProposalAttendee = { name: string; email: string; timezone: string; band: ComfortBand };
+
+export type ProposalOption = {
+  omitName: string | null;
+  omitEmail: string | null;
   startIso: string;
   endIso: string;
-  attendees: Array<{ name: string; email: string; timezone: string }>;
+  attendees: ProposalAttendee[];
+};
+
+export type MeetingProposal = {
+  /** First option = the whole group where a slot exists; then omissions. */
+  options: ProposalOption[];
   skipped: string[];
   demo: boolean;
 };
@@ -224,19 +233,42 @@ export async function proposeMeeting(
   }
   if (attendees.length === 0) return { error: "None of the project team's calendars were reachable." };
 
-  // Start looking from two hours out so nobody gets ambushed.
-  const slot = findMeetingSlot({
+  const nameByEmail = new Map(withTimezone.map((entry) => [entry.email, entry.name]));
+  const tzByEmail = new Map(withTimezone.map((entry) => [entry.email, entry.timezone]));
+  const toOption = (slot: ScoredSlot, omitEmail: string | null): ProposalOption => ({
+    omitName: omitEmail ? (nameByEmail.get(omitEmail) ?? omitEmail) : null,
+    omitEmail,
+    startIso: slot.startIso,
+    endIso: slot.endIso,
+    attendees: slot.perAttendee.map((entry) => ({
+      name: nameByEmail.get(entry.email) ?? entry.email,
+      email: entry.email,
+      timezone: tzByEmail.get(entry.email) ?? DEFAULT_TIMEZONE,
+      band: entry.band,
+    })),
+  });
+
+  // Start looking from two hours out so nobody gets ambushed. Comfort beats
+  // soonness: a fully in-hours slot wins even when a stretched one is sooner.
+  const search = {
     fromIso: new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString(),
     horizonDays: 7,
     durationMinutes: 30,
-    attendees,
-  });
-  if (!slot) {
-    return { error: "No 30-minute slot in the next week fits everyone's working hours. Try trimming the invite list." };
-  }
-  return {
-    proposal: { startIso: slot.startIso, endIso: slot.endIso, attendees: withTimezone, skipped, demo: false },
   };
+  const full = findBestMeetingSlot({ ...search, attendees });
+  const options: ProposalOption[] = full ? [toOption(full, null)] : [];
+
+  // When the whole group can only meet at a stretch (or not at all), work out
+  // who could sit this one out for a better time.
+  if (!full || full.tier > 0) {
+    for (const omission of suggestOmissions({ ...search, attendees, fullGroupSlot: full })) {
+      options.push(toOption(omission.slot, omission.omitEmail));
+    }
+  }
+  if (options.length === 0) {
+    return { error: "No 30-minute slot in the next week works, even leaving one person out. Try again next week or trim the team by hand." };
+  }
+  return { proposal: { options, skipped, demo: false } };
 }
 
 export async function createMeeting(

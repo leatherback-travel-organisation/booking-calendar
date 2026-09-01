@@ -88,8 +88,10 @@ test("attention actions: Noted dismisses an item, Schedule proposes a provisiona
   await expect(items).toHaveCount(before - 1);
 
   await page.getByTitle("Find a 30-minute slot that suits everyone and confirm before sending").first().click();
-  await expect(page.getByText(/Provisional:/)).toBeVisible();
+  await expect(page.getByText(/Everyone:|Provisional:/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Confirm — send invites" })).toBeVisible();
+  await expect(page.getByText(/early start/)).toBeVisible();
+  await expect(page.getByRole("button", { name: /Confirm without/ })).toBeVisible();
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
-  await expect(page.getByText(/Provisional:/)).toHaveCount(0);
+  await expect(page.getByText(/Everyone:|Provisional:/)).toHaveCount(0);
 });

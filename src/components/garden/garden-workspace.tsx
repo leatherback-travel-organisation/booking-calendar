@@ -120,12 +120,16 @@ export function GardenWorkspace({ workspace }: { workspace: GardenWorkspaceData 
   const [attentionOpen, setAttentionOpen] = useState<boolean | null>(null);
   const [dismissed, setDismissed] = useState<Set<string>>(() => new Set(workspace.dismissedKeys));
   const [proposing, setProposing] = useState<string | null>(null);
+  type ProposalOptionView = {
+    omitName: string | null;
+    startIso: string;
+    endIso: string;
+    attendees: Array<{ name: string; email: string; timezone: string; band: "comfortable" | "early" | "late" | "rough" }>;
+  };
   const [proposal, setProposal] = useState<{
     itemKey: string;
     title: string;
-    startIso: string;
-    endIso: string;
-    attendees: Array<{ name: string; email: string; timezone: string }>;
+    options: ProposalOptionView[];
     skipped: string[];
     demo: boolean;
   } | null>(null);
@@ -256,7 +260,8 @@ export function GardenWorkspace({ workspace }: { workspace: GardenWorkspaceData 
   function scheduleDiscussion(item: { key: string; kind: "overlap" | "testing" | "stale"; projectIds: string[]; subject?: string }) {
     const projectNames = item.projectIds.map((id) => byId.get(id)?.name).filter(Boolean).join(" ↔ ");
     if (!workspace.writesEnabled) {
-      // Demo proposal: next weekday at 10:00 Sydney, so the flow is walkable.
+      // Demo proposal: next weekday, one attendee stretched to early Belgrade
+      // hours plus an omit-them alternative, so the whole flow is walkable.
       const start = new Date();
       start.setUTCHours(0, 0, 0, 0);
       do {
@@ -267,18 +272,29 @@ export function GardenWorkspace({ workspace }: { workspace: GardenWorkspaceData 
           item.projectIds.flatMap((id) => {
             const project = byId.get(id);
             return project ? involvedPeople(project).filter((person) => person.email) : [];
-          }).map((person) => [person.email, { name: person.name, email: person.email!, timezone: "Australia/Sydney" }]),
+          }).map((person) => [person.email, { name: person.name, email: person.email!, timezone: "Australia/Sydney", band: "comfortable" as const }]),
         ).values(),
       ];
-      setProposal({
-        itemKey: item.key,
-        title: `Garden: ${projectNames}`,
-        startIso: new Date(start.getTime()).toISOString(),
-        endIso: new Date(start.getTime() + 30 * 60 * 1000).toISOString(),
-        attendees,
-        skipped: [],
-        demo: true,
-      });
+      const stretched = attendees.length > 2 ? attendees[attendees.length - 1] : null;
+      const options: ProposalOptionView[] = [
+        {
+          omitName: null,
+          startIso: new Date(start.getTime()).toISOString(),
+          endIso: new Date(start.getTime() + 30 * 60 * 1000).toISOString(),
+          attendees: attendees.map((attendee) =>
+            stretched && attendee.email === stretched.email ? { ...attendee, timezone: "Europe/Belgrade", band: "early" } : attendee,
+          ),
+        },
+      ];
+      if (stretched) {
+        options.push({
+          omitName: stretched.name,
+          startIso: new Date(start.getTime() + 60 * 60 * 1000).toISOString(),
+          endIso: new Date(start.getTime() + 90 * 60 * 1000).toISOString(),
+          attendees: attendees.filter((attendee) => attendee.email !== stretched.email),
+        });
+      }
+      setProposal({ itemKey: item.key, title: `Garden: ${projectNames}`, options, skipped: [], demo: true });
       return;
     }
     const input: AttentionActionInput = { kind: item.kind, projectIds: item.projectIds, subject: item.subject };
@@ -290,11 +306,17 @@ export function GardenWorkspace({ workspace }: { workspace: GardenWorkspaceData 
         setNotice({ tone: "error", message: result.message });
         return;
       }
-      setProposal({ itemKey: item.key, title: result.title, ...result.proposal });
+      setProposal({
+        itemKey: item.key,
+        title: result.title,
+        options: result.proposal.options,
+        skipped: result.proposal.skipped,
+        demo: result.proposal.demo,
+      });
     });
   }
 
-  function confirmDiscussion() {
+  function confirmDiscussion(option: ProposalOptionView) {
     if (!proposal) return;
     if (proposal.demo) {
       setNotice({ tone: "info", message: "Demo environment — no calendar invites were sent." });
@@ -304,9 +326,9 @@ export function GardenWorkspace({ workspace }: { workspace: GardenWorkspaceData 
     const payload = {
       title: proposal.title,
       description: "A 30-minute Garden overlap conversation. Booked from The Garden in Cove.",
-      startIso: proposal.startIso,
-      endIso: proposal.endIso,
-      attendees: proposal.attendees.map((attendee) => ({ name: attendee.name, email: attendee.email })),
+      startIso: option.startIso,
+      endIso: option.endIso,
+      attendees: option.attendees.map((attendee) => ({ name: attendee.name, email: attendee.email })),
     };
     setProposal(null);
     startTransition(async () => {
@@ -505,21 +527,44 @@ export function GardenWorkspace({ workspace }: { workspace: GardenWorkspaceData 
                 </div>
                 {proposal && proposal.itemKey === item.key ? (
                   <div className={styles.proposalCard}>
-                    <strong>Provisional: {formatStamp(proposal.startIso)} – {new Intl.DateTimeFormat("en-AU", { hour: "numeric", minute: "2-digit" }).format(Date.parse(proposal.endIso))}</strong>
-                    {[...new Set(proposal.attendees.map((attendee) => attendee.timezone))].map((timezone) => (
-                      <span key={timezone}>
-                        {new Intl.DateTimeFormat("en-AU", { timeZone: timezone, weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(Date.parse(proposal.startIso))}
-                        {" in "}
-                        {timezone}
-                        {" — "}
-                        {proposal.attendees.filter((attendee) => attendee.timezone === timezone).map((attendee) => attendee.name).join(", ")}
-                      </span>
-                    ))}
+                    {proposal.options[0]?.omitName !== null ? (
+                      <strong>No time this week fits everyone — options that leave one person out:</strong>
+                    ) : null}
+                    {proposal.options.map((option, index) => {
+                      const stretched = option.attendees.filter((attendee) => attendee.band !== "comfortable");
+                      const bandLabel = (band: string) =>
+                        band === "early" ? "early start" : band === "late" ? "after hours" : "rough hours";
+                      return (
+                        <div key={index} className={styles.proposalOption}>
+                          <strong>
+                            {option.omitName ? `Without ${option.omitName}: ` : proposal.options.length > 1 ? "Everyone: " : "Provisional: "}
+                            {formatStamp(option.startIso)} – {new Intl.DateTimeFormat("en-AU", { hour: "numeric", minute: "2-digit" }).format(Date.parse(option.endIso))}
+                            {stretched.length === 0 ? " · in-hours for all" : ""}
+                          </strong>
+                          {[...new Set(option.attendees.map((attendee) => attendee.timezone))].map((timezone) => {
+                            const locals = option.attendees.filter((attendee) => attendee.timezone === timezone);
+                            const band = locals[0]?.band ?? "comfortable";
+                            return (
+                              <span key={timezone}>
+                                {new Intl.DateTimeFormat("en-AU", { timeZone: timezone, weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(Date.parse(option.startIso))}
+                                {" in "}
+                                {timezone}
+                                {" — "}
+                                {locals.map((attendee) => attendee.name).join(", ")}
+                                {band !== "comfortable" ? ` (${bandLabel(band)})` : ""}
+                              </span>
+                            );
+                          })}
+                          <div className={styles.proposalButtons}>
+                            <button type="button" className={styles.gotIt} onClick={() => confirmDiscussion(option)}>
+                              {option.omitName ? `Confirm without ${option.omitName}` : "Confirm — send invites"}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                     {proposal.skipped.length > 0 ? <span className={styles.proposalSkipped}>Not invited: {proposal.skipped.join(", ")}</span> : null}
                     <div className={styles.proposalButtons}>
-                      <button type="button" className={styles.gotIt} onClick={confirmDiscussion}>
-                        Confirm — send invites
-                      </button>
                       <button type="button" className={styles.proposalCancel} onClick={() => setProposal(null)}>
                         Cancel
                       </button>
