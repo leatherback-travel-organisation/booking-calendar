@@ -44,6 +44,20 @@ const LOCATION_TIMEZONES: Array<[RegExp, string]> = [
   [/united states|usa/i, "America/Denver"],
 ];
 
+// Corrections from the 1 Sep three-source audit (Google Calendar setting vs
+// Notion Location vs Slack profile). These people's Google Calendar setting is
+// materially wrong, so it must not win: Nicola confirmed Melbourne directly
+// (Google says Brisbane — off by an hour once DST starts); Mandy's home is
+// Victoria (Google: Adelaide; Slack: an on-leave Amsterdam); Mikaela lives in
+// Bulgaria per Notion and her phone number (Google Madrid / Slack Amsterdam
+// look like untouched defaults). Fix the source settings, then prune this.
+const TIMEZONE_OVERRIDES = new Map<string, string>([
+  ["nicola@leatherbacktravel.com", "Australia/Melbourne"],
+  ["nicola@patchadventures.com.au", "Australia/Melbourne"],
+  ["mandy@patchadventures.com.au", "Australia/Melbourne"],
+  ["mikaela@leatherbacktravel.com", "Europe/Sofia"],
+]);
+
 export function timezoneForLocation(location: string): string | null {
   for (const [pattern, timezone] of LOCATION_TIMEZONES) {
     if (pattern.test(location)) return timezone;
@@ -108,7 +122,8 @@ export async function slackIdsByEmail(): Promise<Map<string, string>> {
   return map;
 }
 
-/** email → IANA timezone derived from the Notion Location field. */
+/** email → IANA timezone derived from the Notion Location field, with the
+ * audit corrections applied on top. */
 export async function timezonesByEmail(): Promise<Map<string, string>> {
   const people = await notionPeople();
   const map = new Map<string, string>();
@@ -116,6 +131,7 @@ export async function timezonesByEmail(): Promise<Map<string, string>> {
     const timezone = person.location ? timezoneForLocation(person.location) : null;
     if (timezone) map.set(email, timezone);
   }
+  for (const [email, timezone] of TIMEZONE_OVERRIDES) map.set(email, timezone);
   return map;
 }
 
@@ -236,6 +252,8 @@ export function meetingConfigured(): boolean {
 }
 
 async function primaryTimezone(email: string, notionFallback: Map<string, string>): Promise<string> {
+  const override = TIMEZONE_OVERRIDES.get(email);
+  if (override) return override;
   try {
     const token = await accessTokenFor(email);
     const response = await fetch("https://www.googleapis.com/calendar/v3/calendars/primary", {
