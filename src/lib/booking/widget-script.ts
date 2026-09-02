@@ -193,8 +193,8 @@ export const WIDGET_SOURCE = `(function () {
       var color = safeColor(brand.colorPrimary, '#0f5f5c');
       var accent = safeColor(brand.colorAccent, '#c2571b');
       var title = isPrimary
-        ? 'Book a call with ' + staff.firstName
-        : 'Book a call with the ' + (brand.name || 'trip') + ' team';
+        ? 'Chat with ' + staff.firstName
+        : 'Chat with the ' + (brand.name || 'trip') + ' team';
       var photo = isPrimary ? (staff.photoUrl || '') : (brand.logoUrl || '');
       var bio = isPrimary ? (staff.bio || '') : '';
       var phone = typeof data.phone === 'string' ? data.phone : '';
@@ -217,14 +217,14 @@ export const WIDGET_SOURCE = `(function () {
         '.card{position:fixed;right:20px;bottom:20px;width:320px;max-width:calc(100vw - 32px);',
         'background:#fff;border-radius:16px;box-shadow:0 10px 34px rgba(0,0,0,.18);padding:18px;',
         'box-sizing:border-box;z-index:2147483000}',
-        '.head{display:flex;align-items:center;gap:12px;margin-bottom:8px;padding-right:20px}',
+        '.head{display:flex;align-items:center;gap:12px;margin-bottom:12px;padding-right:20px}',
         '.photo{width:52px;height:52px;border-radius:50%;object-fit:cover;flex:none;background:#f3f4f6}',
         '.tsub{font-size:13px;color:#6b7280;margin:0 0 2px}',
         '.title{font-size:16px;font-weight:700;color:#111827}',
         '.bio{font-size:14px;color:#4b5563;margin-bottom:10px;display:-webkit-box;',
         '-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}',
         '.phone{display:block;font-size:14px;font-weight:600;text-decoration:none;',
-        'margin-bottom:12px;color:' + accent + '}',
+        'margin:2px 0 0;color:' + accent + '}',
         '.cta{display:block;width:100%;border:0;border-radius:10px;padding:12px 16px;font-size:15px;',
         'font-weight:700;color:#fff;cursor:pointer;background:' + color + '}',
         '.cta:hover{filter:brightness(1.08)}',
@@ -270,18 +270,18 @@ export const WIDGET_SOURCE = `(function () {
       var titleEl = mk('div', 'title');
       titleEl.textContent = title;
       tw.appendChild(titleEl);
+      if (phone) {
+        var tel = mk('a', 'phone');
+        tel.href = 'tel:' + phone.replace(/[^0-9+]/g, '');
+        tel.textContent = phone;
+        tw.appendChild(tel);
+      }
       head.appendChild(tw);
       card.appendChild(head);
       if (bio) {
         var bioEl = mk('div', 'bio');
         bioEl.textContent = bio;
         card.appendChild(bioEl);
-      }
-      if (phone) {
-        var tel = mk('a', 'phone');
-        tel.href = 'tel:' + phone.replace(/[^0-9+]/g, '');
-        tel.textContent = phone;
-        card.appendChild(tel);
       }
       var cta = mk('button', 'cta');
       cta.textContent = 'Book a call';
