@@ -137,12 +137,12 @@ export const WIDGET_SOURCE = `(function () {
       return null;
     }
 
-    // 4b. Dock above #hl if present, else under the enquiry control.
+    // 4b. Dock under the enquiry/book-now control if present, else above #hl.
     function findDockAnchor() {
-      var hl = document.getElementById('hl');
-      if (hl && hl.parentNode) return { el: hl, before: true };
       var enquiry = findEnquiry();
       if (enquiry && enquiry.parentNode) return { el: enquiry, before: false };
+      var hl = document.getElementById('hl');
+      if (hl && hl.parentNode) return { el: hl, before: true };
       return null;
     }
 
