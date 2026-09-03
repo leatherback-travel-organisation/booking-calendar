@@ -126,7 +126,7 @@ export const WIDGET_SOURCE = `(function () {
 
     // 4a. The host page's enquiry/book-now control.
     function findEnquiry() {
-      var re = /enquire|book now|get in touch/i;
+      var re = /enquire|inquire|book now|get in touch/i;
       var els = document.querySelectorAll('a,button');
       for (var i = 0; i < els.length; i++) {
         var el = els[i];
@@ -137,10 +137,20 @@ export const WIDGET_SOURCE = `(function () {
       return null;
     }
 
-    // 4b. Docked row under the enquiry control.
+    // 4b. Dock above #hl (Highlights/5 Good Reasons) if present, else under
+    // the enquiry control (may be far down long trip pages).
+    function findDockAnchor() {
+      var hl = document.getElementById('hl');
+      if (hl && hl.parentNode) return { el: hl, before: true };
+      var enquiry = findEnquiry();
+      if (enquiry && enquiry.parentNode) return { el: enquiry, before: false };
+      return null;
+    }
+
     function renderDocked(title, photo, color, initial) {
-      var target = findEnquiry();
-      if (!target || !target.parentNode) return null;
+      var anchor = findDockAnchor();
+      if (!anchor) return null;
+      var target = anchor.el;
       var hostEl = mk('div');
       var sh = hostEl.attachShadow({ mode: 'closed' });
       var st = mk('style');
@@ -181,7 +191,11 @@ export const WIDGET_SOURCE = `(function () {
       row.appendChild(chev);
       row.addEventListener('click', openOverlay);
       sh.appendChild(row);
-      target.parentNode.insertBefore(hostEl, target.nextSibling);
+      if (anchor.before) {
+        target.parentNode.insertBefore(hostEl, target);
+      } else {
+        target.parentNode.insertBefore(hostEl, target.nextSibling);
+      }
       return hostEl;
     }
 
