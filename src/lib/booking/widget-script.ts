@@ -48,7 +48,7 @@ export const WIDGET_SOURCE = `(function () {
     var tripAttr = script.getAttribute('data-trip') || '';
     var typeAttr = script.getAttribute('data-type') || '';
 
-    // 2. Trip pages dock a row; home floats the card; other pages: nothing.
+    // 2. Trips dock; home floats; other pages: nothing.
     var segs = window.location.pathname.split('/').filter(function (p) { return p.length > 0; });
     var at = segs.indexOf('tour');
     var isTrip = at !== -1;
@@ -137,8 +137,7 @@ export const WIDGET_SOURCE = `(function () {
       return null;
     }
 
-    // 4b. Dock above #hl (Highlights/5 Good Reasons) if present, else under
-    // the enquiry control (may be far down long trip pages).
+    // 4b. Dock above #hl if present, else under the enquiry control.
     function findDockAnchor() {
       var hl = document.getElementById('hl');
       if (hl && hl.parentNode) return { el: hl, before: true };
@@ -313,7 +312,7 @@ export const WIDGET_SOURCE = `(function () {
       card.appendChild(close);
       root.appendChild(card);
 
-      // Collapsed slim bar for small viewports; expands on tap.
+      // Slim bar on small viewports; expands on tap.
       var bar = mk('button', 'bar');
       if (photo) bar.appendChild(pic('photo', photo));
       var blabel = mk('span');
@@ -355,6 +354,8 @@ export const WIDGET_SOURCE = `(function () {
         try {
           if (document.body) render(data);
         } catch (e) { debug('render failed'); }
+        // ?book=1 auto-opens (email links).
+        if (window.location.search.indexOf('book=1') !== -1) openOverlay();
       })
       .catch(function () { debug('fetch failed'); });
   } catch (e) {
