@@ -58,6 +58,19 @@ type BackupsResult = { key: string; list: BackupEntry[]; failed: boolean };
  *  short enough that real leave always surfaces. */
 const COVER_GAP_DAYS = 3;
 
+/** Nothing open for this long and the backup stops being a footnote (Nicola,
+ *  8 Sep): a guest facing a blank week needs a bookable time in front of
+ *  them, not at the bottom of the panel. */
+const QUIET_WEEK_DAYS = 7;
+
+/** Where the backup's times belong. Nothing from the primary for a week or
+ *  more puts them up with the times; anything sooner leaves them at the
+ *  bottom, so the primary keeps the call whenever they can take it. */
+function backupPlacement(primaryFirstMs: number | null, nowMs: number): "with-times" | "bottom" {
+  if (primaryFirstMs === null) return "with-times";
+  return primaryFirstMs - nowMs >= QUIET_WEEK_DAYS * 86_400_000 ? "with-times" : "bottom";
+}
+
 function defaultEventTypeKey(eventTypes: PublicEventType[], typeParam: string | null): string | null {
   if (typeParam && eventTypes.some((t) => t.key === typeParam)) return typeParam;
   if (eventTypes.some((t) => t.key === "enquiry")) return "enquiry";
@@ -675,8 +688,10 @@ export function BookingFlow({
 
   // Cover (Nicola, 4 Sep): a BM on leave leaves a hole in the calendar, so
   // whoever backs them up is offered with real times — still the guest's
-  // choice, never a swap. It sits BENEATH the primary's own availability
-  // (Nicola, 7 Sep), or under the "no times" notice when there is none.
+  // choice, never a swap. Placement follows how long the primary is quiet
+  // for (Nicola, 8 Sep): a blank week or more and the backup sits up with
+  // the times, otherwise it waits at the bottom of the panel.
+  const coverPlacement = backupPlacement(primaryFirstMs, nowMs);
   const coverBlock =
     coverEntry && !selected && active ? (
       <div className={styles.coverBox}>
@@ -959,13 +974,18 @@ export function BookingFlow({
                     </span>
                   </div>
                 )}
+                {coverPlacement === "with-times" && coverBlock}
+                {coverPlacement === "with-times" && coverEntry && (
+                  // The backup's times came first, so say whose these are.
+                  <p className={styles.sectionLabel}>Or wait for {active.firstName}:</p>
+                )}
                 <SlotPicker slots={availData.slots} timeZone={tz} onPick={pickSlot} />
-                {coverBlock}
                 {active.routedVia === "primary" && !showBackups && (
                   <button type="button" className={styles.linkBtn} onClick={openBackups}>
                     Can&rsquo;t find a time that works?
                   </button>
                 )}
+                {coverPlacement === "bottom" && coverBlock}
               </>
             )}
             {showBackups && (
