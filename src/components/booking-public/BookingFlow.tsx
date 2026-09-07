@@ -80,6 +80,26 @@ function coverSlotsFor(
   );
 }
 
+/** The first stretch of COVER_GAP_DAYS or more with nothing, starting within
+ *  the next week — leave rarely begins today, so the hole matters more than
+ *  the next opening. Returns when it starts and when they are back. */
+function findCoverGap(
+  slots: readonly PublicSlot[],
+  nowMs: number,
+): { startMs: number; endMs: number } | null {
+  if (slots.length === 0) return null;
+  const gapMs = COVER_GAP_DAYS * 86_400_000;
+  let previous = new Date(slots[0].start).getTime();
+  for (const slot of slots) {
+    const current = new Date(slot.start).getTime();
+    if (current - previous > gapMs && previous - nowMs < 7 * 86_400_000) {
+      return { startMs: previous, endMs: current };
+    }
+    previous = current;
+  }
+  return null;
+}
+
 function sortDepartures(departures: PublicDeparture[]): PublicDeparture[] {
   return [...departures].sort((a, b) => {
     if (a.startDate === b.startDate) return 0;
@@ -256,25 +276,14 @@ export function BookingFlow({
   // Leave rarely starts today: a BM is typically free for a day or two, then
   // gone for a fortnight. So look for the GAP as well as a distant first
   // opening — otherwise tomorrow's slots hide next fortnight's hole.
-  const coverGapStartMs = useMemo(() => {
-    const slots = availData?.slots ?? [];
-    if (slots.length === 0) return null;
-    const gapMs = COVER_GAP_DAYS * 86_400_000;
-    let previous = new Date(slots[0].start).getTime();
-    for (const slot of slots) {
-      const current = new Date(slot.start).getTime();
-      if (current - previous > gapMs && previous - nowMs < 7 * 86_400_000) return previous;
-      previous = current;
-    }
-    return null;
-  }, [availData, nowMs]);
+  const coverGap = findCoverGap(availData?.slots ?? [], nowMs);
   const coverNeeded =
     active?.routedVia === "primary" &&
     availData !== null &&
     availData.calendarReachable &&
     (primaryFirstMs === null ||
       primaryFirstMs - nowMs > COVER_GAP_DAYS * 86_400_000 ||
-      coverGapStartMs !== null);
+      coverGap !== null);
 
   // 3. Team list: eagerly the whole pool UI when there is no primary, and
   //    lazily (click only) behind "Can't find a time that works?" otherwise.
@@ -653,9 +662,9 @@ export function BookingFlow({
   // The first backup who can genuinely help sooner than the primary.
   const coverEntry =
     (coverNeeded && backupsList
-      ? backupsList.find((entry) => coverSlotsFor(entry, primaryFirstMs, coverGapStartMs).length > 0)
+      ? backupsList.find((entry) => coverSlotsFor(entry, primaryFirstMs, coverGap?.startMs ?? null).length > 0)
       : null) ?? null;
-  const coverSlots = coverEntry ? coverSlotsFor(coverEntry, primaryFirstMs, coverGapStartMs).slice(0, 3) : [];
+  const coverSlots = coverEntry ? coverSlotsFor(coverEntry, primaryFirstMs, coverGap?.startMs ?? null).slice(0, 3) : [];
 
   // Cover (Nicola, 4 Sep): a BM on leave leaves a hole in the calendar, so
   // whoever backs them up is offered with real times — still the guest's
@@ -665,10 +674,13 @@ export function BookingFlow({
     coverEntry && !selected && active ? (
       <div className={styles.coverBox}>
         <p className={styles.coverLead}>
-          {primaryFirstMs === null
-            ? `${active.firstName} has no times open at the moment.`
-            : coverGapStartMs !== null
-              ? `${active.firstName} has nothing open after ${formatDayShort(new Date(coverGapStartMs).toISOString(), tz)}.`
+          {coverGap !== null
+            ? // A multi-day hole is almost always leave, so it gets the warm
+              // line; sparse availability only gets the plain fact. No
+              // pronouns: this copy renders for every BM.
+              `${active.firstName} is off on an adventure and has limited availability until ${formatDayShort(new Date(coverGap.endMs).toISOString(), tz)}.`
+            : primaryFirstMs === null
+              ? `${active.firstName} has no times open at the moment.`
               : `${active.firstName}'s next opening is ${formatDayShort(availData!.slots[0].start, tz)}.`}
         </p>
         <div className={styles.coverWho}>
@@ -681,8 +693,8 @@ export function BookingFlow({
             />
           ) : null}
           <p className={styles.coverSub}>
-            <strong>{coverEntry.staff.firstName}</strong> also looks after {ctx.brand.name} and can talk
-            sooner:
+            In the meantime, <strong>{coverEntry.staff.firstName}</strong> also looks after {ctx.brand.name}{" "}
+            and can talk sooner:
           </p>
         </div>
         <div className={styles.slotGrid}>
