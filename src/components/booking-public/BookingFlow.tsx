@@ -626,7 +626,14 @@ export function BookingFlow({
               </div>
             )}
           </div>
-          <p className={styles.pageSub}>A confirmation email is on its way to your inbox.</p>
+          {/* The address is echoed back (Nicola, 7 Sep): a booking once went
+              out to someone else's inbox because the form was filled with a
+              stale autofilled address, and nobody saw it until the wrong
+              person replied. */}
+          <p className={styles.pageSub}>
+            A confirmation email is on its way to <strong>{booked.guestEmail}</strong>. Not your address? Call
+            us and we&rsquo;ll fix it.
+          </p>
           {booked.manageUrl && (
             <p className={styles.mutedText}>
               Need to change it later?{" "}

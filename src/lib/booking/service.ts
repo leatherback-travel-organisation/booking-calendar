@@ -13,6 +13,7 @@ import { guestEventTypeName, type Brand, type EventType, type Interval, type Sta
 import { computeSlots, resolveSchedulingZone } from "./availability/engine";
 import { getConfirmed, getStaffByEmail, getWorkingHours } from "./availability/service";
 import { sendBookingEmail } from "./notify/messages";
+import { escapeHtml } from "./notify/render.ts";
 import { createOrThreadConversation } from "./helpscout";
 import {
   buildCrossoverPingHtml,
@@ -308,6 +309,30 @@ export async function createBooking(args: CreateBookingArgs): Promise<CreateBook
     const routedVia = args.routedVia ?? "primary";
     const viaPortal = args.sourceKind === "portal";
     const conversationTags = [...(viaPortal ? ["portal"] : []), ...(crossovers.length > 0 ? ["crossover"] : [])];
+    // A booking whose email belongs to a DIFFERENT guest is almost always a
+    // stale autofilled address (Nicola, 7 Sep — a confirmation reached the
+    // wrong inbox this way). We cannot know which one is right, so we never
+    // guess: the BM is told, loudly, before they act on it.
+    const clash = await sql`
+      select guest_name, created_at from booking.booking
+       where lower(guest_email) = lower(${args.guestEmail})
+         and id <> ${bookingId}
+         and created_at > now() - interval '180 days'
+       order by created_at desc
+       limit 1`;
+    const clashName = clash[0] ? String(clash[0].guest_name) : null;
+    const nameTokens = (value: string) =>
+      new Set(value.toLowerCase().split(/[^a-z]+/i).filter((part) => part.length > 2));
+    const sharesAName =
+      clashName !== null &&
+      [...nameTokens(args.guestName)].some((token) => nameTokens(clashName).has(token));
+    const emailWarning =
+      clashName !== null && !sharesAName
+        ? `<p><strong>⚠ Check the email address before replying.</strong> ${escapeHtml(args.guestEmail)} was ` +
+          `also used by <strong>${escapeHtml(clashName)}</strong>, a different guest. One of these bookings ` +
+          `probably carries someone else's address — confirm with the guest before sending anything further.</p>`
+        : "";
+
     const conversationId = await createOrThreadConversation({
       existingConversationId: emailConversationId,
       mailboxId: args.brand.helpscoutMailboxId ?? "",
@@ -317,6 +342,7 @@ export async function createBooking(args: CreateBookingArgs): Promise<CreateBook
       subject: `${args.eventType.name} booked — ${args.guestName}${viaPortal ? " (guest portal)" : ""}`,
       tags: conversationTags.length > 0 ? conversationTags : undefined,
       bodyHtml:
+        emailWarning +
         (viaPortal
           ? `<p><strong>⭑ Booked through the guest portal</strong> — ${args.guestName} was signed in and booked from their own trip page. Existing guest; worth a skim of their booking before the call.</p>`
           : "") +

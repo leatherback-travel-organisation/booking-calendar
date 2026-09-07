@@ -33,6 +33,9 @@ export type BookedResult = {
   meetUrl: string | null;
   startIso: string;
   endIso: string;
+  /** Echoed back on the success screen so a wrong address is caught by the
+   *  guest at the moment of booking, not by whoever receives it. */
+  guestEmail: string;
 };
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
@@ -175,6 +178,7 @@ export function ConfirmForm({
           meetUrl: payload.meetUrl ?? null,
           startIso: payload.startIso ?? slot.start,
           endIso: payload.endIso ?? slot.end,
+          guestEmail: email.trim(),
         });
         return;
       }
