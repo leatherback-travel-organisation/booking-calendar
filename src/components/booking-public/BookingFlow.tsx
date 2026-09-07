@@ -71,11 +71,13 @@ function coverSlotsFor(
   primaryFirstMs: number | null,
   gapStartMs: number | null,
 ): PublicSlot[] {
-  return entry.nextSlots.filter((slot) => {
-    const startMs = new Date(slot.start).getTime();
-    if (gapStartMs !== null) return startMs > gapStartMs;
-    return primaryFirstMs === null || startMs < primaryFirstMs;
-  });
+  const inGap = entry.nextSlots.filter((slot) => new Date(slot.start).getTime() > (gapStartMs ?? Infinity));
+  if (inGap.length > 0) return inGap;
+  // No times inside the gap (or no gap): anything sooner than the primary
+  // still helps — a backup with nothing useful yields nothing at all.
+  return entry.nextSlots.filter(
+    (slot) => primaryFirstMs === null || new Date(slot.start).getTime() < primaryFirstMs,
+  );
 }
 
 function sortDepartures(departures: PublicDeparture[]): PublicDeparture[] {

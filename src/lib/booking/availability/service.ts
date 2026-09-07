@@ -295,6 +295,24 @@ export async function availabilityForStaff(args: {
   };
 }
 
+/** One slot per day, so a cover prompt can offer times spread ACROSS a
+ *  primary's absence rather than four options on the same morning. */
+function oneSlotPerDay(
+  slots: readonly { start: string; end: string }[],
+  limit: number,
+): { start: string; end: string }[] {
+  const picked: { start: string; end: string }[] = [];
+  const days = new Set<string>();
+  for (const slot of slots) {
+    const day = slot.start.slice(0, 10);
+    if (days.has(day)) continue;
+    days.add(day);
+    picked.push({ start: slot.start, end: slot.end });
+    if (picked.length >= limit) break;
+  }
+  return picked;
+}
+
 export type RankedBackup = {
   staff: Staff;
   openSlotCount: number;
@@ -371,6 +389,6 @@ export async function rankBackups(args: {
       staff: entry.staff,
       openSlotCount: entry.slots.length,
       firstSlot: entry.slots[0]?.start ?? null,
-      nextSlots: entry.slots.slice(0, 8).map((slot) => ({ start: slot.start, end: slot.end })),
+      nextSlots: oneSlotPerDay(entry.slots, 8),
     }));
 }
