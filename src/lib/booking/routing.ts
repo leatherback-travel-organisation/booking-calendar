@@ -177,6 +177,12 @@ async function resolveByTrip(tripSlug: string, host: string | null): Promise<Res
     }
   }
 
+  // Nobody reachable on THIS departure: a trip of the same title keeps the
+  // same Booking Manager unless Airtable allocates otherwise (Nicola,
+  // 7 Sep), so borrow from a sibling departure before offering the pool.
+  const sameTitle = await resolveBySiblingTitle(matched, departures, brand);
+  if (sameTitle) return sameTitle;
+
   // No reachable coordinator: honest pool, loud coverage note (§4.2 step 3).
   // Ops fixtures (Ceco tests, Private Trips) fall back silently — they are
   // exempt from coverage by decision, so a lookup must not re-flag them.
@@ -189,6 +195,51 @@ async function resolveByTrip(tripSlug: string, host: string | null): Promise<Res
     departures: matched,
     reason: `No reachable Booking Manager for this trip — offering the ${brand.name} team.`,
   };
+}
+
+/**
+ * A departure with no reachable coordinator inherits the Booking Manager of
+ * another departure of the SAME TRIP TITLE on the same brand — one title,
+ * one BM, unless Airtable says otherwise (an explicit coordinator always
+ * wins, because it is checked before this). Past siblings count: they say
+ * who owns the trip. Title matching is brand-scoped so two brands selling
+ * the same itinerary never bleed into each other.
+ */
+async function resolveBySiblingTitle(
+  matched: Departure[],
+  allDepartures: Departure[],
+  brand: Brand,
+): Promise<Extract<ResolvedManager, { kind: "primary" }> | null> {
+  const reference = matched[0];
+  const titleKey = slugKey(reference.tripName || "");
+  if (!titleKey) return null;
+
+  const siblings = allDepartures
+    .filter(
+      (d) =>
+        !matched.includes(d) &&
+        d.brandName === reference.brandName &&
+        slugKey(d.tripName || "") === titleKey &&
+        d.coordinatorEmails.length > 0,
+    )
+    // Most recent first: the newest allocation is the one that still holds.
+    .sort((a, b) => (b.startDate ?? "").localeCompare(a.startDate ?? ""));
+
+  for (const sibling of siblings) {
+    for (const email of sibling.coordinatorEmails) {
+      const staff = await getStaffByEmail(email);
+      if (staff && staff.active) {
+        return {
+          kind: "primary",
+          staff,
+          brand,
+          departures: matched,
+          reason: `This departure has no coordinator; ${staff.firstName} runs "${reference.tripName}" for ${brand.name}.`,
+        };
+      }
+    }
+  }
+  return null;
 }
 
 /**
