@@ -11,7 +11,7 @@ import "server-only";
 import { getSql } from "./db";
 import type { Brand, Departure, Staff } from "./model";
 import { slugKey } from "./slug";
-import { getStaffByEmail, getStaffBySlug } from "./availability/service";
+import { getStaffByEmail, getStaffById, getStaffBySlug } from "./availability/service";
 import { isCallRoutingExempt } from "./reference/normalize.ts";
 import { getBrands, getCachedDepartures } from "./reference/queries";
 
@@ -58,12 +58,12 @@ async function resolveByTripRecord(tripRecordId: string): Promise<ResolvedManage
   if (!departure) {
     // An empty cache (before the first sync) is not a data problem —
     // recording it would only leave stale notes on the coverage map.
-    if (departures.length > 0) await recordUnresolvedSlug(`record:${tripRecordId}`, null);
+    if (departures.length > 0) await recordUnresolvedSlug(`record:${tripRecordId}`, null, null);
     return { kind: "unresolved" };
   }
   const brand = brandForDeparture(departure, brands);
   if (!brand) {
-    await recordUnresolvedSlug(`record:${tripRecordId}`, null);
+    await recordUnresolvedSlug(`record:${tripRecordId}`, null, null);
     return { kind: "unresolved" };
   }
   for (const email of departure.coordinatorEmails) {
@@ -138,14 +138,21 @@ async function resolveByTrip(tripSlug: string, host: string | null): Promise<Res
     matched = upcoming.filter((d) => d.slug === wanted || (d.slug !== null && slugKey(d.slug) === wantedKey));
   }
   if (matched.length === 0) {
-    if (upcoming.length > 0) await recordUnresolvedSlug(tripSlug, host);
+    // The slug missed, but the HOST still says which brand the guest is on.
+    // A brand fronted by exactly one Booking Manager sends them there rather
+    // than to a picker — "all Harriet calls go to Janie unless she's away"
+    // (Nicola, 7 Sep); her cover is offered on the page when she is. Brands
+    // with several primaries keep the visible choice.
+    const byHost = await resolveByBrandHost(host, upcoming, brands);
+    if (upcoming.length > 0) await recordUnresolvedSlug(tripSlug, host, byHost?.staff.firstName ?? null);
+    if (byHost) return byHost;
     return { kind: "unresolved" };
   }
 
   matched.sort((a, b) => (a.startDate! < b.startDate! ? -1 : 1));
   const brand = brandForDeparture(matched[0], brands);
   if (!brand) {
-    await recordUnresolvedSlug(tripSlug, host);
+    await recordUnresolvedSlug(tripSlug, host, null);
     return { kind: "unresolved" };
   }
 
@@ -184,6 +191,49 @@ async function resolveByTrip(tripSlug: string, host: string | null): Promise<Res
   };
 }
 
+/**
+ * Host → brand → that brand's single primary Booking Manager. Departures
+ * carry the host parsed from their Website URL, so no extra mapping exists
+ * to drift. Returns null unless exactly one brand serves the host and
+ * exactly one active BM fronts it: an ambiguous guess is worse than a
+ * picker, and this must never quietly pick between people.
+ */
+async function resolveByBrandHost(
+  host: string | null,
+  upcoming: Departure[],
+  brands: Brand[],
+): Promise<Extract<ResolvedManager, { kind: "primary" }> | null> {
+  if (!host) return null;
+  const wantedHost = host.toLowerCase().replace(/^www\./, "");
+  const hostBrands = new Set<string>();
+  let brand: Brand | null = null;
+  for (const departure of upcoming) {
+    if (departure.host !== wantedHost) continue;
+    const candidate = brandForDeparture(departure, brands);
+    if (!candidate) continue;
+    hostBrands.add(candidate.key);
+    brand = candidate;
+  }
+  if (!brand || hostBrands.size !== 1) return null;
+
+  const sql = getSql();
+  const rows = await sql`
+    select s.id from booking.staff s
+    join booking.staff_brand sb on sb.staff_id = s.id
+    where sb.brand_id = ${brand.id} and s.active and not sb.is_backup`;
+  if (rows.length !== 1) return null;
+  const staff = await getStaffById(String(rows[0].id));
+  if (!staff || !staff.active) return null;
+
+  return {
+    kind: "primary",
+    staff,
+    brand,
+    departures: [],
+    reason: `Trip page did not match a live departure; ${brand.name} is fronted by ${staff.firstName}.`,
+  };
+}
+
 function brandForDeparture(departure: Departure, brands: Brand[]): Brand | null {
   if (departure.brandName) {
     const byAlias = brands.find(
@@ -194,7 +244,11 @@ function brandForDeparture(departure: Departure, brands: Brand[]): Brand | null 
   return null;
 }
 
-async function recordUnresolvedSlug(tripSlug: string, host: string | null): Promise<void> {
+async function recordUnresolvedSlug(
+  tripSlug: string,
+  host: string | null,
+  routedTo: string | null,
+): Promise<void> {
   // E2e probes request unresolvable slugs on purpose; recording them would
   // fill the coverage map with operational noise.
   if (/e2e/i.test(tripSlug)) return;
@@ -203,7 +257,9 @@ async function recordUnresolvedSlug(tripSlug: string, host: string | null): Prom
   await sql`
     insert into booking.coverage_issue (kind, severity, subject_ref, message, detail)
     values ('slug-unresolved', 'info', ${subjectRef},
-      ${`No live departure resolves the slug "${tripSlug}"${host ? ` (from ${host})` : ""}. The guest was shown the trip picker instead.`},
+      ${`No live departure resolves the slug "${tripSlug}"${host ? ` (from ${host})` : ""}. ${
+        routedTo ? `The guest was sent to ${routedTo} without trip context.` : "The guest was shown the trip picker instead."
+      }`},
       ${JSON.stringify({ tripSlug, host })}::jsonb)
     on conflict (kind, subject_ref) do update
       set last_seen = now(), resolved_at = null, message = excluded.message`;
