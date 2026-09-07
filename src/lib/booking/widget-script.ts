@@ -30,7 +30,6 @@ export const WIDGET_SOURCE = `(function () {
     return i;
   }
   try {
-    // 1. Find our own <script> tag.
     var script = document.currentScript;
     if (!script || !script.src) {
       script = null;
@@ -54,14 +53,15 @@ export const WIDGET_SOURCE = `(function () {
     var isTrip = at !== -1;
     var isHome = segs.length === 0;
     if (!isTrip && !isHome) return;
-    var trip = tripAttr;
+    // Extension pages name their parent: meta calltime-trip.
+    var tm = document.querySelector('meta[name="calltime-trip"]');
+    var trip = tripAttr || (tm && tm.getAttribute('content')) || '';
     if (!trip) {
       if (isTrip && segs[at + 1]) trip = segs[at + 1];
       else if (segs.length > 0) trip = segs[segs.length - 1];
     }
     var pageHost = window.location.hostname;
 
-    // Trip hero for the overlay top.
     var hm = document.querySelector('meta[property="og:image"]');
     var hv = hm && hm.getAttribute('content');
     var heroQ = hv ? '&hero=' + encodeURIComponent(hv) : '';
@@ -86,7 +86,6 @@ export const WIDGET_SOURCE = `(function () {
       if (event.data && event.data.type === 'leatherback-booking-close') closeOverlay();
     }
 
-    // 5. Overlay iframe.
     function openOverlay() {
       if (overlayHost) return;
       overlayHost = mk('div');
@@ -124,7 +123,7 @@ export const WIDGET_SOURCE = `(function () {
       document.body.appendChild(overlayHost);
     }
 
-    // 4a. The host page's enquiry/book-now control.
+    // 4a. The host page's enquiry control.
     function findEnquiry() {
       var re = /enquire|inquire|book now|get in touch/i;
       var els = document.querySelectorAll('a,button');
@@ -137,7 +136,7 @@ export const WIDGET_SOURCE = `(function () {
       return null;
     }
 
-    // 4b. Dock under the enquiry/book-now control if present, else above #hl.
+    // 4b. Dock under the enquiry control, else above #hl.
     function findDockAnchor() {
       var enquiry = findEnquiry();
       if (enquiry && enquiry.parentNode) return { el: enquiry, before: false };
@@ -304,15 +303,14 @@ export const WIDGET_SOURCE = `(function () {
       close.setAttribute('aria-label', 'Dismiss');
       close.textContent = '×';
       close.addEventListener('click', function () {
-        // Session-only dismiss.
-        dismissed = true;
+          dismissed = true;
         expanded = false;
         sync();
       });
       card.appendChild(close);
       root.appendChild(card);
 
-      // Slim bar on small viewports; expands on tap.
+      // Slim bar on small viewports.
       var bar = mk('button', 'bar');
       if (photo) bar.appendChild(pic('photo', photo));
       var blabel = mk('span');
@@ -339,7 +337,6 @@ export const WIDGET_SOURCE = `(function () {
       document.body.appendChild(hostEl);
     }
 
-    // 3. Ask the API who fronts this trip.
     var api = origin + '/api/booking/widget?brand=' + encodeURIComponent(brandKey) +
       '&trip=' + encodeURIComponent(trip) + '&host=' + encodeURIComponent(pageHost);
     fetch(api)
@@ -349,7 +346,7 @@ export const WIDGET_SOURCE = `(function () {
       })
       .then(function (data) {
         if (!data || (data.kind !== 'primary' && data.kind !== 'pool')) return;
-        // Fallback: API pins the overlay target.
+        // Fallback target from the API.
         if (data.bookQuery) bookUrl = origin + '/book?' + data.bookQuery + '&embed=1' + heroQ;
         try {
           if (document.body) render(data);
