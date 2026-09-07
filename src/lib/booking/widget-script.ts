@@ -47,7 +47,7 @@ export const WIDGET_SOURCE = `(function () {
     var tripAttr = script.getAttribute('data-trip') || '';
     var typeAttr = script.getAttribute('data-type') || '';
 
-    // 2. Trips dock; home floats; other pages: nothing.
+    // 2. Trips dock (+ phone bar); home floats; other pages: nothing.
     var segs = window.location.pathname.split('/').filter(function (p) { return p.length > 0; });
     var at = segs.indexOf('tour');
     var isTrip = at !== -1;
@@ -214,7 +214,6 @@ export const WIDGET_SOURCE = `(function () {
 
       if (isTrip) {
         try { renderDocked(title, photo, color, initial); } catch (e) { debug('dock failed'); }
-        return;
       }
 
       var dismissed = false;
@@ -258,15 +257,16 @@ export const WIDGET_SOURCE = `(function () {
         '.root.expanded .bar{display:none}',
         '.bar .photo{width:36px;height:36px}',
         '.bar span{font-size:15px;font-weight:700;color:#111827}}',
-        '.root.hidden .card,.root.hidden .bar,.root.hidden .reopen{display:none !important}'
+        '.root.hidden .card,.root.hidden .bar,.root.hidden .reopen{display:none !important}',
+        '.root.trip:not(.expanded) .card,.root.trip .reopen{display:none}'
       ].join('');
       sh.appendChild(st);
 
       var root = mk('div');
-      root.className = 'root';
+      root.className = isTrip ? 'root trip' : 'root';
 
       function sync() {
-        var cls = 'root';
+        var cls = isTrip ? 'root trip' : 'root';
         if (dismissed) cls += ' dismissed';
         if (expanded) cls += ' expanded';
         if (root.className !== cls) root.className = cls;
