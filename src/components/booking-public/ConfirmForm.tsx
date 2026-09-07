@@ -4,9 +4,10 @@
 // The idempotency key is minted ONCE when the form mounts, so a double-tap
 // of "Confirm booking" can never create two bookings.
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import styles from "./bp.module.css";
+import { NO_AUTOFILL } from "@/lib/booking/no-autofill";
 import { Turnstile } from "./Turnstile";
 import { formatFullDateTime, guestTimeZone } from "./format";
 import { defaultIso, dialCountries, findCountry, OTHER_ISO, toE164 } from "./dial-codes";
@@ -135,6 +136,25 @@ export function ConfirmForm({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Belt and braces to NO_AUTOFILL: a browser or extension that fills these
+  // fields anyway does it on load, before the guest has touched anything.
+  // Typing and pasting both need focus first, so a value in an untouched
+  // field was chosen by nobody — clear it rather than mail a confirmation to
+  // whoever's details turned up.
+  const touched = useRef(false);
+  const markTouched = () => {
+    touched.current = true;
+  };
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      if (touched.current) return;
+      setName("");
+      setEmail("");
+      setPhoneField("");
+    }, 600);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (submitting) return;
@@ -228,9 +248,10 @@ export function ConfirmForm({
           className={styles.input}
           type="text"
           required
-          autoComplete="name"
+          {...NO_AUTOFILL}
           maxLength={200}
           value={name}
+          onFocus={markTouched}
           onChange={(e) => setName(e.target.value)}
         />
       </div>
@@ -242,9 +263,10 @@ export function ConfirmForm({
           className={styles.input}
           type="email"
           required
-          autoComplete="email"
+          {...NO_AUTOFILL}
           maxLength={320}
           value={email}
+          onFocus={markTouched}
           onChange={(e) => setEmail(e.target.value)}
         />
       </div>
@@ -276,10 +298,11 @@ export function ConfirmForm({
             className={styles.input}
             type="tel"
             required={meta.callMedium === "phone"}
-            autoComplete="tel"
+            {...NO_AUTOFILL}
             maxLength={50}
             placeholder={phoneIso === OTHER_ISO ? "+971 50 123 4567" : findCountry(phoneIso)?.example}
             value={phoneField}
+            onFocus={markTouched}
             onChange={(e) => setPhoneField(e.target.value)}
           />
         </div>

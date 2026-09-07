@@ -7,6 +7,7 @@ import { DateTime } from "luxon";
 import { getBrandById, getEventTypeById, getStaffById } from "@/lib/booking/availability/service";
 import { getSession } from "@/lib/booking/groups";
 import { resolveSchedulingZone } from "@/lib/booking/availability/engine";
+import { NO_AUTOFILL } from "@/lib/booking/no-autofill";
 import { claimSeatAction } from "./actions";
 import styles from "@/components/booking-public-lite/lite.module.css";
 
@@ -105,15 +106,15 @@ export default async function GroupSessionPage({
             {error === "details" ? <p className={styles.error}>Please fill in your name and a valid email.</p> : null}
             <label className={styles.label}>
               Your name
-              <input className={styles.input} name="guestName" required maxLength={200} autoComplete="name" />
+              <input className={styles.input} name="guestName" required maxLength={200} {...NO_AUTOFILL} />
             </label>
             <label className={styles.label}>
               Email
-              <input className={styles.input} type="email" name="guestEmail" required maxLength={320} autoComplete="email" />
+              <input className={styles.input} type="email" name="guestEmail" required maxLength={320} {...NO_AUTOFILL} />
             </label>
             <label className={styles.label}>
               Phone (optional)
-              <input className={styles.input} name="guestPhone" maxLength={50} autoComplete="tel" />
+              <input className={styles.input} name="guestPhone" maxLength={50} {...NO_AUTOFILL} />
             </label>
             <div className={styles.honeypot} aria-hidden="true">
               <label>

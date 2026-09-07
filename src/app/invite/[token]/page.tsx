@@ -6,6 +6,7 @@ import { randomUUID } from "node:crypto";
 import { DateTime } from "luxon";
 import { getBrandById, getEventTypeById, getStaffById } from "@/lib/booking/availability/service";
 import { findInvitationByToken, futureCandidates } from "@/lib/booking/invitations";
+import { NO_AUTOFILL } from "@/lib/booking/no-autofill";
 import { acceptInvitationAction } from "./actions";
 import styles from "@/components/booking-public-lite/lite.module.css";
 
@@ -133,15 +134,15 @@ export default async function InvitePage({
             <input type="hidden" name="idempotencyKey" value={randomUUID()} />
             <label className={styles.label}>
               Your name
-              <input className={styles.input} name="guestName" required maxLength={200} defaultValue={invitation.guestName ?? ""} autoComplete="name" />
+              <input className={styles.input} name="guestName" required maxLength={200} {...NO_AUTOFILL} />
             </label>
             <label className={styles.label}>
               Email
-              <input className={styles.input} type="email" name="guestEmail" required maxLength={320} defaultValue={invitation.guestEmail ?? ""} autoComplete="email" />
+              <input className={styles.input} type="email" name="guestEmail" required maxLength={320} {...NO_AUTOFILL} />
             </label>
             <label className={styles.label}>
               Phone (optional)
-              <input className={styles.input} name="guestPhone" maxLength={50} autoComplete="tel" />
+              <input className={styles.input} name="guestPhone" maxLength={50} {...NO_AUTOFILL} />
             </label>
             <div className={styles.honeypot} aria-hidden="true">
               <label>
