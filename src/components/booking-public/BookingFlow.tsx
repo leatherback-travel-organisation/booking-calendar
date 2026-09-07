@@ -657,6 +657,52 @@ export function BookingFlow({
       : null) ?? null;
   const coverSlots = coverEntry ? coverSlotsFor(coverEntry, primaryFirstMs, coverGapStartMs).slice(0, 3) : [];
 
+  // Cover (Nicola, 4 Sep): a BM on leave leaves a hole in the calendar, so
+  // whoever backs them up is offered with real times — still the guest's
+  // choice, never a swap. It sits BENEATH the primary's own availability
+  // (Nicola, 7 Sep), or under the "no times" notice when there is none.
+  const coverBlock =
+    coverEntry && !selected && active ? (
+      <div className={styles.coverBox}>
+        <p className={styles.coverLead}>
+          {primaryFirstMs === null
+            ? `${active.firstName} has no times open at the moment.`
+            : coverGapStartMs !== null
+              ? `${active.firstName} has nothing open after ${formatDayShort(new Date(coverGapStartMs).toISOString(), tz)}.`
+              : `${active.firstName}'s next opening is ${formatDayShort(availData!.slots[0].start, tz)}.`}
+        </p>
+        <div className={styles.coverWho}>
+          {coverEntry.staff.photoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={coverEntry.staff.photoUrl}
+              alt={coverEntry.staff.firstName}
+              className={styles.coverPhoto}
+            />
+          ) : null}
+          <p className={styles.coverSub}>
+            <strong>{coverEntry.staff.firstName}</strong> also looks after {ctx.brand.name} and can talk
+            sooner:
+          </p>
+        </div>
+        <div className={styles.slotGrid}>
+          {coverSlots.map((slot) => (
+            <button
+              key={slot.start}
+              type="button"
+              className={styles.slotBtn}
+              onClick={() => bookWithCover(coverEntry, slot)}
+            >
+              {formatSlotShort(slot.start, tz)}
+            </button>
+          ))}
+        </div>
+        <button type="button" className={styles.linkBtn} onClick={() => chooseTeamMember(coverEntry)}>
+          See all of {coverEntry.staff.firstName}&rsquo;s times
+        </button>
+      </div>
+    ) : null;
+
   return (
     <BrandFrame brand={ctx.brand} embed={embed}>
       <section className={styles.card}>
@@ -878,42 +924,10 @@ export function BookingFlow({
                     See who else can help
                   </button>
                 )}
+                {coverBlock}
               </>
             )}
 
-            {/* Cover prompt (Nicola, 4 Sep): a BM on leave leaves a hole in
-                the calendar, so whoever backs them up is offered right here
-                with real times — still the guest's choice, never a swap. */}
-            {coverEntry && !selected && (
-              <div className={styles.coverBox}>
-                <p className={styles.coverLead}>
-                  {primaryFirstMs === null
-                    ? `${active.firstName} has no times open at the moment.`
-                    : coverGapStartMs !== null
-                      ? `${active.firstName} has nothing open after ${formatDayShort(new Date(coverGapStartMs).toISOString(), tz)}.`
-                      : `${active.firstName}'s next opening is ${formatDayShort(availData!.slots[0].start, tz)}.`}
-                </p>
-                <p className={styles.coverSub}>
-                  <strong>{coverEntry.staff.firstName}</strong> also looks after {ctx.brand.name} and can talk
-                  sooner:
-                </p>
-                <div className={styles.slotGrid}>
-                  {coverSlots.map((slot) => (
-                    <button
-                      key={slot.start}
-                      type="button"
-                      className={styles.slotBtn}
-                      onClick={() => bookWithCover(coverEntry, slot)}
-                    >
-                      {formatSlotShort(slot.start, tz)}
-                    </button>
-                  ))}
-                </div>
-                <button type="button" className={styles.linkBtn} onClick={() => chooseTeamMember(coverEntry)}>
-                  See all of {coverEntry.staff.firstName}&rsquo;s times
-                </button>
-              </div>
-            )}
             {availData !== null && availData.slots.length > 0 && (
               <>
                 {/* Straight into times (Nicola, 1 Sep) — video/phone is asked
@@ -927,6 +941,7 @@ export function BookingFlow({
                   </div>
                 )}
                 <SlotPicker slots={availData.slots} timeZone={tz} onPick={pickSlot} />
+                {coverBlock}
                 {active.routedVia === "primary" && !showBackups && (
                   <button type="button" className={styles.linkBtn} onClick={openBackups}>
                     Can&rsquo;t find a time that works?

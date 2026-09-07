@@ -719,3 +719,17 @@
   font-size: 14px;
   color: var(--bp-ink-soft);
 }
+
+.coverWho {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.coverPhoto {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: none;
+}
