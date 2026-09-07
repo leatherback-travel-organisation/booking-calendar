@@ -299,6 +299,8 @@ export type RankedBackup = {
   staff: Staff;
   openSlotCount: number;
   firstSlot: string | null;
+  /** The soonest few, so a cover prompt can offer times without a round trip. */
+  nextSlots: { start: string; end: string }[];
 };
 
 /**
@@ -369,5 +371,6 @@ export async function rankBackups(args: {
       staff: entry.staff,
       openSlotCount: entry.slots.length,
       firstSlot: entry.slots[0]?.start ?? null,
+      nextSlots: entry.slots.slice(0, 3).map((slot) => ({ start: slot.start, end: slot.end })),
     }));
 }

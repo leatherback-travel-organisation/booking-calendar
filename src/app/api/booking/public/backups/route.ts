@@ -42,6 +42,7 @@ export async function GET(request: Request): Promise<Response> {
       },
       openSlotCount: entry.openSlotCount,
       firstSlot: entry.firstSlot,
+      nextSlots: entry.nextSlots,
     })),
   });
 }

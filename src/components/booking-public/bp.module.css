@@ -695,3 +695,27 @@
     max-width: none;
   }
 }
+
+/* Cover prompt: the backup who can talk sooner while the primary is away. */
+.coverBox {
+  border: 1px solid var(--bp-line);
+  border-left: 3px solid var(--bp-primary);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.coverLead {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--bp-ink);
+}
+
+.coverSub {
+  margin: 0;
+  font-size: 14px;
+  color: var(--bp-ink-soft);
+}

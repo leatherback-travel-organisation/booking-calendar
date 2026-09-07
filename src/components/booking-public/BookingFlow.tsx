@@ -11,7 +11,7 @@ import { BrandFrame } from "./BrandFrame";
 import { ConfirmForm, type BookMeta, type BookedResult } from "./ConfirmForm";
 import { SlotPicker } from "./SlotPicker";
 import { TeamList } from "./TeamList";
-import { formatDateOnly, formatFullDateTime, guestTimeZone } from "./format";
+import { formatDateOnly, formatDayShort, formatFullDateTime, formatSlotShort, guestTimeZone } from "./format";
 import { resolveBrandPoolAction } from "@/app/book/actions";
 import type {
   AvailabilityPayload,
@@ -52,6 +52,11 @@ type ActiveStaff = {
 // never need a synchronous setState.
 type AvailResult = { key: string; data: AvailabilityPayload | null; failed: boolean };
 type BackupsResult = { key: string; list: BackupEntry[]; failed: boolean };
+
+/** A primary this far out, with a backup free sooner, triggers the cover
+ *  prompt (Nicola, 4 Sep): long enough that a merely busy week stays quiet,
+ *  short enough that real leave always surfaces. */
+const COVER_GAP_DAYS = 3;
 
 function defaultEventTypeKey(eventTypes: PublicEventType[], typeParam: string | null): string | null {
   if (typeParam && eventTypes.some((t) => t.key === typeParam)) return typeParam;
@@ -95,6 +100,9 @@ export function BookingFlow({
   // SSR only ever renders the loading card (resolution is a client fetch), so
   // a lazy client-side init never produces a hydration mismatch.
   const [tz] = useState(() => (typeof window === "undefined" ? "UTC" : guestTimeZone()));
+  // Frozen at mount: reading the clock during render is impure, and a
+  // three-day threshold does not care about minutes.
+  const [nowMs] = useState(() => Date.now());
   // The trip the guest is enquiring about. Starts as the ?trip= slug and can
   // be swapped via "Not the right trip?" — a swap re-runs the whole resolve.
   const [tripSlug, setTripSlug] = useState(trip);
@@ -217,12 +225,30 @@ export function BookingFlow({
     return () => controller.abort();
   }, [availKey, brandKey, activeSlug, eventTypeKey]);
 
+  const availLoading = availKey !== null && availResult?.key !== availKey;
+  const availFailed = availKey !== null && availResult?.key === availKey && availResult.failed;
+  const availData =
+    availKey !== null && availResult?.key === availKey && !availResult.failed ? availResult.data : null;
+  const calendarDown = availData !== null && !availData.calendarReachable && availData.slots.length === 0;
+  const fullyBooked = availData !== null && availData.calendarReachable && availData.slots.length === 0;
+
+  // Cover: when the primary's next opening is days away and a backup is free
+  // sooner, that backup is offered inline rather than behind a click — a BM
+  // on leave otherwise reads as a two-week hole in the calendar. Ordering,
+  // never assignment: the guest still chooses (Nicola, 4 Sep).
+  const primaryFirstMs = availData?.slots[0] ? new Date(availData.slots[0].start).getTime() : null;
+  const coverNeeded =
+    active?.routedVia === "primary" &&
+    availData !== null &&
+    availData.calendarReachable &&
+    (primaryFirstMs === null || primaryFirstMs - nowMs > COVER_GAP_DAYS * 86_400_000);
+
   // 3. Team list: eagerly the whole pool UI when there is no primary, and
   //    lazily (click only) behind "Can't find a time that works?" otherwise.
   const poolNeedsTeam = ctx?.mode === "pool" && !active && Boolean(eventTypeKey);
   const backupsExclude = poolNeedsTeam ? null : activeSlug;
   const backupsKey =
-    brandKey && eventTypeKey && (poolNeedsTeam || showBackups)
+    brandKey && eventTypeKey && (poolNeedsTeam || showBackups || coverNeeded)
       ? `${brandKey}|${eventTypeKey}|${backupsExclude ?? ""}`
       : null;
   useEffect(() => {
@@ -284,6 +310,39 @@ export function BookingFlow({
     setShowBackups(false);
     setSelected(null);
     setNotice(null);
+  };
+
+  /** Take one of the cover BM's inline times: switch to them AND keep the
+   *  slot, which chooseTeamMember deliberately clears. */
+  const bookWithCover = (entry: BackupEntry, slot: PublicSlot) => {
+    if (!ctx) return;
+    setActive({
+      slug: entry.staff.slug,
+      firstName: entry.staff.firstName,
+      photoUrl: entry.staff.photoUrl,
+      bio: entry.staff.bio,
+      videoCallsEnabled: entry.staff.videoCallsEnabled,
+      routedVia: "backup",
+      routedReason: `Chose ${entry.staff.firstName} from cover; ${
+        ctx.primary?.firstName ?? "the primary BM"
+      } had no times for ${COVER_GAP_DAYS}+ days.`,
+    });
+    setShowBackups(false);
+    setNotice(null);
+    setSelected(slot);
+    if (eventTypeKey) {
+      // Cosmetic hold, against the BM actually being booked.
+      fetch("/api/booking/public/hold", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          staffSlug: entry.staff.slug,
+          brandKey: ctx.brand.key,
+          eventTypeKey,
+          startIso: slot.start,
+        }),
+      }).catch(() => {});
+    }
   };
 
   const backToPrimary = () => {
@@ -545,12 +604,6 @@ export function BookingFlow({
     );
   }
 
-  const availLoading = availKey !== null && availResult?.key !== availKey;
-  const availFailed = availKey !== null && availResult?.key === availKey && availResult.failed;
-  const availData =
-    availKey !== null && availResult?.key === availKey && !availResult.failed ? availResult.data : null;
-  const calendarDown = availData !== null && !availData.calendarReachable && availData.slots.length === 0;
-  const fullyBooked = availData !== null && availData.calendarReachable && availData.slots.length === 0;
 
   // The type chooser shows durations per option; whenever it is NOT on
   // screen (fixed-type link, embed, single type, or a chosen type) the call
@@ -563,6 +616,16 @@ export function BookingFlow({
     backupsKey !== null && backupsResult?.key === backupsKey && !backupsResult.failed
       ? backupsResult.list
       : null;
+
+  // The first backup who can genuinely help sooner than the primary.
+  const coverEntry =
+    (coverNeeded && backupsList
+      ? backupsList.find(
+          (entry) =>
+            entry.nextSlots.length > 0 &&
+            (primaryFirstMs === null || new Date(entry.nextSlots[0].start).getTime() < primaryFirstMs),
+        )
+      : null) ?? null;
 
   return (
     <BrandFrame brand={ctx.brand} embed={embed}>
@@ -780,10 +843,44 @@ export function BookingFlow({
                 <div className={styles.notice}>
                   {active.firstName} has no open times in the next few weeks.
                 </div>
-                <button type="button" className={styles.secondaryBtn} onClick={openBackups}>
-                  See who else can help
-                </button>
+                {!coverEntry && (
+                  <button type="button" className={styles.secondaryBtn} onClick={openBackups}>
+                    See who else can help
+                  </button>
+                )}
               </>
+            )}
+
+            {/* Cover prompt (Nicola, 4 Sep): a BM on leave leaves a hole in
+                the calendar, so whoever backs them up is offered right here
+                with real times — still the guest's choice, never a swap. */}
+            {coverEntry && !selected && (
+              <div className={styles.coverBox}>
+                <p className={styles.coverLead}>
+                  {primaryFirstMs === null
+                    ? `${active.firstName} has no times open at the moment.`
+                    : `${active.firstName}'s next opening is ${formatDayShort(availData!.slots[0].start, tz)}.`}
+                </p>
+                <p className={styles.coverSub}>
+                  <strong>{coverEntry.staff.firstName}</strong> also looks after {ctx.brand.name} and can talk
+                  sooner:
+                </p>
+                <div className={styles.slotGrid}>
+                  {coverEntry.nextSlots.map((slot) => (
+                    <button
+                      key={slot.start}
+                      type="button"
+                      className={styles.slotBtn}
+                      onClick={() => bookWithCover(coverEntry, slot)}
+                    >
+                      {formatSlotShort(slot.start, tz)}
+                    </button>
+                  ))}
+                </div>
+                <button type="button" className={styles.linkBtn} onClick={() => chooseTeamMember(coverEntry)}>
+                  See all of {coverEntry.staff.firstName}&rsquo;s times
+                </button>
+              </div>
             )}
             {availData !== null && availData.slots.length > 0 && (
               <>

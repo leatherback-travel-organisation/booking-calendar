@@ -79,6 +79,7 @@ export type BackupEntry = {
   staff: { slug: string; firstName: string; photoUrl: string | null; bio: string | null; videoCallsEnabled: boolean };
   openSlotCount: number;
   firstSlot: string | null;
+  nextSlots: PublicSlot[];
 };
 
 export type BookSuccess = {
