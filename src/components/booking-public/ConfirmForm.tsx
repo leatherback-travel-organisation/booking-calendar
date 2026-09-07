@@ -4,8 +4,8 @@
 // The idempotency key is minted ONCE when the form mounts, so a double-tap
 // of "Confirm booking" can never create two bookings.
 
-import { useEffect, useRef, useState } from "react";
-import type { FormEvent } from "react";
+import { useRef, useState } from "react";
+import type { ChangeEvent, FormEvent } from "react";
 import styles from "./bp.module.css";
 import { NO_AUTOFILL } from "@/lib/booking/no-autofill";
 import { Turnstile } from "./Turnstile";
@@ -137,23 +137,24 @@ export function ConfirmForm({
   const [error, setError] = useState<string | null>(null);
 
   // Belt and braces to NO_AUTOFILL: a browser or extension that fills these
-  // fields anyway does it on load, before the guest has touched anything.
-  // Typing and pasting both need focus first, so a value in an untouched
-  // field was chosen by nobody — clear it rather than mail a confirmation to
-  // whoever's details turned up.
+  // fields anyway does it without the guest ever touching them. Typing,
+  // pasting and picking a saved entry all put focus on the field first, so a
+  // value arriving in an untouched field was chosen by nobody — drop it
+  // rather than mail a confirmation to whoever's details turned up. Checked
+  // on every change, so a late fill is caught as surely as one on load.
   const touched = useRef(false);
   const markTouched = () => {
     touched.current = true;
   };
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      if (touched.current) return;
-      setName("");
-      setEmail("");
-      setPhoneField("");
-    }, 600);
-    return () => window.clearTimeout(timer);
-  }, []);
+  const guestInput =
+    (set: (value: string) => void) => (event: ChangeEvent<HTMLInputElement>) => {
+      if (!touched.current) {
+        event.target.value = "";
+        set("");
+        return;
+      }
+      set(event.target.value);
+    };
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -252,7 +253,7 @@ export function ConfirmForm({
           maxLength={200}
           value={name}
           onFocus={markTouched}
-          onChange={(e) => setName(e.target.value)}
+          onChange={guestInput(setName)}
         />
       </div>
 
@@ -267,7 +268,7 @@ export function ConfirmForm({
           maxLength={320}
           value={email}
           onFocus={markTouched}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={guestInput(setEmail)}
         />
       </div>
 
@@ -303,7 +304,7 @@ export function ConfirmForm({
             placeholder={phoneIso === OTHER_ISO ? "+971 50 123 4567" : findCountry(phoneIso)?.example}
             value={phoneField}
             onFocus={markTouched}
-            onChange={(e) => setPhoneField(e.target.value)}
+            onChange={guestInput(setPhoneField)}
           />
         </div>
       </div>

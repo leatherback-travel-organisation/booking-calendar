@@ -32,6 +32,16 @@ for (const path of GUEST_FORMS) {
   });
 }
 
+test("the booking form drops a value the guest never touched", () => {
+  const source = read("src/components/booking-public/ConfirmForm.tsx");
+  assert.ok(source.includes("touched.current"), "the focus guard is gone");
+  // Every guest identity field must be wired to BOTH halves of the guard.
+  const focusHooks = source.match(/onFocus=\{markTouched\}/g) ?? [];
+  const guardedInputs = source.match(/onChange=\{guestInput\(/g) ?? [];
+  assert.equal(focusHooks.length, 3, "name, email and phone must each mark themselves touched");
+  assert.equal(guardedInputs.length, 3, "name, email and phone must each go through guestInput");
+});
+
 test("the shared opt-out covers the password managers guests actually use", async () => {
   const { NO_AUTOFILL } = await import("./no-autofill.ts");
   assert.equal(NO_AUTOFILL.autoComplete, "off");
