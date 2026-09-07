@@ -371,6 +371,6 @@ export async function rankBackups(args: {
       staff: entry.staff,
       openSlotCount: entry.slots.length,
       firstSlot: entry.slots[0]?.start ?? null,
-      nextSlots: entry.slots.slice(0, 3).map((slot) => ({ start: slot.start, end: slot.end })),
+      nextSlots: entry.slots.slice(0, 8).map((slot) => ({ start: slot.start, end: slot.end })),
     }));
 }

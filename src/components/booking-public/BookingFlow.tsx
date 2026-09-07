@@ -64,6 +64,20 @@ function defaultEventTypeKey(eventTypes: PublicEventType[], typeParam: string | 
   return eventTypes[0]?.key ?? null;
 }
 
+/** A backup's times that actually help: inside the primary's gap when there
+ *  is one, otherwise anything sooner than the primary's next opening. */
+function coverSlotsFor(
+  entry: BackupEntry,
+  primaryFirstMs: number | null,
+  gapStartMs: number | null,
+): PublicSlot[] {
+  return entry.nextSlots.filter((slot) => {
+    const startMs = new Date(slot.start).getTime();
+    if (gapStartMs !== null) return startMs > gapStartMs;
+    return primaryFirstMs === null || startMs < primaryFirstMs;
+  });
+}
+
 function sortDepartures(departures: PublicDeparture[]): PublicDeparture[] {
   return [...departures].sort((a, b) => {
     if (a.startDate === b.startDate) return 0;
@@ -237,11 +251,28 @@ export function BookingFlow({
   // on leave otherwise reads as a two-week hole in the calendar. Ordering,
   // never assignment: the guest still chooses (Nicola, 4 Sep).
   const primaryFirstMs = availData?.slots[0] ? new Date(availData.slots[0].start).getTime() : null;
+  // Leave rarely starts today: a BM is typically free for a day or two, then
+  // gone for a fortnight. So look for the GAP as well as a distant first
+  // opening — otherwise tomorrow's slots hide next fortnight's hole.
+  const coverGapStartMs = useMemo(() => {
+    const slots = availData?.slots ?? [];
+    if (slots.length === 0) return null;
+    const gapMs = COVER_GAP_DAYS * 86_400_000;
+    let previous = new Date(slots[0].start).getTime();
+    for (const slot of slots) {
+      const current = new Date(slot.start).getTime();
+      if (current - previous > gapMs && previous - nowMs < 7 * 86_400_000) return previous;
+      previous = current;
+    }
+    return null;
+  }, [availData, nowMs]);
   const coverNeeded =
     active?.routedVia === "primary" &&
     availData !== null &&
     availData.calendarReachable &&
-    (primaryFirstMs === null || primaryFirstMs - nowMs > COVER_GAP_DAYS * 86_400_000);
+    (primaryFirstMs === null ||
+      primaryFirstMs - nowMs > COVER_GAP_DAYS * 86_400_000 ||
+      coverGapStartMs !== null);
 
   // 3. Team list: eagerly the whole pool UI when there is no primary, and
   //    lazily (click only) behind "Can't find a time that works?" otherwise.
@@ -620,12 +651,9 @@ export function BookingFlow({
   // The first backup who can genuinely help sooner than the primary.
   const coverEntry =
     (coverNeeded && backupsList
-      ? backupsList.find(
-          (entry) =>
-            entry.nextSlots.length > 0 &&
-            (primaryFirstMs === null || new Date(entry.nextSlots[0].start).getTime() < primaryFirstMs),
-        )
+      ? backupsList.find((entry) => coverSlotsFor(entry, primaryFirstMs, coverGapStartMs).length > 0)
       : null) ?? null;
+  const coverSlots = coverEntry ? coverSlotsFor(coverEntry, primaryFirstMs, coverGapStartMs).slice(0, 3) : [];
 
   return (
     <BrandFrame brand={ctx.brand} embed={embed}>
@@ -859,14 +887,16 @@ export function BookingFlow({
                 <p className={styles.coverLead}>
                   {primaryFirstMs === null
                     ? `${active.firstName} has no times open at the moment.`
-                    : `${active.firstName}'s next opening is ${formatDayShort(availData!.slots[0].start, tz)}.`}
+                    : coverGapStartMs !== null
+                      ? `${active.firstName} has nothing open after ${formatDayShort(new Date(coverGapStartMs).toISOString(), tz)}.`
+                      : `${active.firstName}'s next opening is ${formatDayShort(availData!.slots[0].start, tz)}.`}
                 </p>
                 <p className={styles.coverSub}>
                   <strong>{coverEntry.staff.firstName}</strong> also looks after {ctx.brand.name} and can talk
                   sooner:
                 </p>
                 <div className={styles.slotGrid}>
-                  {coverEntry.nextSlots.map((slot) => (
+                  {coverSlots.map((slot) => (
                     <button
                       key={slot.start}
                       type="button"
