@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usesAmericanEnglish } from "@/lib/booking/english";
 import styles from "./bp.module.css";
+import { COVER_GAP_DAYS, backupPlacement, coverSlotsFor, findCoverGap } from "./cover";
 import { BrandFrame } from "./BrandFrame";
 import { ConfirmForm, type BookMeta, type BookedResult } from "./ConfirmForm";
 import { SlotPicker } from "./SlotPicker";
@@ -53,64 +54,10 @@ type ActiveStaff = {
 type AvailResult = { key: string; data: AvailabilityPayload | null; failed: boolean };
 type BackupsResult = { key: string; list: BackupEntry[]; failed: boolean };
 
-/** A primary this far out, with a backup free sooner, triggers the cover
- *  prompt (Nicola, 4 Sep): long enough that a merely busy week stays quiet,
- *  short enough that real leave always surfaces. */
-const COVER_GAP_DAYS = 3;
-
-/** Nothing open for this long and the backup stops being a footnote (Nicola,
- *  8 Sep): a guest facing a blank week needs a bookable time in front of
- *  them, not at the bottom of the panel. */
-const QUIET_WEEK_DAYS = 7;
-
-/** Where the backup's times belong. Nothing from the primary for a week or
- *  more puts them up with the times; anything sooner leaves them at the
- *  bottom, so the primary keeps the call whenever they can take it. */
-function backupPlacement(primaryFirstMs: number | null, nowMs: number): "with-times" | "bottom" {
-  if (primaryFirstMs === null) return "with-times";
-  return primaryFirstMs - nowMs >= QUIET_WEEK_DAYS * 86_400_000 ? "with-times" : "bottom";
-}
-
 function defaultEventTypeKey(eventTypes: PublicEventType[], typeParam: string | null): string | null {
   if (typeParam && eventTypes.some((t) => t.key === typeParam)) return typeParam;
   if (eventTypes.some((t) => t.key === "enquiry")) return "enquiry";
   return eventTypes[0]?.key ?? null;
-}
-
-/** A backup's times that actually help: inside the primary's gap when there
- *  is one, otherwise anything sooner than the primary's next opening. */
-function coverSlotsFor(
-  entry: BackupEntry,
-  primaryFirstMs: number | null,
-  gapStartMs: number | null,
-): PublicSlot[] {
-  const inGap = entry.nextSlots.filter((slot) => new Date(slot.start).getTime() > (gapStartMs ?? Infinity));
-  if (inGap.length > 0) return inGap;
-  // No times inside the gap (or no gap): anything sooner than the primary
-  // still helps — a backup with nothing useful yields nothing at all.
-  return entry.nextSlots.filter(
-    (slot) => primaryFirstMs === null || new Date(slot.start).getTime() < primaryFirstMs,
-  );
-}
-
-/** The first stretch of COVER_GAP_DAYS or more with nothing, starting within
- *  the next week — leave rarely begins today, so the hole matters more than
- *  the next opening. Returns when it starts and when they are back. */
-function findCoverGap(
-  slots: readonly PublicSlot[],
-  nowMs: number,
-): { startMs: number; endMs: number } | null {
-  if (slots.length === 0) return null;
-  const gapMs = COVER_GAP_DAYS * 86_400_000;
-  let previous = new Date(slots[0].start).getTime();
-  for (const slot of slots) {
-    const current = new Date(slot.start).getTime();
-    if (current - previous > gapMs && previous - nowMs < 7 * 86_400_000) {
-      return { startMs: previous, endMs: current };
-    }
-    previous = current;
-  }
-  return null;
 }
 
 function sortDepartures(departures: PublicDeparture[]): PublicDeparture[] {
