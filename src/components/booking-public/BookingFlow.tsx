@@ -4,7 +4,7 @@
 // brand/team choice) → slot picker → confirmation form → success. All slots
 // are fetched once per BM+type; paging is client-side.
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usesAmericanEnglish } from "@/lib/booking/english";
 import styles from "./bp.module.css";
 import { COVER_GAP_DAYS, backupPlacement, coverSlotsFor, findCoverGap } from "./cover";
@@ -277,21 +277,100 @@ export function BookingFlow({
     setShowBackups(false);
   };
 
+  // An abandoned scheduling request leaves nothing behind (Nicola, 8 Sep).
+  // The hold is the only thing stored before a guest confirms, so it goes the
+  // moment they walk away — closing the tab, backing out to the times, or
+  // switching to another BM — rather than sitting out its 120 seconds.
+  const holdId = useRef<string | null>(null);
+  // Bumped whenever a choice is abandoned. A hold request still in flight at
+  // that moment belongs to a guest who has already gone, so when its id
+  // finally arrives it is released instead of kept — otherwise walking away
+  // during the round trip leaves exactly the row this is meant to prevent.
+  const holdGeneration = useRef(0);
+
+  const releaseById = useCallback((id: string) => {
+    const body = JSON.stringify({ holdId: id });
+    // sendBeacon is the only request guaranteed to survive the page going
+    // away; keepalive fetch covers browsers that refuse the beacon.
+    const sent =
+      typeof navigator !== "undefined" &&
+      typeof navigator.sendBeacon === "function" &&
+      navigator.sendBeacon("/api/booking/public/hold/release", new Blob([body], { type: "application/json" }));
+    if (!sent) {
+      fetch("/api/booking/public/hold/release", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+        keepalive: true,
+      }).catch(() => {});
+    }
+  }, []);
+
+  const releaseHold = useCallback(() => {
+    holdGeneration.current += 1;
+    const id = holdId.current;
+    if (!id) return;
+    holdId.current = null;
+    releaseById(id);
+  }, [releaseById]);
+
+  const takeHold = useCallback(
+    (staffSlug: string, brandKey: string, typeKey: string, startIso: string) => {
+      // Any previous choice is abandoned the instant a new one is made.
+      releaseHold();
+      const generation = holdGeneration.current;
+      fetch("/api/booking/public/hold", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ staffSlug, brandKey, eventTypeKey: typeKey, startIso }),
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((payload) => {
+          const id = payload?.holdId ? String(payload.holdId) : null;
+          if (!id) return;
+          if (generation !== holdGeneration.current) {
+            releaseById(id);
+            return;
+          }
+          holdId.current = id;
+        })
+        .catch(() => {});
+    },
+    [releaseHold, releaseById],
+  );
+
+  // Every way out of a chosen time clears `selected` — the medium chooser's
+  // "Pick a different time", the form's, a slot taken from under the guest, a
+  // trip or BM swap. Watching that one piece of state covers them all,
+  // instead of hoping each exit remembered to release (the medium chooser's
+  // did not).
+  useEffect(() => {
+    if (selected === null) releaseHold();
+  }, [selected, releaseHold]);
+
+  // Leaving the page: pagehide is the reliable one (mobile Safari never
+  // guarantees beforeunload), and a tab hidden on mobile is often never
+  // coming back, so that counts as leaving too.
+  useEffect(() => {
+    const onHidden = () => {
+      if (document.visibilityState === "hidden") releaseHold();
+    };
+    window.addEventListener("pagehide", releaseHold);
+    document.addEventListener("visibilitychange", onHidden);
+    return () => {
+      window.removeEventListener("pagehide", releaseHold);
+      document.removeEventListener("visibilitychange", onHidden);
+      // Unmounting is abandonment too: the widget overlay closing, or the
+      // guest being routed elsewhere in the flow.
+      releaseHold();
+    };
+  }, [releaseHold]);
+
   const pickSlot = (slot: PublicSlot) => {
     setSelected(slot);
     setNotice(null);
     if (ctx && active && eventTypeKey) {
-      // Cosmetic 120s hold — fire and forget, failures are irrelevant.
-      fetch("/api/booking/public/hold", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          staffSlug: active.slug,
-          brandKey: ctx.brand.key,
-          eventTypeKey,
-          startIso: slot.start,
-        }),
-      }).catch(() => {});
+      takeHold(active.slug, ctx.brand.key, eventTypeKey, slot.start);
     }
   };
 
@@ -334,16 +413,7 @@ export function BookingFlow({
     setSelected(slot);
     if (eventTypeKey) {
       // Cosmetic hold, against the BM actually being booked.
-      fetch("/api/booking/public/hold", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          staffSlug: entry.staff.slug,
-          brandKey: ctx.brand.key,
-          eventTypeKey,
-          startIso: slot.start,
-        }),
-      }).catch(() => {});
+      takeHold(entry.staff.slug, ctx.brand.key, eventTypeKey, slot.start);
     }
   };
 
@@ -845,7 +915,11 @@ export function BookingFlow({
             brand={ctx.brand}
             meta={meta}
             onBack={() => setSelected(null)}
-            onSuccess={setBooked}
+            onSuccess={(result) => {
+              // The booking itself now owns the time; the hold is redundant.
+              releaseHold();
+              setBooked(result);
+            }}
             onSlotTaken={onSlotTaken}
           />
         ) : !active ? (

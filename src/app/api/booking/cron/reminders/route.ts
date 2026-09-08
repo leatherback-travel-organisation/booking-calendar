@@ -140,6 +140,13 @@ export async function GET(request: Request) {
 
   const swept = await sql`delete from booking.slot_hold where expires_at <= now() returning id`;
 
+  // Rate-limit rows are keyed by caller IP and were never cleaned up, so every
+  // guest who so much as loaded a booking page left an address behind for
+  // good. Once a window has long passed the row counts for nothing — an
+  // abandoned request should leave nothing behind (Nicola, 8 Sep).
+  const sweptRateLimits = await sql`
+    delete from booking.rate_limit where window_start < now() - interval '24 hours' returning key`;
+
   // Heartbeat for the Integrations page ("cron last ran at…").
   await sql`
     insert into booking.reference_cache (key, payload, fetched_at)
@@ -150,5 +157,6 @@ export async function GET(request: Request) {
     reminder24h,
     reminder1h,
     holdsSwept: swept.length,
+    rateLimitRowsSwept: sweptRateLimits.length,
   });
 }
