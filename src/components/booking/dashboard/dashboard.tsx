@@ -121,8 +121,10 @@ type DashboardProps = {
   recent: RecentBooking[];
   /** One link per active BM to their scheduling page. */
   schedulingPages: SchedulingPageLink[];
-  /** The signed-in BM's own guest booking URL; null when they have no active staff row. */
-  schedulingLinkUrl: string | null;
+  /** The signed-in BM's own guest booking links — one per brand they run, so
+   *  a BM on two brands never hands a guest the other brand's page. Empty
+   *  when they have no active staff row. */
+  schedulingLinks: { brandLabel: string | null; url: string }[];
   /** Brand/pod scoping; chips are plain links so the filter lives in the URL. */
   filters?: DashboardFilters;
 };
@@ -180,7 +182,7 @@ function groupByPod(members: SchedulingPageLink[]): Array<[string, SchedulingPag
   );
 }
 
-export function Dashboard({ issues, days, recent, schedulingPages, schedulingLinkUrl, filters }: DashboardProps) {
+export function Dashboard({ issues, days, recent, schedulingPages, schedulingLinks, filters }: DashboardProps) {
   const errors = issues.filter((issue) => issue.severity === "error");
   const warnings = issues.filter((issue) => issue.severity !== "error");
 
@@ -219,8 +221,10 @@ export function Dashboard({ issues, days, recent, schedulingPages, schedulingLin
         <Link href="/booking/team/sessions" className={styles.primaryAction}>
           Create group session
         </Link>
-        {schedulingLinkUrl ? (
-          <CopySchedulingLinkButton url={schedulingLinkUrl} />
+        {schedulingLinks.length > 0 ? (
+          schedulingLinks.map((link) => (
+            <CopySchedulingLinkButton key={link.url} url={link.url} brandLabel={link.brandLabel} />
+          ))
         ) : (
           <Link href="/booking/team" className={styles.secondaryAction} title="Per-BM copy buttons live on the Team page">
             Copy scheduling link

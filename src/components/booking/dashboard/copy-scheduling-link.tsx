@@ -7,7 +7,7 @@
 import { useState } from "react";
 import styles from "./dashboard.module.css";
 
-export function CopySchedulingLinkButton({ url }: { url: string }) {
+export function CopySchedulingLinkButton({ url, brandLabel }: { url: string; brandLabel?: string | null }) {
   const [copied, setCopied] = useState(false);
   return (
     <button
@@ -25,7 +25,7 @@ export function CopySchedulingLinkButton({ url }: { url: string }) {
         }
       }}
     >
-      {copied ? "Copied" : "Copy scheduling link"}
+      {copied ? "Copied" : brandLabel ? `Copy ${brandLabel} link` : "Copy scheduling link"}
     </button>
   );
 }

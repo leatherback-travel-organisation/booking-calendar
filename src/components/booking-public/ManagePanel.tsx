@@ -4,6 +4,7 @@
 // Reschedule keeps the SAME BM — the picker only ever shows their calendar.
 
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { bookPath } from "@/lib/booking/book-url";
 import { usesAmericanEnglish } from "@/lib/booking/english";
 import styles from "./bp.module.css";
 import { BrandFrame, type FrameBrand } from "./BrandFrame";
@@ -117,7 +118,7 @@ export function ManagePanel({ token, state, booking, staff, brand, eventType }: 
     }
   }
 
-  const bookAgainUrl = `/book?bm=${encodeURIComponent(staff.slug)}`;
+  const bookAgainUrl = bookPath({ staffSlug: staff.slug, brandKey: brand.key });
 
   // ----- Terminal states -----
 

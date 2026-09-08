@@ -13,6 +13,7 @@ import { SettingsSearch } from "@/components/booking/settings-search";
 import { requireBookingAccess } from "@/lib/booking/access";
 import { databaseConfigured, getSql } from "@/lib/booking/db";
 import { appUrl as publicAppUrl } from "@/lib/booking/app-url";
+import { bookUrl } from "@/lib/booking/book-url";
 import { podForStaff, getBrands, getOpenCoverageIssues, getPods, getStaffWithBrands } from "@/lib/booking/reference/queries";
 import shellStyles from "@/components/booking/booking-shell.module.css";
 
@@ -168,9 +169,23 @@ export default async function BookingDashboardPage({
 
   // "Copy scheduling link" copies the signed-in BM's own guest booking URL;
   // anyone without an active staff row is pointed at the per-BM buttons on
-  // the Team page instead.
+  // the Team page instead. One link per brand they run: a link with no brand
+  // falls back to their primary, which handed Salt Caravan guests a Carex
+  // page (Nicola, 8 Sep). Backup brands are left off — those calls come
+  // through cover, not through their own link.
   const appUrl = publicAppUrl();
-  const schedulingLinkUrl = self ? `${appUrl}/book?bm=${encodeURIComponent(self.slug)}&type=enquiry` : null;
+  const ownBrands = self
+    ? self.brandIds
+        .filter((brandId) => !self.backupBrandIds.includes(brandId))
+        .map((brandId) => brands.find((brand) => brand.id === brandId))
+        .filter((brand): brand is NonNullable<typeof brand> => Boolean(brand))
+    : [];
+  const schedulingLinks = self
+    ? ownBrands.map((brand) => ({
+        brandLabel: ownBrands.length > 1 ? brand.name : null,
+        url: bookUrl(appUrl, { staffSlug: self.slug, brandKey: brand.key, eventTypeKey: "enquiry" }),
+      }))
+    : [];
 
   return (
     <BookingShell active="dashboard" canManage={canManage}>
@@ -179,7 +194,7 @@ export default async function BookingDashboardPage({
         days={days}
         recent={recent}
         schedulingPages={schedulingPages}
-        schedulingLinkUrl={schedulingLinkUrl}
+        schedulingLinks={schedulingLinks}
         filters={{
           brands: brands
             .filter((brand) => brand.active)

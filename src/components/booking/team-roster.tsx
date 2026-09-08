@@ -143,7 +143,16 @@ export function TeamRoster({ staff, brands, fetchedAt, appUrl, guestTypes, pods,
                                   suffix: `&brand=${encodeURIComponent(brand.key)}`,
                                 })),
                               ]
-                            : [{ label: null, suffix: "" }];
+                            : [
+                                {
+                                  label: null,
+                                  // Explicit even with one brand: a link that
+                                  // leaves it out is relying on a fallback.
+                                  suffix: ownBrands[0]
+                                    ? `&brand=${encodeURIComponent(ownBrands[0].key)}`
+                                    : "",
+                                },
+                              ];
                         return linkRows.map((row) => (
                           <div className={styles.copyRow} key={row.label ?? "default"}>
                             {row.label ? <span className={styles.copyRowLabel}>{row.label}</span> : null}

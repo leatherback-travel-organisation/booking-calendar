@@ -6,6 +6,7 @@ import { randomUUID } from "node:crypto";
 import { DateTime } from "luxon";
 import { getBrandById, getEventTypeById, getStaffById } from "@/lib/booking/availability/service";
 import { findInvitationByToken, futureCandidates } from "@/lib/booking/invitations";
+import { bookPath } from "@/lib/booking/book-url";
 import { NO_AUTOFILL } from "@/lib/booking/no-autofill";
 import { acceptInvitationAction } from "./actions";
 import styles from "@/components/booking-public-lite/lite.module.css";
@@ -68,7 +69,7 @@ export default async function InvitePage({
               ? `Your call with ${staff.firstName} is confirmed — check your email for the details.`
               : `${staff.firstName}'s proposed times have lapsed, but you can still pick from the full calendar.`}
           </p>
-          <a className={styles.moreLink} href={`/book?bm=${staff.slug}&type=${eventType.key}`}>
+          <a className={styles.moreLink} href={bookPath({ staffSlug: staff.slug, brandKey: brand.key, eventTypeKey: eventType.key })}>
             See {staff.firstName}&apos;s availability →
           </a>
         </div>
@@ -154,7 +155,7 @@ export default async function InvitePage({
           </form>
         ) : null}
 
-        <a className={styles.moreLink} href={`/book?bm=${staff.slug}&type=${eventType.key}`}>
+        <a className={styles.moreLink} href={bookPath({ staffSlug: staff.slug, brandKey: brand.key, eventTypeKey: eventType.key })}>
           None of these work? See all of {staff.firstName}&apos;s times →
         </a>
       </div>

@@ -9,6 +9,7 @@ import { DateTime } from "luxon";
 import { appUrl } from "../app-url";
 import { getSql } from "../db";
 import { maySendSms, requiresSmsConsent } from "../sms-consent";
+import { bookUrl } from "../book-url";
 import { guestEventTypeName, type Brand, type EventType, type Staff } from "../model";
 import { icsCancel, icsRequest } from "./ics.ts";
 import { escapeHtml, htmlToText, renderBrandEmail, renderTemplate } from "./render.ts";
@@ -153,7 +154,11 @@ export function buildVariableValues(ctx: BookingEmailContext): Partial<Record<Va
     "booking.join_details": buildJoinDetails(ctx),
     "booking.reschedule_link": ctx.manageUrlRaw,
     "booking.cancel_link": `${ctx.manageUrlRaw}#cancel`,
-    "booking.book_link": `${appUrl()}/book?bm=${encodeURIComponent(ctx.staff.slug)}&type=${encodeURIComponent(ctx.eventType.key)}`,
+    "booking.book_link": bookUrl(appUrl(), {
+      staffSlug: ctx.staff.slug,
+      brandKey: ctx.brand.key,
+      eventTypeKey: ctx.eventType.key,
+    }),
     "host.first_name": ctx.staff.firstName,
     "host.full_name": ctx.staff.fullName,
     // The brand's monitored inbox, NOT the BM's own address — guests must
