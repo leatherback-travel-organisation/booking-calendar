@@ -1,10 +1,13 @@
 "use server";
 
 // Server actions for per-BM scheduling controls. Permission rules are
-// enforced HERE, not in the UI: a Booking Manager (no booking.manage) may
-// change only their own buffer, bio and video-call toggle; everything else is
-// Pod Lead only. Guest reminders are NOT here — they belong to the brand and
-// only Pod Leads and Senior BMs edit them (Guest Communications).
+// enforced HERE, not in the UI: a Booking Manager owns their OWN page
+// (Nicola, 8 Sep) — working hours, buffer, notice, booking window, daily call
+// cap, bio and video calls — without needing booking.manage. Editing SOMEONE
+// ELSE's row is still Pod Lead only, as is the timezone override on any row:
+// it reinterprets every working hour and exists for genuine exceptions.
+// Guest reminders are NOT here — they belong to the brand and only Pod Leads
+// and Senior BMs edit them (Guest Communications).
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -32,10 +35,10 @@ async function loadTargetStaff(formData: FormData): Promise<Staff> {
 
 export async function saveWorkingHours(formData: FormData): Promise<void> {
   const access = await requireBookingAccess("booking.read");
-  if (!access.canManage) {
-    throw new Error("Working hours are managed by your Pod Lead.");
-  }
   const staff = await loadTargetStaff(formData);
+  if (!access.canManage && staff.email.toLowerCase() !== access.identity.email.toLowerCase()) {
+    throw new Error("You can only edit your own working hours.");
+  }
 
   const next: Array<{ dayOfWeek: number; startMin: number; endMin: number }> = [];
   for (let day = 0; day < 7; day += 1) {
@@ -84,9 +87,12 @@ export async function saveSettings(formData: FormData): Promise<void> {
       ? staff.videoCallsEnabled
       : formData.get("videoCallsEnabled") === "on";
 
-  // Restricted fields: disabled inputs are not submitted, so a missing value
-  // means "unchanged". A submitted, changed value from a non-manager is an
-  // attempt to escalate — refuse it.
+  // A BM's own scheduling numbers, theirs to set (Nicola, 8 Sep).
+  const capRaw = formData.get("dailyCallCap");
+  const dailyCallCap =
+    capRaw === null ? staff.dailyCallCap : String(capRaw).trim() === "" ? null : Number(capRaw);
+
+  // Disabled inputs are not submitted, so a missing value means "unchanged".
   const noticeRaw = formData.get("minNoticeHours");
   const minNoticeHours = noticeRaw === null || noticeRaw === "" ? staff.minNoticeHours : Number(noticeRaw);
   const windowRaw = formData.get("bookingWindowDays");
@@ -95,14 +101,14 @@ export async function saveSettings(formData: FormData): Promise<void> {
   const timezoneOverride =
     timezoneRaw === null ? staff.timezoneOverride : String(timezoneRaw).trim().length > 0 ? String(timezoneRaw).trim() : null;
 
-  if (!access.canManage) {
-    const restrictedChanged =
-      minNoticeHours !== staff.minNoticeHours ||
-      bookingWindowDays !== staff.bookingWindowDays ||
-      timezoneOverride !== staff.timezoneOverride;
-    if (restrictedChanged) {
-      throw new Error("Notice, booking window and timezone are managed by your Pod Lead.");
-    }
+  // The timezone override stays Pod Lead only on every row: it silently
+  // reinterprets every working hour, and the schema expects it to stay null.
+  if (!access.canManage && timezoneOverride !== staff.timezoneOverride) {
+    throw new Error("The timezone override is managed by your Pod Lead.");
+  }
+
+  if (dailyCallCap !== null && (!Number.isInteger(dailyCallCap) || dailyCallCap < 1 || dailyCallCap > 20)) {
+    throw new Error("A daily call cap must be between 1 and 20, or left empty for no cap.");
   }
 
   if (!Number.isInteger(minNoticeHours) || minNoticeHours < 0 || minNoticeHours > 72) {
@@ -118,6 +124,7 @@ export async function saveSettings(formData: FormData): Promise<void> {
   const diff: Record<string, { from: unknown; to: unknown }> = {};
   if (bufferMinutes !== staff.bufferMinutes) diff.bufferMinutes = { from: staff.bufferMinutes, to: bufferMinutes };
   if (bio !== staff.bio) diff.bio = { from: staff.bio, to: bio };
+  if (dailyCallCap !== staff.dailyCallCap) diff.dailyCallCap = { from: staff.dailyCallCap, to: dailyCallCap };
   if (videoCallsEnabled !== staff.videoCallsEnabled) {
     diff.videoCallsEnabled = { from: staff.videoCallsEnabled, to: videoCallsEnabled };
   }
@@ -138,6 +145,7 @@ export async function saveSettings(formData: FormData): Promise<void> {
              booking_window_days = ${bookingWindowDays},
              timezone_override = ${timezoneOverride},
              bio = ${bio},
+             daily_call_cap = ${dailyCallCap},
              video_calls_enabled = ${videoCallsEnabled}
        where id = ${staff.id}`;
     await auditAvailabilityChange(access.identity.email, staff.email, diff);

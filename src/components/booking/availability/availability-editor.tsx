@@ -70,6 +70,8 @@ export type SelectedStaffSettings = {
   bufferMinutes: number;
   minNoticeHours: number;
   bookingWindowDays: number;
+  /** Null = no cap. */
+  dailyCallCap: number | null;
   timezoneOverride: string | null;
   bio: string | null;
   videoCallsEnabled: boolean;
@@ -100,7 +102,10 @@ export function AvailabilityEditor({
   saveWorkingHoursAction,
   saveSettingsAction,
 }: AvailabilityEditorProps) {
-  const canEditHours = canManage;
+  // A BM owns their own page (Nicola, 8 Sep). The timezone override is the
+  // single exception — it reinterprets every working hour, so it stays with
+  // Pod Leads. The server actions enforce all of this independently.
+  const canEditHours = canManage || isSelf;
   const canEditOwnBits = canManage || isSelf;
 
   const [days, setDays] = useState<DayState[]>(() => {
@@ -126,7 +131,7 @@ export function AvailabilityEditor({
         <input type="hidden" name="staffId" value={selected.id} />
         <h2 className={styles.cardTitle}>Working hours</h2>
         <p className={styles.cardHint}>Times are in {zoneLabel}.</p>
-        {!canEditHours ? <p className={styles.lockedNote}>Working hours are managed by your Pod Lead.</p> : null}
+        {!canEditHours ? <p className={styles.lockedNote}>You can only edit your own working hours.</p> : null}
         <div className={styles.hoursGrid}>
           {DAY_ORDER.map((day) => {
             const state = days[day];
@@ -210,7 +215,7 @@ export function AvailabilityEditor({
               min={0}
               max={72}
               defaultValue={selected.minNoticeHours}
-              disabled={!canManage}
+              disabled={!canEditOwnBits}
             />
           </label>
 
@@ -223,7 +228,21 @@ export function AvailabilityEditor({
               min={7}
               max={90}
               defaultValue={selected.bookingWindowDays}
-              disabled={!canManage}
+              disabled={!canEditOwnBits}
+            />
+          </label>
+
+          <label className={styles.field} title="Empty = no cap. Once a day reaches this many calls, it stops offering times.">
+            Most calls per day
+            <input
+              className={styles.input}
+              type="number"
+              name="dailyCallCap"
+              min={1}
+              max={20}
+              placeholder="No cap"
+              defaultValue={selected.dailyCallCap ?? ""}
+              disabled={!canEditOwnBits}
             />
           </label>
 
@@ -280,7 +299,7 @@ export function AvailabilityEditor({
         {canEditOwnBits ? (
           <div className={styles.actions}>
             <SaveButton label="Save settings" saved={savedFlag === "settings" && !settingsEdited} />
-            {!canManage ? <span className={styles.cardHint}>You can change your buffer, bio and video calls.</span> : null}
+            {!canManage ? <span className={styles.cardHint}>This is your page — everything here is yours to change, except the timezone override.</span> : null}
           </div>
         ) : null}
       </form>

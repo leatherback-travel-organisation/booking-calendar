@@ -31,6 +31,8 @@ export type ComputeSlotsArgs = {
   holds?: Interval[];
   /** Confirmed bookings (belt and braces — the DB constraint is truth). */
   confirmed?: Interval[];
+  /** Most calls this BM takes in one local day. Null/undefined = no cap. */
+  dailyCallCap?: number | null;
 };
 
 type Instant = { startMs: number; endMs: number };
@@ -91,6 +93,19 @@ export function computeSlots(args: ComputeSlotsArgs): Slot[] {
     hoursByDow.set(row.dayOfWeek, list);
   }
 
+  // Daily cap: a BM's ceiling on calls in one local day (Nicola, 8 Sep).
+  // Counted from confirmed bookings by the day they START in the scheduling
+  // zone, across every brand and call type — a BM's day is a day, whoever the
+  // call is for. A day already at its number offers nothing further.
+  const dailyCap = args.dailyCallCap ?? null;
+  const bookedPerDay = new Map<string, number>();
+  if (dailyCap !== null) {
+    for (const interval of args.confirmed ?? []) {
+      const day = DateTime.fromISO(interval.start).setZone(zone).toISODate();
+      if (day) bookedPerDay.set(day, (bookedPerDay.get(day) ?? 0) + 1);
+    }
+  }
+
   const seen = new Set<number>();
   const slots: Slot[] = [];
 
@@ -102,6 +117,11 @@ export function computeSlots(args: ComputeSlotsArgs): Slot[] {
     const dow = day.weekday % 7; // luxon: 1=Mon..7=Sun → ours: 0=Sun..6=Sat
     const rows = hoursByDow.get(dow);
     if (!rows) continue;
+
+    if (dailyCap !== null) {
+      const dayKey = day.toISODate();
+      if (dayKey && (bookedPerDay.get(dayKey) ?? 0) >= dailyCap) continue;
+    }
 
     for (const row of rows) {
       const closeWall = wallTime(day, row.endMin);

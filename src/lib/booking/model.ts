@@ -51,6 +51,8 @@ export type Staff = {
   bufferMinutes: number;
   minNoticeHours: number;
   bookingWindowDays: number;
+  /** Most calls this BM takes in one local day. Null = no cap. */
+  dailyCallCap: number | null;
   /** Guests may choose a video call only when true; otherwise phone-only. */
   videoCallsEnabled: boolean;
   /** Synced from Notion's Job Title. */

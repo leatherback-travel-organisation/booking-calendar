@@ -116,6 +116,11 @@ export async function createBooking(args: CreateBookingArgs): Promise<CreateBook
     durationMin: args.eventType.durationMin,
     bufferMinutes: args.staff.bufferMinutes,
     minNoticeHours: args.staff.minNoticeHours,
+    // The daily cap governs what a GUEST can take: a stale picker must not
+    // slip a call past the BM's number. A teammate booking internally has the
+    // calendar in front of them and is deliberately overriding, so the cap
+    // does not stand in their way (Nicola, 8 Sep).
+    dailyCallCap: args.sourceKind === "internal" ? null : args.staff.dailyCallCap,
     windowStart: nowIso,
     windowEnd: new Date(now.getTime() + args.staff.bookingWindowDays * 86_400_000).toISOString(),
     now: nowIso,

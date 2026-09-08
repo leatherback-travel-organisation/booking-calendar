@@ -193,6 +193,7 @@ export default async function BookingManagerPage({ params, searchParams }: PageP
             bufferMinutes: staff.bufferMinutes,
             minNoticeHours: staff.minNoticeHours,
             bookingWindowDays: staff.bookingWindowDays,
+            dailyCallCap: staff.dailyCallCap,
             timezoneOverride: staff.timezoneOverride,
             bio: staff.bio,
             videoCallsEnabled: staff.videoCallsEnabled,

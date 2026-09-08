@@ -81,6 +81,7 @@ export async function getStaffWithBrands(): Promise<Staff[]> {
     bufferMinutes: Number(row.buffer_minutes ?? 0),
     minNoticeHours: Number(row.min_notice_hours ?? 0),
     bookingWindowDays: Number(row.booking_window_days ?? 0),
+    dailyCallCap: row.daily_call_cap == null ? null : Number(row.daily_call_cap),
     videoCallsEnabled: Boolean(row.video_calls_enabled),
     jobTitle: (row.job_title as string | null) ?? null,
     isSenior: isSeniorTitle((row.job_title as string | null) ?? null),

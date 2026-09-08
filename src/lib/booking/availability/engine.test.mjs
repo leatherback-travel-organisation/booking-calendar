@@ -294,3 +294,103 @@ test("workingWeekStart anchors to Monday and rolls the weekend forward", () => {
   const week = workingWeekStart(wednesday);
   assert.equal(week.plus({ days: 4 }).weekday, 5);
 });
+
+// ---------------------------------------------------------------------------
+// Daily call cap (Nicola, 8 Sep)
+// ---------------------------------------------------------------------------
+
+// Exactly Monday 17 Aug 2026 in Melbourne (AEST, UTC+10): 16 slots at 9-5.
+const MELB_MONDAY = { windowStart: "2026-08-16T14:00:00Z", windowEnd: "2026-08-17T14:00:00Z" };
+
+/** A confirmed call at a local wall time on a local day. */
+function callAt(isoDay, hhmm, zone = "Australia/Melbourne") {
+  const start = DateTime.fromISO(`${isoDay}T${hhmm}`, { zone });
+  return { start: start.toUTC().toISO(), end: start.plus({ minutes: 30 }).toUTC().toISO() };
+}
+
+function localDays(slots, zone) {
+  return new Set(slots.map((s) => DateTime.fromISO(s.start).setZone(zone).toISODate()));
+}
+
+test("no cap leaves the day open however many calls are already booked", () => {
+  const slots = computeSlots(base({
+    ...MELB_MONDAY,
+    confirmed: [callAt("2026-08-17", "09:00"), callAt("2026-08-17", "11:00"), callAt("2026-08-17", "14:00")],
+  }));
+  // The three booked half-hours are blocked; the rest of the day stands.
+  assert.equal(slots.length, 13);
+});
+
+test("a day that has reached the cap offers nothing, even in its free hours", () => {
+  const slots = computeSlots(base({
+    ...MELB_MONDAY,
+    dailyCallCap: 3,
+    confirmed: [callAt("2026-08-17", "09:00"), callAt("2026-08-17", "11:00"), callAt("2026-08-17", "14:00")],
+  }));
+  assert.equal(slots.length, 0);
+});
+
+test("a day below the cap still offers its remaining times", () => {
+  const slots = computeSlots(base({
+    ...MELB_MONDAY,
+    dailyCallCap: 3,
+    confirmed: [callAt("2026-08-17", "09:00")],
+  }));
+  assert.equal(slots.length, 15, "one call against a cap of three leaves the rest of the day");
+});
+
+test("a cap of one closes the day as soon as a single call is booked", () => {
+  const slots = computeSlots(base({
+    ...MELB_MONDAY,
+    dailyCallCap: 1,
+    confirmed: [callAt("2026-08-17", "16:30")],
+  }));
+  assert.equal(slots.length, 0);
+});
+
+test("the cap closes only the day that reached it, not the days around it", () => {
+  const slots = computeSlots(base({
+    windowStart: "2026-08-16T14:00:00Z", // Monday 00:00 Melbourne
+    windowEnd: "2026-08-18T14:00:00Z", // Wednesday 00:00 Melbourne
+    dailyCallCap: 2,
+    confirmed: [callAt("2026-08-17", "09:00"), callAt("2026-08-17", "11:00")],
+  }));
+  const days = localDays(slots, "Australia/Melbourne");
+  assert.ok(!days.has("2026-08-17"), "Monday is capped out");
+  assert.ok(days.has("2026-08-18"), "Tuesday is untouched");
+});
+
+test("the cap counts days in the SCHEDULING zone, not UTC", () => {
+  // Two calls at 23:00Z and 23:30Z on Mon 17 Aug: that is TUESDAY morning in
+  // Melbourne but MONDAY afternoon in Los Angeles. The same two instants must
+  // therefore close different local days for the two BMs.
+  const calls = [
+    { start: "2026-08-17T23:00:00.000Z", end: "2026-08-17T23:30:00.000Z" },
+    { start: "2026-08-17T23:30:00.000Z", end: "2026-08-18T00:00:00.000Z" },
+  ];
+
+  const melbourne = localDays(
+    computeSlots(base({
+      windowStart: "2026-08-16T14:00:00Z",
+      windowEnd: "2026-08-18T14:00:00Z",
+      dailyCallCap: 2,
+      confirmed: calls,
+    })),
+    "Australia/Melbourne",
+  );
+  assert.ok(melbourne.has("2026-08-17"), "Monday stays open in Melbourne");
+  assert.ok(!melbourne.has("2026-08-18"), "Tuesday is the capped day in Melbourne");
+
+  const losAngeles = localDays(
+    computeSlots(base({
+      schedulingZone: "America/Los_Angeles",
+      windowStart: "2026-08-17T07:00:00Z", // Monday 00:00 PDT
+      windowEnd: "2026-08-19T07:00:00Z", // Wednesday 00:00 PDT
+      dailyCallCap: 2,
+      confirmed: calls,
+    })),
+    "America/Los_Angeles",
+  );
+  assert.ok(!losAngeles.has("2026-08-17"), "Monday is the capped day in Los Angeles");
+  assert.ok(losAngeles.has("2026-08-18"), "Tuesday stays open in Los Angeles");
+});
