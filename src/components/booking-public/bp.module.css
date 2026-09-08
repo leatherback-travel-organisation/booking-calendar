@@ -733,3 +733,48 @@
   object-fit: cover;
   flex: none;
 }
+
+/* SMS consent (US-market brands). Deliberately plain and quiet: the guest
+   ticks it themselves or not at all, and it must never read as a step they
+   have to clear to book. */
+.consentBox {
+  border: 1.5px solid var(--bp-line);
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.consentHeading {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--bp-ink-soft);
+}
+
+.consentCheck {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.consentCheck input {
+  margin-top: 2px;
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+.consentText {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--bp-ink-soft);
+}
+
+.consentText a {
+  color: inherit;
+}

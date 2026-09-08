@@ -4,6 +4,9 @@
 export type PublicBrand = {
   key: string;
   name: string;
+  /** "US" brands collect SMS consent on the details step. */
+  market: string;
+  privacyPolicyUrl: string | null;
   logoUrl: string | null;
   colorPrimary: string | null;
   colorAccent: string | null;

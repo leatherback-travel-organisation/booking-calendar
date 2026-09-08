@@ -14,6 +14,7 @@ import { computeSlots, resolveSchedulingZone } from "./availability/engine";
 import { getConfirmed, getStaffByEmail, getWorkingHours } from "./availability/service";
 import { sendBookingEmail } from "./notify/messages";
 import { escapeHtml } from "./notify/render.ts";
+import { requiresSmsConsent } from "./sms-consent";
 import { createOrThreadConversation } from "./helpscout";
 import {
   buildCrossoverPingHtml,
@@ -41,6 +42,9 @@ export type CreateBookingArgs = {
   startIso: string;
   guestName: string;
   guestEmail: string;
+  /** US brands only: the guest's own SMS opt-in, and the wording they saw. */
+  smsOptIn?: boolean;
+  smsConsentText?: string | null;
   guestPhone?: string | null;
   guestNotes?: string | null;
   guestTimezone?: string | null;
@@ -150,12 +154,14 @@ export async function createBooking(args: CreateBookingArgs): Promise<CreateBook
       insert into booking.booking (
         staff_id, brand_id, event_type_id, starts_at, ends_at,
         guest_timezone, guest_name, guest_email, guest_phone, guest_notes, call_medium,
+        sms_opt_in, sms_opt_in_at, sms_consent_text,
         source_kind, source_slug, routed_via, routed_reason,
         airtable_trip_record_id, booked_by, internal_notes, manage_token_hash, idempotency_key, confirmed_at
       ) values (
         ${args.staff.id}, ${args.brand.id}, ${args.eventType.id}, ${startIso}, ${endIso},
         ${args.guestTimezone ?? null}, ${args.guestName}, ${args.guestEmail.trim().toLowerCase()},
         ${args.guestPhone ?? null}, ${args.guestNotes ?? null}, ${args.callMedium ?? "video"},
+        ${args.smsOptIn ?? false}, ${args.smsOptIn ? nowIso : null}, ${args.smsOptIn ? (args.smsConsentText ?? null) : null},
         ${args.sourceKind}, ${args.sourceSlug ?? null}, ${args.routedVia ?? "primary"}, ${args.routedReason ?? null},
         ${args.airtableTripRecordId ?? null}, ${args.bookedBy ?? null}, ${args.internalNotes ?? null}, ${token.hash}, ${args.idempotencyKey}, now()
       )
@@ -448,6 +454,13 @@ function buildEventDescription(args: CreateBookingArgs): string {
     args.sourceKind === "internal" ? `⭑ BOOKED INTERNALLY by ${args.bookedBy ?? "a teammate"} — guest did not pick this time.` : null,
     `Guest: ${args.guestName} <${args.guestEmail}>`,
     args.guestPhone ? `Phone: ${args.guestPhone}` : null,
+    // Whether this guest may be texted, spelled out rather than left to be
+    // assumed — a US guest who did not tick the box must not get an SMS.
+    requiresSmsConsent(args.brand.market) && args.guestPhone
+      ? args.smsOptIn
+        ? "SMS: opted in — texts allowed."
+        : "SMS: NOT opted in — do not text this guest."
+      : null,
     args.tripName ? `Trip: ${args.tripName}` : null,
     trtlTripUrl(args.airtableTripRecordId) ? `Trip in TRTL: ${trtlTripUrl(args.airtableTripRecordId)}` : null,
     args.guestNotes ? `Notes: ${args.guestNotes}` : null,

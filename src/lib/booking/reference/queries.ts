@@ -42,6 +42,7 @@ export async function getBrands(): Promise<Brand[]> {
     fromEmail: row.from_email as string,
     fromName: row.from_name as string,
     replyTo: (row.reply_to as string | null) ?? null,
+    privacyPolicyUrl: (row.privacy_policy_url as string | null) ?? null,
     // Default false so an un-migrated database behaves like the schema
     // default (off since 050 — reminders send only where deliberately enabled).
     reminder24hEnabled: Boolean(row.reminder_24h_enabled),

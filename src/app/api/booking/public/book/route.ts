@@ -18,6 +18,9 @@ const BookSchema = z.object({
   startIso: z.string().datetime({ offset: true }),
   guestName: z.string().trim().min(1).max(200),
   guestEmail: z.string().trim().email().max(320),
+  // SMS consent (US brands). Absent means the form never asked.
+  smsOptIn: z.boolean().optional(),
+  smsConsentText: z.string().trim().max(2000).optional(),
   guestPhone: z.string().trim().max(50).optional(),
   guestNotes: z.string().trim().max(2000).optional(),
   guestTimezone: z.string().max(64).optional(),
@@ -88,6 +91,8 @@ export async function POST(request: Request): Promise<Response> {
     startIso: parsed.startIso,
     guestName: parsed.guestName,
     guestEmail: parsed.guestEmail,
+    smsOptIn: parsed.smsOptIn ?? false,
+    smsConsentText: parsed.smsConsentText ?? null,
     guestPhone: parsed.guestPhone ?? null,
     guestNotes: parsed.guestNotes ?? null,
     guestTimezone: parsed.guestTimezone ?? null,

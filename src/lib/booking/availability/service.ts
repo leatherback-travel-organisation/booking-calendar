@@ -64,6 +64,7 @@ export function mapBrand(row: Record<string, unknown>): Brand {
     fromEmail: String(row.from_email),
     fromName: String(row.from_name),
     replyTo: (row.reply_to as string | null) ?? null,
+    privacyPolicyUrl: (row.privacy_policy_url as string | null) ?? null,
     // Default true so an un-migrated database behaves like the schema default.
     reminder24hEnabled: row.reminder_24h_enabled === undefined ? true : Boolean(row.reminder_24h_enabled),
     reminder1hEnabled: row.reminder_1h_enabled === undefined ? true : Boolean(row.reminder_1h_enabled),

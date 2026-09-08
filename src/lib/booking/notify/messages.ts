@@ -8,6 +8,7 @@ import "server-only";
 import { DateTime } from "luxon";
 import { appUrl } from "../app-url";
 import { getSql } from "../db";
+import { maySendSms, requiresSmsConsent } from "../sms-consent";
 import { guestEventTypeName, type Brand, type EventType, type Staff } from "../model";
 import { icsCancel, icsRequest } from "./ics.ts";
 import { escapeHtml, htmlToText, renderBrandEmail, renderTemplate } from "./render.ts";
@@ -104,6 +105,8 @@ export type BookingEmailContext = {
   /** How the guest asked to take the call; defaults to video. */
   callMedium?: "video" | "phone";
   guestPhone?: string | null;
+  /** US brands: whether this guest ticked the SMS consent box. */
+  smsOptIn?: boolean;
   manageUrlRaw: string;
   brand: Brand;
   staff: Staff;
@@ -176,6 +179,11 @@ export function buildVariableValues(ctx: BookingEmailContext): Partial<Record<Va
 export async function sendBookingSms(moment: Moment, ctx: BookingEmailContext): Promise<SendResult> {
   const phone = ctx.guestPhone?.trim();
   if (!phone) return { ok: false, error: "no guest phone on the booking" };
+  // US brands text only the guests who asked to be texted. Collecting consent
+  // and then messaging regardless would be worse than never asking.
+  if (!maySendSms({ market: ctx.brand.market, smsOptIn: ctx.smsOptIn ?? false })) {
+    return { ok: false, error: "guest did not opt in to SMS" };
+  }
 
   const values = buildVariableValues(ctx);
   const joinLine =
@@ -192,6 +200,8 @@ export async function sendBookingSms(moment: Moment, ctx: BookingEmailContext): 
     `${ctx.brand.name}: Hi ${values["guest.first_name"]}, your call with ${ctx.staff.firstName} is ${when} (${values["booking.timezone"]}).`,
     joinLine,
     `Reschedule: ${ctx.manageUrlRaw}`,
+    // Required on the US programmes, and harmless on the others.
+    requiresSmsConsent(ctx.brand.market) ? "Reply STOP to opt out." : "",
   ]
     .filter(Boolean)
     .join(" ");

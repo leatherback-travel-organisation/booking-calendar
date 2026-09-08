@@ -90,6 +90,7 @@ async function sendReminders(kind: ReminderKind): Promise<{ sent: number; failed
         meetUrl: (row.meet_url as string | null) ?? null,
         callMedium: row.call_medium === "phone" ? "phone" : "video",
         guestPhone: (row.guest_phone as string | null) ?? null,
+        smsOptIn: Boolean(row.sms_opt_in),
         manageUrlRaw,
         brand,
         staff,

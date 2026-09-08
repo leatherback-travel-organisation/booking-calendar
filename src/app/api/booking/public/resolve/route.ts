@@ -30,6 +30,8 @@ export async function GET(request: Request): Promise<Response> {
         brand: {
           key: brand.key,
           name: brand.name,
+          market: brand.market,
+          privacyPolicyUrl: brand.privacyPolicyUrl,
           logoUrl: brand.logoUrl,
           colorPrimary: brand.colorPrimary,
           colorAccent: brand.colorAccent,
@@ -74,6 +76,8 @@ export async function GET(request: Request): Promise<Response> {
     brand: {
       key: resolved.brand.key,
       name: resolved.brand.name,
+      market: resolved.brand.market,
+      privacyPolicyUrl: resolved.brand.privacyPolicyUrl,
       logoUrl: resolved.brand.logoUrl,
       colorPrimary: resolved.brand.colorPrimary,
       colorAccent: resolved.brand.colorAccent,

@@ -18,6 +18,8 @@ export type Brand = {
   fromEmail: string;
   fromName: string;
   replyTo: string | null;
+  /** Named in the SMS consent disclosure for US-market brands. */
+  privacyPolicyUrl: string | null;
   /**
    * Guest reminder settings, owned by the brand and edited only by Pod Leads
    * and Senior BMs (Guest Communications). Confirmations, reschedules and

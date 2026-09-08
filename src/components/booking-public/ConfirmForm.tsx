@@ -8,6 +8,12 @@ import { useRef, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import styles from "./bp.module.css";
 import { NO_AUTOFILL } from "@/lib/booking/no-autofill";
+import {
+  requiresSmsConsent,
+  smsConsentText,
+  SMS_CONSENT_HEADING,
+  SMS_CONSENT_LABEL,
+} from "@/lib/booking/sms-consent";
 import { Turnstile } from "./Turnstile";
 import { formatFullDateTime, guestTimeZone } from "./format";
 import { defaultIso, dialCountries, findCountry, OTHER_ISO, toE164 } from "./dial-codes";
@@ -104,6 +110,7 @@ export function ConfirmForm({
   eventTypeName,
   phone,
   guestCountry,
+  brand,
   meta,
   onBack,
   onSuccess,
@@ -114,6 +121,8 @@ export function ConfirmForm({
   staffFirstName: string;
   eventTypeName: string;
   phone: string | null;
+  /** Who is texting, and whose privacy policy the disclosure names. */
+  brand: { name: string; market: string; privacyPolicyUrl: string | null };
   /** Viewer's country from the edge header. presets the dial code, always editable. */
   guestCountry: string | null;
   meta: BookMeta;
@@ -131,6 +140,7 @@ export function ConfirmForm({
     return defaultIso(typeof navigator === "undefined" ? undefined : navigator.language);
   });
   const [notes, setNotes] = useState("");
+  const [smsOptIn, setSmsOptIn] = useState(false);
   const [honeypot, setHoneypot] = useState("");
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -156,6 +166,9 @@ export function ConfirmForm({
       set(event.target.value);
     };
 
+  const smsConsentRequired = requiresSmsConsent(brand.market);
+  const consentText = smsConsentText(brand.name, brand.privacyPolicyUrl);
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (submitting) return;
@@ -177,6 +190,12 @@ export function ConfirmForm({
         website: honeypot,
       };
       if (phoneField.trim()) body.guestPhone = toE164(phoneIso, phoneField.trim());
+      if (smsConsentRequired) {
+        body.smsOptIn = smsOptIn;
+        // The server records the wording, not a version number — send what
+        // was actually on screen.
+        if (smsOptIn) body.smsConsentText = consentText;
+      }
       if (notes.trim()) body.guestNotes = notes.trim();
       if (meta.sourceSlug) body.sourceSlug = meta.sourceSlug;
       if (meta.routedReason) body.routedReason = meta.routedReason;
@@ -323,6 +342,25 @@ export function ConfirmForm({
           onChange={(e) => setNotes(e.target.value)}
         />
       </div>
+
+      {smsConsentRequired && (
+        // US brands need express written consent before a text: the guest
+        // ticks this themselves, it is never pre-ticked, and booking works
+        // exactly the same if they leave it alone.
+        <div className={styles.consentBox}>
+          <span className={styles.consentHeading}>{SMS_CONSENT_HEADING}</span>
+          <label className={styles.consentCheck}>
+            <input
+              type="checkbox"
+              name="smsOptIn"
+              checked={smsOptIn}
+              onChange={(e) => setSmsOptIn(e.target.checked)}
+            />
+            <span>{SMS_CONSENT_LABEL}</span>
+          </label>
+          <p className={styles.consentText}>{consentText}</p>
+        </div>
+      )}
 
       {/* Honeypot: hidden by CSS, not type=hidden. humans never see it. */}
       <div className={styles.honeypot} aria-hidden="true">

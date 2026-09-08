@@ -842,6 +842,7 @@ export function BookingFlow({
             staffFirstName={active.firstName}
             eventTypeName={eventType.name}
             phone={phone}
+            brand={ctx.brand}
             meta={meta}
             onBack={() => setSelected(null)}
             onSuccess={setBooked}

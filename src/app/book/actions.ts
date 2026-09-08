@@ -25,6 +25,8 @@ export async function resolveBrandPoolAction(brandKey: string): Promise<PoolReso
     brand: {
       key: brand.key,
       name: brand.name,
+      market: brand.market,
+      privacyPolicyUrl: brand.privacyPolicyUrl,
       logoUrl: brand.logoUrl,
       colorPrimary: brand.colorPrimary,
       colorAccent: brand.colorAccent,
