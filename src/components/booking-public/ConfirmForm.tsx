@@ -10,9 +10,11 @@ import styles from "./bp.module.css";
 import { NO_AUTOFILL } from "@/lib/booking/no-autofill";
 import {
   requiresSmsConsent,
+  smsConsentCore,
   smsConsentText,
   SMS_CONSENT_HEADING,
   SMS_CONSENT_LABEL,
+  SMS_CONSENT_PRIVACY_LEAD,
 } from "@/lib/booking/sms-consent";
 import { Turnstile } from "./Turnstile";
 import { formatFullDateTime, guestTimeZone } from "./format";
@@ -358,7 +360,16 @@ export function ConfirmForm({
             />
             <span>{SMS_CONSENT_LABEL}</span>
           </label>
-          <p className={styles.consentText}>{consentText}</p>
+          <p className={styles.consentText}>{smsConsentCore(brand.name)}</p>
+          {brand.privacyPolicyUrl ? (
+            <p className={styles.consentText}>
+              {SMS_CONSENT_PRIVACY_LEAD}
+              <a href={brand.privacyPolicyUrl} target="_blank" rel="noreferrer noopener">
+                Privacy Policy
+              </a>
+              .
+            </p>
+          ) : null}
         </div>
       )}
 

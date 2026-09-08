@@ -24,6 +24,7 @@ test("an AU brand keeps its existing brand-level behaviour", () => {
 
 test("the disclosure carries every element the US rules ask for", () => {
   const text = smsConsentText("Harriet Adventures", "https://harrietadventures.com/privacy-policy/");
+  assert.match(text, /never use SMS for marketing purposes/i, "not marketing");
   assert.match(text, /Harriet Adventures/, "who is texting");
   assert.match(text, /not required as a condition/i, "consent is not a condition of booking");
   assert.match(text, /Message frequency varies/i, "how often");
