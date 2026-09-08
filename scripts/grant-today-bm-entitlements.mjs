@@ -33,12 +33,14 @@ const BOOKING_MANAGERS = [
 if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is required.");
 const sql = neon(process.env.DATABASE_URL);
 
-// Resolve the canonical User role for Today by name rather than hardcoding
-// an id — fail loudly if the registry doesn't look as expected.
-const roles = await sql`select id, name from roles where application_id = ${APP_ID}`;
-const userRoles = roles.filter((r) => /user/i.test(r.name) && !/admin/i.test(r.name));
+// Resolve the canonical User role for Today from the registry rather than
+// hardcoding an id — fail loudly if it doesn't look as expected.
+const roles = await sql`select id, name, access_level from application_roles where application_id = ${APP_ID}`;
+const userRoles = roles.filter((r) => r.access_level === "user");
 if (userRoles.length !== 1) {
-  throw new Error(`Expected exactly one Today user role, found: ${roles.map((r) => r.name).join(", ") || "none"}`);
+  throw new Error(
+    `Expected exactly one Today user-level role, found: ${roles.map((r) => `${r.name} (${r.access_level})`).join(", ") || "none"}`
+  );
 }
 const ROLE_USER = userRoles[0].id;
 console.log(`Role "${userRoles[0].name}" (${ROLE_USER})`);
