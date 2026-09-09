@@ -8,6 +8,7 @@ import "server-only";
 import { DateTime } from "luxon";
 import { appUrl } from "../app-url";
 import { getSql } from "../db";
+import { toAmericanEnglish, usesAmericanEnglish } from "../english";
 import { maySendSms, requiresSmsConsent } from "../sms-consent";
 import { bookUrl } from "../book-url";
 import { guestEventTypeName, type Brand, type EventType, type Staff } from "../model";
@@ -259,8 +260,12 @@ function bmCribSheet(moment: Moment, ctx: BookingEmailContext): string | null {
 export async function sendBookingEmail(moment: Moment, ctx: BookingEmailContext): Promise<SendResult> {
   const template = await resolveTemplate(moment, ctx.brand.id, ctx.eventType.key);
   const values = buildVariableValues(ctx);
-  const bodyHtml = renderTemplate(template.bodyHtml, values);
-  const subject = renderTemplate(template.subject, values);
+  // Applied to the TEMPLATE, before variables are substituted: a US brand's
+  // guest copy reads American even if a template still carries a British
+  // spelling, and no guest's own name or address is ever rewritten.
+  const american = usesAmericanEnglish(ctx.brand.key);
+  const bodyHtml = renderTemplate(american ? toAmericanEnglish(template.bodyHtml) : template.bodyHtml, values);
+  const subject = renderTemplate(american ? toAmericanEnglish(template.subject) : template.subject, values);
   const html = renderBrandEmail(
     {
       brandName: ctx.brand.name,

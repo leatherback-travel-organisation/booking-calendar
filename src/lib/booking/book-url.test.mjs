@@ -47,6 +47,7 @@ test("no guest-facing link is built by hand", () => {
     "src/components/booking-public/ManagePanel.tsx",
     "src/app/invite/[token]/page.tsx",
     "src/app/booking/page.tsx",
+    "src/app/session/[id]/page.tsx",
   ];
   for (const file of files) {
     const source = readFileSync(new URL(`../../../${file}`, import.meta.url), "utf8");

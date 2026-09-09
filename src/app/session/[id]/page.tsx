@@ -7,6 +7,7 @@ import { DateTime } from "luxon";
 import { getBrandById, getEventTypeById, getStaffById } from "@/lib/booking/availability/service";
 import { getSession } from "@/lib/booking/groups";
 import { resolveSchedulingZone } from "@/lib/booking/availability/engine";
+import { bookPath } from "@/lib/booking/book-url";
 import { NO_AUTOFILL } from "@/lib/booking/no-autofill";
 import { claimSeatAction } from "./actions";
 import styles from "@/components/booking-public-lite/lite.module.css";
@@ -34,7 +35,7 @@ export default async function GroupSessionPage({
       <main className={styles.page}>
         <div className={styles.card}>
           <h1 className={styles.title}>This session isn&apos;t available</h1>
-          <p className={styles.meta}>It may have been cancelled. You can still book a one-on-one call instead.</p>
+          <p className={styles.meta}>It may have been called off. You can still book a one-on-one call instead.</p>
           <a className={styles.moreLink} href="/book">Find a time that suits you →</a>
         </div>
       </main>
@@ -94,7 +95,7 @@ export default async function GroupSessionPage({
             {error === "session_full" ? (
               <p className={styles.error}>That last spot was just taken — sorry! You can book a one-on-one instead.</p>
             ) : null}
-            <a className={styles.moreLink} href={`/book?bm=${staff.slug}&type=${eventType.key}`}>
+            <a className={styles.moreLink} href={bookPath({ staffSlug: staff.slug, brandKey: brand.key, eventTypeKey: eventType.key })}>
               Book a one-on-one with {staff.firstName} →
             </a>
           </div>

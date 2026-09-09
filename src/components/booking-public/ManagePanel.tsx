@@ -239,7 +239,7 @@ export function ManagePanel({ token, state, booking, staff, brand, eventType }: 
             <p className={styles.mutedText}>This will free the time and let {staff.firstName} know. You can always book again later.</p>
             <div className={styles.btnRow}>
               <button type="button" className={styles.dangerBtn} onClick={() => void doCancel()} disabled={busy}>
-                {busy ? "Cancelling…" : "Yes, cancel the call"}
+                {busy ? (usesAmericanEnglish(brand.key) ? "Canceling…" : "Cancelling…") : "Yes, cancel the call"}
               </button>
               <button type="button" className={styles.secondaryBtn} onClick={() => setMode("summary")} disabled={busy}>
                 Keep my booking
