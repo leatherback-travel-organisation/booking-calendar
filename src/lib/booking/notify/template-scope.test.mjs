@@ -170,3 +170,72 @@ test("brand-and-type replace targets are matched exactly, not by fallback", () =
   assert.ok(diff[0].summary.includes("Camino Women (lead-up)"));
   assert.ok(diff[0].summary.includes("12 Aug 2026"));
 });
+
+// --- grouped by brand (Nicola, 15 Sep) ---------------------------------------
+
+import { summarizeBrand, MOMENTS_IN_JOURNEY_ORDER } from "./template-scope.ts";
+
+const CAREX = { key: "carex", name: "Carex Garden Tours" };
+
+test("a brand's messages come back in the order a guest receives them", () => {
+  const summary = summarizeBrand(CAREX, []);
+  assert.deepEqual(
+    summary.moments.map((m) => m.moment),
+    ["confirmation", "reminder_24h", "reminder_1h", "reschedule", "cancellation"],
+  );
+  assert.equal(MOMENTS_IN_JOURNEY_ORDER.length, 5);
+});
+
+test("a brand with nothing of its own inherits, and says so", () => {
+  const rows = [
+    { moment: "confirmation", brandKey: null, eventTypeKey: null, updatedBy: "kat", updatedAt: "2026-09-01T00:00:00.000Z" },
+  ];
+  const summary = summarizeBrand(CAREX, rows);
+  const confirmation = summary.moments[0];
+  assert.equal(confirmation.tailored, false);
+  assert.equal(confirmation.source, "default");
+  // The edit shown is the one that produced what Carex actually sends.
+  assert.equal(confirmation.lastEdited.by, "kat");
+  assert.equal(summary.tailoredCount, 0);
+});
+
+test("a brand's own wording wins, and the edit shown is that brand's", () => {
+  const rows = [
+    { moment: "confirmation", brandKey: null, eventTypeKey: null, updatedBy: "kat", updatedAt: "2026-09-10T00:00:00.000Z" },
+    { moment: "confirmation", brandKey: "carex", eventTypeKey: null, updatedBy: "jax", updatedAt: "2026-09-02T00:00:00.000Z" },
+  ];
+  const confirmation = summarizeBrand(CAREX, rows).moments[0];
+  assert.equal(confirmation.tailored, true);
+  assert.equal(confirmation.source, "brand");
+  // Newer default, but Carex sends its own — so Jax's edit is the true one.
+  assert.equal(confirmation.lastEdited.by, "jax");
+});
+
+test("another brand's override is not counted as this brand's", () => {
+  const rows = [
+    { moment: "confirmation", brandKey: "harriet", eventTypeKey: null, updatedBy: "janie", updatedAt: "2026-09-02T00:00:00.000Z" },
+  ];
+  const confirmation = summarizeBrand(CAREX, rows).moments[0];
+  assert.equal(confirmation.tailored, false);
+  assert.equal(confirmation.source, "built-in");
+  assert.equal(confirmation.lastEdited, null);
+});
+
+test("per-call-type versions are counted and still read as tailored", () => {
+  const rows = [
+    { moment: "confirmation", brandKey: "carex", eventTypeKey: "chat", updatedBy: "jax", updatedAt: "2026-09-03T00:00:00.000Z" },
+    { moment: "confirmation", brandKey: "carex", eventTypeKey: "feedback", updatedBy: "jax", updatedAt: "2026-09-04T00:00:00.000Z" },
+  ];
+  const confirmation = summarizeBrand(CAREX, rows).moments[0];
+  assert.equal(confirmation.typeVariants, 2);
+  assert.equal(confirmation.tailored, true);
+});
+
+test("tailoredCount counts messages, not rows", () => {
+  const rows = [
+    { moment: "confirmation", brandKey: "carex", eventTypeKey: null, updatedBy: "jax", updatedAt: "2026-09-02T00:00:00.000Z" },
+    { moment: "confirmation", brandKey: "carex", eventTypeKey: "chat", updatedBy: "jax", updatedAt: "2026-09-03T00:00:00.000Z" },
+    { moment: "reminder_1h", brandKey: "carex", eventTypeKey: null, updatedBy: "jax", updatedAt: "2026-09-02T00:00:00.000Z" },
+  ];
+  assert.equal(summarizeBrand(CAREX, rows).tailoredCount, 2);
+});

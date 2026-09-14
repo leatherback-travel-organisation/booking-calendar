@@ -245,3 +245,65 @@ export function computeApplyDiff(
     };
   });
 }
+
+// --- list page: grouped by brand --------------------------------------------
+
+/**
+ * One message, as it stands for one brand: what that brand actually sends,
+ * and where that wording comes from.
+ *
+ * `lastEdited` is the edit that produced what THIS brand sends — its own
+ * override when it has one, otherwise the shared default it inherits. The
+ * moment-grouped view showed the newest edit across every brand, which told a
+ * Pod Lead nothing about the brand in front of them.
+ */
+export type BrandMomentCell = {
+  moment: Moment;
+  source: ScopeSource;
+  /** Written for this brand, rather than inherited. */
+  tailored: boolean;
+  /** Extra per-call-type versions this brand carries for the message. */
+  typeVariants: number;
+  lastEdited: { by: string | null; at: string } | null;
+};
+
+export type BrandSummary = {
+  brandKey: string;
+  brandName: string;
+  moments: BrandMomentCell[];
+  /** How many of the messages this brand has written for itself. */
+  tailoredCount: number;
+};
+
+/** The five messages in the order a guest receives them. */
+export const MOMENTS_IN_JOURNEY_ORDER: readonly Moment[] = JOURNEY_STAGES.flatMap(
+  (stage) => stage.moments,
+);
+
+export function summarizeBrand(
+  brand: BrandRefLite,
+  rows: readonly TemplateRowMeta[],
+): BrandSummary {
+  const moments = MOMENTS_IN_JOURNEY_ORDER.map((moment): BrandMomentCell => {
+    const scoped = rows.filter((row) => row.moment === moment);
+    const own = scoped.find((row) => row.brandKey === brand.key && row.eventTypeKey === null) ?? null;
+    const typed = scoped.filter((row) => row.brandKey === brand.key && row.eventTypeKey !== null);
+    const source = displaySource(rows, moment, brand.key, null);
+    // What this brand sends comes from its own row when it has one, else the
+    // shared default; name whichever of those was last touched.
+    const effective = own ?? scoped.find((row) => row.brandKey === null && row.eventTypeKey === null) ?? null;
+    return {
+      moment,
+      source,
+      tailored: own !== null || typed.length > 0,
+      typeVariants: typed.length,
+      lastEdited: effective ? { by: effective.updatedBy, at: effective.updatedAt } : null,
+    };
+  });
+  return {
+    brandKey: brand.key,
+    brandName: brand.name,
+    moments,
+    tailoredCount: moments.filter((cell) => cell.tailored).length,
+  };
+}

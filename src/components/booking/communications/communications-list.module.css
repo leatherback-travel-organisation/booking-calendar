@@ -10,39 +10,21 @@
   max-width: 68ch;
 }
 
-.stage {
+/* One card per brand, its messages listed inside in journey order. The brand
+   colour is carried by a rule down the left edge rather than a filled band,
+   so seven of these in a column stay readable. */
+.brandGroup {
+  --tag: var(--ink-soft);
   display: grid;
   gap: var(--density-2, 10px);
-}
-
-.stageTitle {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--text-small, 13px);
-  font-weight: 500;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-}
-
-.rows {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: var(--density-2, 10px);
-}
-
-.row {
-  display: grid;
-  gap: 7px;
   border: 1px solid var(--line);
+  border-left: 3px solid color-mix(in srgb, var(--tag) 70%, transparent);
   border-radius: var(--radius-panel, 10px);
   background: var(--card);
   padding: var(--density-3, 14px) var(--density-4, 18px);
 }
 
-.rowHead {
+.brandHead {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -50,56 +32,74 @@
   flex-wrap: wrap;
 }
 
-.rowName {
+.brandTitle {
   margin: 0;
-  color: var(--ink);
+  font-family: var(--font-display);
   font-size: var(--text-body, 15px);
   font-weight: 500;
+  color: var(--ink);
 }
 
-.rowDescription {
-  margin: 0;
+.brandCount {
   color: var(--ink-soft);
-  font-size: var(--text-small, 13px);
+  font-size: var(--text-label, 12px);
 }
 
-/* Brand buttons stretch shoulder-to-shoulder across the card. */
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 4px;
+.rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 2px;
 }
 
-/* One button per brand, straight into that brand's version of the message.
-   Tinted with the brand colour; solid when the brand has its own template,
-   ghosted while it still rides on the default. */
-.brandLink {
-  --tag: var(--ink-soft);
-  flex: 1 1 auto;
-  text-align: center;
-  border: 1px dashed color-mix(in srgb, var(--tag) 40%, transparent);
-  border-radius: 999px;
-  background: transparent;
-  color: color-mix(in srgb, var(--tag) 72%, var(--ink));
-  font-size: var(--text-small, 13px);
-  font-weight: 500;
-  padding: 6px 14px;
-  white-space: nowrap;
+/* Each message is the whole clickable row: name, where its wording comes
+   from, and when that wording was last touched. */
+.messageRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: baseline;
+  gap: var(--density-3, 14px);
+  padding: 8px 10px;
+  border-radius: var(--radius-control, 8px);
   text-decoration: none;
+  color: inherit;
 }
 
-.brandLink[data-tailored] {
-  border-style: solid;
-  background: color-mix(in srgb, var(--tag) 11%, var(--card));
+.messageRow:hover {
+  background: color-mix(in srgb, var(--tag) 9%, var(--card));
 }
 
-.brandLink:hover {
-  background: color-mix(in srgb, var(--tag) 18%, var(--card));
+.messageName {
+  color: var(--ink);
+  font-size: var(--text-ui, 14px);
+  min-width: 0;
+}
+
+/* Tailored reads as the brand's own; shared wording stays quiet. */
+.messageState {
+  color: var(--ink-soft);
+  font-size: var(--text-label, 12px);
+  white-space: nowrap;
+}
+
+.messageRow[data-tailored] .messageName {
+  font-weight: 500;
+}
+
+.messageRow[data-tailored] .messageState {
+  color: color-mix(in srgb, var(--tag) 72%, var(--ink));
 }
 
 .edited {
   color: var(--ink-soft);
   font-size: var(--text-label, 12px);
+  white-space: nowrap;
 }
 
+@media (max-width: 640px) {
+  .messageRow {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+}

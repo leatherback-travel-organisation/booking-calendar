@@ -5,7 +5,7 @@ import { ReminderSettings } from "@/components/booking/communications/reminder-s
 import { requireBookingAccess } from "@/lib/booking/access";
 import { getStaffByEmail } from "@/lib/booking/availability/service";
 import { databaseConfigured } from "@/lib/booking/db";
-import { MOMENTS, summarizeMoment } from "@/lib/booking/notify/template-scope.ts";
+import { summarizeBrand } from "@/lib/booking/notify/template-scope.ts";
 import { getBrands } from "@/lib/booking/reference/queries";
 import { getActiveTemplateRows } from "./template-data";
 import shellStyles from "@/components/booking/booking-shell.module.css";
@@ -32,7 +32,9 @@ export default async function BookingCommunicationsPage() {
   const brandLites = brands
     .filter((brand) => brand.active)
     .map((brand) => ({ key: brand.key, name: brand.name, colorPrimary: brand.colorPrimary }));
-  const summaries = MOMENTS.map((moment) => summarizeMoment(moment, rows, brandLites));
+  // Grouped by brand (Nicola, 15 Sep): one section per brand, its messages
+  // inside in the order a guest receives them.
+  const summaries = brandLites.map((brand) => summarizeBrand(brand, rows));
 
   const staffSelf = await getStaffByEmail(identity.email);
   const canEditComms = canManage || Boolean(staffSelf?.isSenior);
