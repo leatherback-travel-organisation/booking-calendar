@@ -3,12 +3,12 @@ import type { PublicEventType } from "./types";
 /**
  * What a booking link opens on.
  *
- * An explicit ?type= always wins. Otherwise the brand may name its own
- * default: the online brands (Salt Caravan, Carex) open a Quick Chat rather
- * than the 30-minute Trip Inquiry (Nicola, 14 Sep). Keeping that on the brand
- * record means it holds for links we did not build — a brand's website, an
- * email, a link already out in the wild — instead of having to be repeated in
- * each site's own code. A brand naming no default keeps the old behaviour.
+ * An explicit ?type= always wins — Booking Managers pick the right link for
+ * their day-to-day work. Otherwise the brand's default decides: online brands
+ * (Salt Caravan, Carex) open a Quick Chat, adventure brands the 30-minute
+ * Trip Enquiry (Nicola, 14 Sep). Every brand row names one (067/068); the
+ * "enquiry, else first" tail is only a safety net for a row that lost it.
+ * Guests are never shown the choice.
  *
  * A default the brand does not actually offer is ignored rather than shown
  * broken, so removing a call type can never strand a link.

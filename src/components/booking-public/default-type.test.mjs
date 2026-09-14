@@ -35,3 +35,22 @@ test("an unknown ?type= falls through to the brand default", () => {
 test("no types at all yields nothing rather than throwing", () => {
   assert.equal(defaultEventTypeKey([], null, "chat"), null);
 });
+
+// Guests are never offered a kind of call (Nicola, 14 Sep): the booking flow
+// carries no type chooser, and every brand row names its default in the
+// migrations (online -> chat, adventure -> enquiry).
+import { readFileSync } from "node:fs";
+
+test("the guest booking flow has no call-type chooser", () => {
+  const flow = readFileSync(new URL("./BookingFlow.tsx", import.meta.url), "utf8");
+  assert.ok(!/What kind of call/.test(flow));
+  assert.ok(!/typeChooser/.test(flow));
+  assert.ok(!/pickEventType/.test(flow));
+});
+
+test("every brand row names its default call type", () => {
+  const m067 = readFileSync(new URL("../../../db/067_brand_default_event_type.sql", import.meta.url), "utf8");
+  const m068 = readFileSync(new URL("../../../db/068_every_brand_names_its_call_type.sql", import.meta.url), "utf8");
+  assert.match(m067, /set default_event_type_key = 'chat' where key in \('salt-caravan', 'carex'\)/);
+  assert.match(m068, /set default_event_type_key = 'enquiry'\s+where default_event_type_key is null/);
+});

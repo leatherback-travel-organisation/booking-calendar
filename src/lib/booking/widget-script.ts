@@ -53,7 +53,7 @@ export const WIDGET_SOURCE = `(function () {
     var isTrip = at !== -1;
     var isHome = segs.length === 0;
     if (!isTrip && !isHome) return;
-    // Extension pages name their parent: meta calltime-trip.
+    // Extension pages: meta calltime-trip = parent.
     var tm = document.querySelector('meta[name="calltime-trip"]');
     var trip = tripAttr || (tm && tm.getAttribute('content')) || '';
     if (!trip) {
@@ -68,7 +68,7 @@ export const WIDGET_SOURCE = `(function () {
 
     var bookUrl = origin + '/book?trip=' + encodeURIComponent(trip) +
       '&host=' + encodeURIComponent(pageHost) + '&embed=1' +
-      '&type=' + encodeURIComponent(typeAttr || 'enquiry') + heroQ;
+      (typeAttr ? '&type=' + encodeURIComponent(typeAttr) : '') + heroQ;
 
     function safeColor(value, fallback) {
       return (typeof value === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(value)) ? value : fallback;

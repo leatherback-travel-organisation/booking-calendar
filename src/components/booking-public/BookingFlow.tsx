@@ -265,13 +265,6 @@ export function BookingFlow({
     return () => controller.abort();
   }, [backupsKey, brandKey, eventTypeKey, backupsExclude]);
 
-  const pickEventType = (key: string) => {
-    setEventTypeKey(key);
-    setSelected(null);
-    setNotice(null);
-    setShowBackups(false);
-  };
-
   // An abandoned scheduling request leaves nothing behind (Nicola, 8 Sep).
   // The hold is the only thing stored before a guest confirms, so it goes the
   // moment they walk away — closing the tab, backing out to the times, or
@@ -681,20 +674,6 @@ export function BookingFlow({
   }
 
 
-  // The type chooser shows durations per option; whenever it is NOT on
-  // screen (fixed-type link, embed, single type, or a chosen type) the call
-  // duration is stated at the top instead so the guest always sees it.
-  //
-  // A brand that names its own default has already decided what its links
-  // mean, so the guest goes straight to the times rather than being asked to
-  // pick a kind of call first (Nicola, 14 Sep).
-  const typeChooserVisible =
-    !typeParam &&
-    !ctx.brand.defaultEventTypeKey &&
-    !embed &&
-    ctx.eventTypes.length > 1 &&
-    !selected;
-
   const backupsLoading = backupsKey !== null && backupsResult?.key !== backupsKey;
   const backupsFailed = backupsKey !== null && backupsResult?.key === backupsKey && backupsResult.failed;
   const backupsList =
@@ -804,32 +783,14 @@ export function BookingFlow({
           <h1 className={styles.pageTitle}>{ctx.poolLabel ?? `Book a call with the ${ctx.brand.name} team`}</h1>
         )}
 
-        {eventType && !typeChooserVisible && (
+        {/* A guest is never asked what kind of call this is (Nicola, 14 Sep):
+            the link's ?type= or the brand's default decides, and the call and
+            its length are simply stated here. The only choice a guest makes
+            is phone or video, after picking a time. */}
+        {eventType && (
           <p className={styles.pageSub}>
             {eventType.name} · {eventType.durationMin} minutes
           </p>
-        )}
-
-        {/* Event type choice — hidden when the entry link fixed the type OR
-            we're inside the trip-page widget overlay: straight to times
-            (embed defaults to the 30-minute enquiry call). */}
-        {typeChooserVisible && (
-          <div>
-            <p className={styles.sectionLabel}>What kind of call?</p>
-            <div className={styles.typeGrid}>
-              {ctx.eventTypes.map((t) => (
-                <button
-                  key={t.key}
-                  type="button"
-                  className={t.key === eventTypeKey ? `${styles.typeBtn} ${styles.typeBtnActive}` : styles.typeBtn}
-                  onClick={() => pickEventType(t.key)}
-                >
-                  <span className={styles.typeName}>{t.name} · {t.durationMin} min</span>
-                  {t.description && <span className={styles.typeMeta}>{t.description}</span>}
-                </button>
-              ))}
-            </div>
-          </div>
         )}
 
         {/* Trip context (trip-entry links only — never for ?bm= links) */}
