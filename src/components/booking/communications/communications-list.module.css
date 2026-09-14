@@ -1,48 +1,56 @@
 .journey {
   display: grid;
-  gap: var(--density-4, 18px);
+  gap: var(--density-4, 20px);
 }
 
 .intro {
   margin: 0;
   color: var(--ink-soft);
-  font-size: var(--text-ui, 14px);
-  max-width: 68ch;
+  font-size: var(--text-body, 15px);
+  max-width: 62ch;
 }
 
-/* One card per brand, its messages listed inside in journey order. The brand
-   colour is carried by a rule down the left edge rather than a filled band,
-   so seven of these in a column stay readable. */
+/* One card per brand. The brand colour is a dot beside the name and a tint
+   on hover, not a band: seven of these in a column must stay calm. */
 .brandGroup {
   --tag: var(--ink-soft);
-  display: grid;
-  gap: var(--density-2, 10px);
   border: 1px solid var(--line);
-  border-left: 3px solid color-mix(in srgb, var(--tag) 70%, transparent);
-  border-radius: var(--radius-panel, 10px);
+  border-radius: var(--radius-panel, 12px);
   background: var(--card);
-  padding: var(--density-3, 14px) var(--density-4, 18px);
+  padding: var(--density-3, 16px) var(--density-3, 16px) var(--density-2, 8px);
 }
 
 .brandHead {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--density-3, 14px);
+  align-items: center;
+  gap: 10px;
   flex-wrap: wrap;
+  padding: 0 6px 10px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 6px;
+}
+
+.brandDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--tag);
+  flex: none;
 }
 
 .brandTitle {
   margin: 0;
   font-family: var(--font-display);
-  font-size: var(--text-body, 15px);
+  font-size: 18px;
   font-weight: 500;
+  letter-spacing: -0.01em;
   color: var(--ink);
 }
 
-.brandCount {
+.brandNote {
+  margin-left: auto;
   color: var(--ink-soft);
-  font-size: var(--text-label, 12px);
+  font-size: var(--text-ui, 14px);
 }
 
 .rows {
@@ -50,56 +58,99 @@
   padding: 0;
   list-style: none;
   display: grid;
-  gap: 2px;
 }
 
-/* Each message is the whole clickable row: name, where its wording comes
-   from, and when that wording was last touched. */
+/* The whole row is the link. Name and a one-line explanation on the left;
+   on the right only a "shared wording" flag when it applies, and an Open
+   label that appears on hover so the row reads as clickable. */
 .messageRow {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: baseline;
-  gap: var(--density-3, 14px);
-  padding: 8px 10px;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 10px;
   border-radius: var(--radius-control, 8px);
   text-decoration: none;
   color: inherit;
 }
 
-.messageRow:hover {
-  background: color-mix(in srgb, var(--tag) 9%, var(--card));
+.messageRow + .messageRow,
+.rows li + li .messageRow {
+  border-top: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+  border-radius: 0;
+}
+
+.rows li:last-child .messageRow {
+  border-radius: 0 0 var(--radius-control, 8px) var(--radius-control, 8px);
+}
+
+.messageRow:hover,
+.messageRow:focus-visible {
+  background: color-mix(in srgb, var(--tag) 7%, var(--card));
+  outline: none;
+}
+
+.messageText {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
 }
 
 .messageName {
   color: var(--ink);
-  font-size: var(--text-ui, 14px);
-  min-width: 0;
-}
-
-/* Tailored reads as the brand's own; shared wording stays quiet. */
-.messageState {
-  color: var(--ink-soft);
-  font-size: var(--text-label, 12px);
-  white-space: nowrap;
-}
-
-.messageRow[data-tailored] .messageName {
+  font-size: var(--text-body, 15px);
   font-weight: 500;
 }
 
-.messageRow[data-tailored] .messageState {
-  color: color-mix(in srgb, var(--tag) 72%, var(--ink));
+.messageDescription {
+  color: var(--ink-soft);
+  font-size: var(--text-ui, 14px);
+  line-height: 1.4;
 }
 
-.edited {
+.messageEdited {
   color: var(--ink-soft);
-  font-size: var(--text-label, 12px);
+  font-size: var(--text-label, 13px);
+}
+
+.sharedPill {
+  color: var(--ink-soft);
+  font-size: var(--text-label, 13px);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px 10px;
   white-space: nowrap;
+}
+
+.open {
+  color: var(--pine);
+  font-size: var(--text-ui, 14px);
+  font-weight: 500;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.open::after {
+  content: " \203A";
+}
+
+.messageRow:hover .open,
+.messageRow:focus-visible .open {
+  opacity: 1;
 }
 
 @media (max-width: 640px) {
   .messageRow {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 2px;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .open {
+    display: none;
+  }
+}
+
+@media (hover: none) {
+  .open {
+    opacity: 1;
   }
 }

@@ -1,14 +1,17 @@
 // Server-rendered list of guest messages, grouped by brand (Nicola, 15 Sep).
 //
-// It used to be grouped by message, with a row of brand chips under each —
-// which answered "who has tailored the confirmation email?" But the question
-// a Pod Lead actually arrives with is "what does Carex send?", and that
-// answer was scattered across five cards. One section per brand, its five
-// messages in the order a guest receives them, each a click from its editor.
+// One section per brand, its five messages in the order a guest receives
+// them, each a click from its editor. The row says what the message IS in
+// plain words; it does not recite bookkeeping. Counts of call-type versions
+// and seed actors ("seed:brand-voice") were the small print Nicola asked to
+// lose — a Pod Lead cannot act on them here, and the editor shows the
+// versions anyway. What remains on the right is the one thing worth a glance:
+// whether the brand is still on the shared wording.
 
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import {
+  editorLabel,
   formatDiffDate,
   MOMENT_META,
   type BrandSummary,
@@ -26,11 +29,12 @@ export function CommunicationsList({ summaries, brands }: CommunicationsListProp
   return (
     <div className={styles.journey}>
       <p className={styles.intro}>
-        Every email a guest receives, brand by brand, in the order they receive it. Click a message to edit
-        that brand&rsquo;s version — previews live in the editor.
+        The emails each brand sends a guest, in the order they arrive. Open a message to read it or change
+        the wording.
       </p>
       {summaries.map((summary) => {
         const color = colorByKey.get(summary.brandKey) ?? null;
+        const sharedCount = summary.moments.length - summary.tailoredCount;
         return (
           <section
             key={summary.brandKey}
@@ -38,45 +42,41 @@ export function CommunicationsList({ summaries, brands }: CommunicationsListProp
             style={color ? ({ "--tag": color } as CSSProperties) : undefined}
           >
             <div className={styles.brandHead}>
+              <span className={styles.brandDot} aria-hidden="true" />
               <h2 className={styles.brandTitle}>{summary.brandName}</h2>
-              <span className={styles.brandCount}>
-                {summary.tailoredCount === 0
-                  ? "All using the shared wording"
-                  : summary.tailoredCount === summary.moments.length
-                    ? "All written for this brand"
-                    : `${summary.tailoredCount} of ${summary.moments.length} written for this brand`}
-              </span>
+              {/* Only say something when there is something to do: a brand
+                  that has written all its own messages needs no badge. */}
+              {sharedCount > 0 && (
+                <span className={styles.brandNote}>
+                  {sharedCount === summary.moments.length
+                    ? "Using the shared wording"
+                    : `${sharedCount} of ${summary.moments.length} use the shared wording`}
+                </span>
+              )}
             </div>
             <ul className={styles.rows}>
               {summary.moments.map((cell) => {
                 const meta = MOMENT_META[cell.moment];
+                const editor = cell.lastEdited ? editorLabel(cell.lastEdited.by) : null;
                 return (
                   <li key={cell.moment}>
                     <Link
                       href={`/booking/communications/${cell.moment}?brand=${encodeURIComponent(summary.brandKey)}`}
                       className={styles.messageRow}
                       data-tailored={cell.tailored || undefined}
-                      title={
-                        cell.tailored
-                          ? `Written for ${summary.brandName} — click to edit`
-                          : `Uses the shared wording — click to tailor it for ${summary.brandName}`
-                      }
                     >
-                      <span className={styles.messageName}>{meta.label}</span>
-                      {/* Say the one thing that is true of THIS row rather
-                          than repeating "Tailored" down the whole page: the
-                          seed gave every brand a version of everything. */}
-                      <span className={styles.messageState}>
-                        {!cell.tailored
-                          ? "Shared wording"
-                          : cell.typeVariants > 0
-                            ? `${cell.typeVariants} call-type versions`
-                            : "Tailored"}
+                      <span className={styles.messageText}>
+                        <span className={styles.messageName}>{meta.label}</span>
+                        <span className={styles.messageDescription}>{meta.description}</span>
+                        {editor && cell.lastEdited && (
+                          <span className={styles.messageEdited}>
+                            Changed by {editor}, {formatDiffDate(cell.lastEdited.at)}
+                          </span>
+                        )}
                       </span>
-                      <span className={styles.edited}>
-                        {cell.lastEdited
-                          ? `Edited ${formatDiffDate(cell.lastEdited.at)}${cell.lastEdited.by ? ` by ${cell.lastEdited.by}` : ""}`
-                          : "Built-in default"}
+                      {!cell.tailored && <span className={styles.sharedPill}>Shared wording</span>}
+                      <span className={styles.open} aria-hidden="true">
+                        Open
                       </span>
                     </Link>
                   </li>

@@ -196,6 +196,22 @@ const DIFF_DATE = new Intl.DateTimeFormat("en-AU", {
   timeZone: "UTC",
 });
 
+/**
+ * A person's name for the "last edited" line, or null when the edit was not a
+ * person's. Seed actors ("seed:brand-voice") are machinery a Pod Lead has no
+ * use for, so they show nothing; an email shows its owner's first name.
+ */
+export function editorLabel(by: string | null): string | null {
+  if (!by) return null;
+  if (by.startsWith("seed:") || by.startsWith("system:")) return null;
+  const at = by.indexOf("@");
+  if (at > 0) {
+    const local = by.slice(0, at).split(/[._-]/)[0] ?? "";
+    return local ? local[0].toUpperCase() + local.slice(1) : null;
+  }
+  return by;
+}
+
 export function formatDiffDate(iso: string): string {
   const parsed = Date.parse(iso);
   if (!Number.isFinite(parsed)) return iso;

@@ -10,6 +10,7 @@ import {
   displaySource,
   summarizeMoment,
   computeApplyDiff,
+  editorLabel,
 } from "./template-scope.ts";
 
 // --- moments ----------------------------------------------------------------
@@ -239,3 +240,13 @@ test("tailoredCount counts messages, not rows", () => {
   ];
   assert.equal(summarizeBrand(CAREX, rows).tailoredCount, 2);
 });
+
+test("editorLabel names a person and hides machinery", () => {
+  assert.equal(editorLabel("seed:brand-voice"), null);
+  assert.equal(editorLabel("system:migration"), null);
+  assert.equal(editorLabel(null), null);
+  assert.equal(editorLabel("nicola@leatherbacktravel.com"), "Nicola");
+  assert.equal(editorLabel("mary.jane@patchadventures.com.au"), "Mary");
+  assert.equal(editorLabel("Pod Lead"), "Pod Lead");
+});
+
