@@ -30,8 +30,9 @@ export type Brand = {
    */
   reminder24hEnabled: boolean;
   reminder1hEnabled: boolean;
-  /** Bookings with a guest phone also get SMS reminders when true. */
-  smsRemindersEnabled: boolean;
+  /** Text-message reminders, per reminder, for bookings with a guest phone. */
+  smsReminder24hEnabled: boolean;
+  smsReminder1hEnabled: boolean;
   active: boolean;
 };
 

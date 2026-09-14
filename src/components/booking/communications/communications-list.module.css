@@ -64,17 +64,19 @@
   color: var(--ink);
 }
 
-/* The brand-wide setting (text-message reminders) sits at the head's right. */
-.brandSetting {
+/* Column headings over the reminder switches, matching the switch cells. */
+.channelHeads {
   margin-left: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(2, var(--switch-col, 84px));
+  gap: 12px;
 }
 
-.brandSettingLabel {
+.channelHead {
   color: var(--ink-soft);
-  font-size: var(--text-ui, 14px);
+  font-size: var(--text-label, 12px);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .rows {
@@ -178,26 +180,76 @@
   outline: none;
 }
 
+/* Two switch cells, one per channel, the same width as the headings. */
 .rowSetting {
-  display: inline-flex;
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, var(--switch-col, 84px));
+  gap: 12px;
   align-items: center;
-  gap: 10px;
-  white-space: nowrap;
 }
 
-.rowSettingLabel {
-  color: var(--ink-soft);
-  font-size: var(--text-ui, 14px);
-}
-
-/* The switch: a track with a knob, plus On/Off in words beside it so the
-   state never depends on colour alone. */
-.switchWrap {
+.switchCell {
   display: inline-flex;
   align-items: center;
   gap: 8px;
 }
 
+/* The "both ways?" question, under the switches. */
+.confirm {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 3;
+  width: 320px;
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  box-shadow: 0 10px 30px rgba(10, 54, 46, 0.14);
+  border: 1px solid color-mix(in srgb, var(--terracotta, #b4533b) 45%, transparent);
+  border-radius: var(--radius-control, 8px);
+  background: color-mix(in srgb, var(--terracotta, #b4533b) 6%, var(--card));
+}
+
+.confirmText {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-label, 13px);
+  line-height: 1.4;
+}
+
+.confirmActions {
+  display: flex;
+  gap: 8px;
+}
+
+.confirmYes,
+.confirmNo {
+  font-size: var(--text-label, 13px);
+  padding: 5px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.confirmYes {
+  border: 1px solid var(--terracotta, #b4533b);
+  background: var(--terracotta, #b4533b);
+  color: #fff;
+}
+
+.confirmNo {
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+}
+
+.switchError {
+  grid-column: 1 / -1;
+}
+
+/* The switch: a track with a knob, plus On/Off in words beside it so the
+   state never depends on colour alone. */
 .switch {
   position: relative;
   width: 40px;
@@ -262,8 +314,7 @@
     align-items: start;
   }
 
-  .brandSetting {
-    margin-left: 0;
-    width: 100%;
+  .channelHeads {
+    display: none;
   }
 }

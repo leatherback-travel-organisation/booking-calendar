@@ -48,7 +48,8 @@ export async function getBrands(): Promise<Brand[]> {
     // default (off since 050 — reminders send only where deliberately enabled).
     reminder24hEnabled: Boolean(row.reminder_24h_enabled),
     reminder1hEnabled: Boolean(row.reminder_1h_enabled),
-    smsRemindersEnabled: Boolean(row.sms_reminders_enabled),
+    smsReminder24hEnabled: Boolean(row.sms_reminder_24h_enabled),
+    smsReminder1hEnabled: Boolean(row.sms_reminder_1h_enabled),
     active: row.active as boolean,
   }));
 }

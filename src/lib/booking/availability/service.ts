@@ -69,7 +69,8 @@ export function mapBrand(row: Record<string, unknown>): Brand {
     // Default true so an un-migrated database behaves like the schema default.
     reminder24hEnabled: row.reminder_24h_enabled === undefined ? true : Boolean(row.reminder_24h_enabled),
     reminder1hEnabled: row.reminder_1h_enabled === undefined ? true : Boolean(row.reminder_1h_enabled),
-    smsRemindersEnabled: Boolean(row.sms_reminders_enabled),
+    smsReminder24hEnabled: Boolean(row.sms_reminder_24h_enabled),
+    smsReminder1hEnabled: Boolean(row.sms_reminder_1h_enabled),
     active: Boolean(row.active),
   };
 }

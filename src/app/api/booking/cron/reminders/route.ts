@@ -13,9 +13,10 @@ import { NextResponse } from "next/server";
 import { getSql } from "@/lib/booking/db";
 import { sendBookingAlert } from "@/lib/booking/alerts";
 import { getBrandById, getEventTypeById, getStaffById } from "@/lib/booking/availability/service";
-import { sendBookingEmail, sendBookingSms, type BookingEmailContext, type Moment } from "@/lib/booking/notify/messages";
+import { sendBookingEmail, sendBookingSms, type BookingEmailContext } from "@/lib/booking/notify/messages";
 import { derivedManageToken, manageTokenSecret } from "@/lib/booking/tokens";
 import { appUrl } from "@/lib/booking/public-api";
+import { reminderChannels, type ReminderMoment } from "@/lib/booking/notify/reminder-channels";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,7 +30,7 @@ function cronAuthorized(request: Request): boolean {
   return supplied.length === expected.length && timingSafeEqual(supplied, expected);
 }
 
-type ReminderKind = { moment: Moment; column: "reminder_24h_sent_at" | "reminder_1h_sent_at" };
+type ReminderKind = { moment: ReminderMoment; column: "reminder_24h_sent_at" | "reminder_1h_sent_at" };
 
 async function claimDue(kind: ReminderKind): Promise<Array<Record<string, unknown>>> {
   const sql = getSql();
@@ -40,7 +41,8 @@ async function claimDue(kind: ReminderKind): Promise<Array<Record<string, unknow
        where status = 'confirmed'
          and reminder_24h_sent_at is null
          and starts_at between now() + interval '23 hours' and now() + interval '25 hours'
-         and exists (select 1 from booking.brand b where b.id = booking.booking.brand_id and b.reminder_24h_enabled)
+         and exists (select 1 from booking.brand b where b.id = booking.booking.brand_id
+                       and (b.reminder_24h_enabled or b.sms_reminder_24h_enabled))
       returning *`;
   }
   return sql`
@@ -49,7 +51,8 @@ async function claimDue(kind: ReminderKind): Promise<Array<Record<string, unknow
      where status = 'confirmed'
        and reminder_1h_sent_at is null
        and starts_at between now() + interval '30 minutes' and now() + interval '75 minutes'
-       and exists (select 1 from booking.brand b where b.id = booking.booking.brand_id and b.reminder_1h_enabled)
+       and exists (select 1 from booking.brand b where b.id = booking.booking.brand_id
+                     and (b.reminder_1h_enabled or b.sms_reminder_1h_enabled))
     returning *`;
 }
 
@@ -97,24 +100,29 @@ async function sendReminders(kind: ReminderKind): Promise<{ sent: number; failed
         eventType,
         icalSequence: Number(row.ical_sequence ?? 0),
       };
-      const result = await sendBookingEmail(kind.moment, ctx);
-      if (!result.ok) throw new Error(result.error);
-      sent += 1;
-
-      // SMS rides along when the brand opts in and the guest left a phone.
-      // The email already went, so an SMS failure alerts but never resets
-      // the claim (that would re-send the email every five minutes).
-      if (brand.smsRemindersEnabled && ctx.guestPhone?.trim()) {
+      // Each reminder has its own email switch and its own SMS switch
+      // (Nicola, 15 Sep); either sends on its own. Whichever channel goes
+      // first is the one whose failure resets the claim for a retry; a
+      // failure on the second channel alerts but never resets, or the first
+      // would re-send every five minutes.
+      const channels = reminderChannels(brand, kind.moment, ctx.guestPhone);
+      if (channels.email) {
+        const result = await sendBookingEmail(kind.moment, ctx);
+        if (!result.ok) throw new Error(result.error);
+      }
+      if (channels.sms) {
         try {
           const sms = await sendBookingSms(kind.moment, ctx);
           if (!sms.ok) throw new Error(sms.error);
         } catch (smsError) {
+          if (!channels.email) throw smsError;
           await sendBookingAlert(
             `sms-reminder-failed:${bookingId}:${kind.moment}`,
             `SMS reminder ${kind.moment} for booking ${bookingId} failed (email was sent): ${smsError instanceof Error ? smsError.message : "unknown"}`,
           );
         }
       }
+      sent += 1;
     } catch (error) {
       failed += 1;
       await resetClaim(kind, bookingId);

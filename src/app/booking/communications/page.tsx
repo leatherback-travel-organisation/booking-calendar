@@ -43,7 +43,8 @@ export default async function BookingCommunicationsPage() {
     callTypes: typesByBrand.get(brand.key) ?? [],
     reminder24hEnabled: brand.reminder24hEnabled,
     reminder1hEnabled: brand.reminder1hEnabled,
-    smsRemindersEnabled: brand.smsRemindersEnabled,
+    smsReminder24hEnabled: brand.smsReminder24hEnabled,
+    smsReminder1hEnabled: brand.smsReminder1hEnabled,
   });
   // Grouped by pod (Nicola, 15 Sep), a brand under the first pod that has
   // it; brands outside every pod come last under their own heading.

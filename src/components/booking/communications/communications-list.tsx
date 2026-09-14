@@ -4,9 +4,8 @@
 // them. Each row says what the message is in plain words, then shows the
 // brand's call types as pills — each pill opens that call type's version of
 // the message directly, so nobody has to open a message to discover what is
-// inside it. The two reminder rows carry the brand's on/off switch for that
-// reminder; text-message reminders sit in the brand header, since they are
-// one setting for both reminders.
+// inside it. The two reminder rows carry that reminder's email switch and
+// its text-message switch, under Email and SMS headings in the brand header.
 //
 // Bookkeeping stays out: no version counts, no seed actors. A person's edit
 // still shows, quietly, under the description.
@@ -20,7 +19,7 @@ import {
   type BrandSummary,
 } from "@/lib/booking/notify/template-scope.ts";
 import type { BrandCallType } from "@/app/booking/communications/template-data";
-import { BrandSwitch } from "./brand-switch";
+import { ReminderSwitches } from "./reminder-switches";
 import styles from "./communications-list.module.css";
 
 export type BrandGroup = {
@@ -29,7 +28,8 @@ export type BrandGroup = {
   callTypes: BrandCallType[];
   reminder24hEnabled: boolean;
   reminder1hEnabled: boolean;
-  smsRemindersEnabled: boolean;
+  smsReminder24hEnabled: boolean;
+  smsReminder1hEnabled: boolean;
 };
 
 export type PodSection = {
@@ -98,18 +98,10 @@ function BrandCard({
       <div className={styles.brandHead}>
         <span className={styles.brandDot} aria-hidden="true" />
         <h3 className={styles.brandTitle}>{summary.brandName}</h3>
-        <span className={styles.brandSetting}>
-          <span className={styles.brandSettingLabel}>
-            Text-message reminders
-          </span>
-          <BrandSwitch
-            brandKey={brandKey}
-            brandName={summary.brandName}
-            kind="sms"
-            label="text-message reminders"
-            enabled={flags.smsRemindersEnabled}
-            canEdit={canEdit}
-          />
+        {/* Column headings for the switches on the reminder rows. */}
+        <span className={styles.channelHeads} aria-hidden="true">
+          <span className={styles.channelHead}>Email</span>
+          <span className={styles.channelHead}>SMS</span>
         </span>
       </div>
       <ul className={styles.rows}>
@@ -122,19 +114,22 @@ function BrandCard({
             cell.moment === "reminder_24h"
               ? {
                   kind: "reminder_24h" as const,
-                  enabled: flags.reminder24hEnabled,
+                  email: flags.reminder24hEnabled,
+                  sms: flags.smsReminder24hEnabled,
                 }
               : cell.moment === "reminder_1h"
                 ? {
                     kind: "reminder_1h" as const,
-                    enabled: flags.reminder1hEnabled,
+                    email: flags.reminder1hEnabled,
+                    sms: flags.smsReminder1hEnabled,
                   }
                 : null;
+          const off = reminder !== null && !reminder.email && !reminder.sms;
           return (
             <li
               key={cell.moment}
               className={styles.messageRow}
-              data-off={reminder && !reminder.enabled ? "" : undefined}
+              data-off={off ? "" : undefined}
             >
               <div className={styles.messageText}>
                 <Link
@@ -178,13 +173,13 @@ function BrandCard({
               </div>
               {reminder && (
                 <div className={styles.rowSetting}>
-                  <span className={styles.rowSettingLabel}>Email reminder</span>
-                  <BrandSwitch
+                  <ReminderSwitches
                     brandKey={brandKey}
                     brandName={summary.brandName}
-                    kind={reminder.kind}
+                    moment={reminder.kind}
                     label={meta.label}
-                    enabled={reminder.enabled}
+                    emailEnabled={reminder.email}
+                    smsEnabled={reminder.sms}
                     canEdit={canEdit}
                   />
                 </div>
