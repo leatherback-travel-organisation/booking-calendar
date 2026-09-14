@@ -7,11 +7,12 @@
   margin: 0;
   color: var(--ink-soft);
   font-size: var(--text-body, 15px);
-  max-width: 62ch;
+  max-width: 64ch;
 }
 
-/* One card per brand. The brand colour is a dot beside the name and a tint
-   on hover, not a band: seven of these in a column must stay calm. */
+/* One card per brand. The brand colour is a dot beside the name and the
+   tint on its own-version pills, not a band: seven of these in a column
+   must stay calm. */
 .brandGroup {
   --tag: var(--ink-soft);
   border: 1px solid var(--line);
@@ -25,9 +26,9 @@
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
-  padding: 0 6px 10px;
+  padding: 0 6px 12px;
   border-bottom: 1px solid var(--line);
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .brandDot {
@@ -47,8 +48,15 @@
   color: var(--ink);
 }
 
-.brandNote {
+/* The brand-wide setting (text-message reminders) sits at the head's right. */
+.brandSetting {
   margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brandSettingLabel {
   color: var(--ink-soft);
   font-size: var(--text-ui, 14px);
 }
@@ -60,46 +68,46 @@
   display: grid;
 }
 
-/* The whole row is the link. Name and a one-line explanation on the left;
-   on the right only a "shared wording" flag when it applies, and an Open
-   label that appears on hover so the row reads as clickable. */
+/* Name, a one-line explanation and the call-type pills on the left; on a
+   reminder row, that reminder's switch on the right. */
 .messageRow {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: 14px;
-  padding: 12px 10px;
-  border-radius: var(--radius-control, 8px);
-  text-decoration: none;
-  color: inherit;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 16px;
+  padding: 14px 10px;
 }
 
-.messageRow + .messageRow,
-.rows li + li .messageRow {
+.rows li + li {
   border-top: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
-  border-radius: 0;
 }
 
-.rows li:last-child .messageRow {
-  border-radius: 0 0 var(--radius-control, 8px) var(--radius-control, 8px);
-}
-
-.messageRow:hover,
-.messageRow:focus-visible {
-  background: color-mix(in srgb, var(--tag) 7%, var(--card));
-  outline: none;
+/* A reminder that is switched off reads as dormant, not deleted. */
+.messageRow[data-off] .messageName,
+.messageRow[data-off] .messageDescription,
+.messageRow[data-off] .pills {
+  opacity: 0.55;
 }
 
 .messageText {
   display: grid;
-  gap: 3px;
+  gap: 4px;
   min-width: 0;
+  justify-items: start;
 }
 
 .messageName {
   color: var(--ink);
   font-size: var(--text-body, 15px);
   font-weight: 500;
+  text-decoration: none;
+}
+
+.messageName:hover,
+.messageName:focus-visible {
+  color: var(--pine);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .messageDescription {
@@ -113,44 +121,124 @@
   font-size: var(--text-label, 13px);
 }
 
-.sharedPill {
-  color: var(--ink-soft);
+/* One pill per call type. Tinted in the brand colour when this call type
+   has its own version of the message; outlined when it still uses the
+   shared wording. Both open the editor for that version. */
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
   font-size: var(--text-label, 13px);
-  border: 1px solid var(--line);
+  line-height: 1;
+  padding: 6px 11px;
   border-radius: 999px;
-  padding: 3px 10px;
-  white-space: nowrap;
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  background: var(--card);
+  text-decoration: none;
+  transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
 }
 
-.open {
-  color: var(--pine);
+.pill[data-own] {
+  border-color: color-mix(in srgb, var(--tag) 45%, transparent);
+  background: color-mix(in srgb, var(--tag) 10%, var(--card));
+  color: color-mix(in srgb, var(--tag) 70%, var(--ink));
+}
+
+.pill:hover,
+.pill:focus-visible {
+  border-color: var(--tag);
+  background: color-mix(in srgb, var(--tag) 16%, var(--card));
+  color: var(--ink);
+  outline: none;
+}
+
+.rowSetting {
+  padding-top: 2px;
+}
+
+/* The switch: a track with a knob, plus On/Off in words beside it so the
+   state never depends on colour alone. */
+.switchWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.switch {
+  position: relative;
+  width: 40px;
+  height: 24px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--paper-deep);
+  padding: 0;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.switch[data-on] {
+  background: var(--pine);
+  border-color: var(--pine);
+}
+
+.switch:disabled {
+  cursor: default;
+}
+
+.switch:focus-visible {
+  outline: 2px solid var(--pine-bright);
+  outline-offset: 2px;
+}
+
+.switchKnob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--card);
+  box-shadow: 0 1px 2px rgba(10, 54, 46, 0.25);
+  transition: transform 140ms ease;
+}
+
+.switch[data-on] .switchKnob {
+  transform: translateX(16px);
+}
+
+.switchState {
+  color: var(--ink-soft);
   font-size: var(--text-ui, 14px);
-  font-weight: 500;
-  opacity: 0;
-  transition: opacity 120ms ease;
+  min-width: 2.2em;
 }
 
-.open::after {
-  content: " \203A";
+.switch[data-on] + .switchState {
+  color: var(--ink);
 }
 
-.messageRow:hover .open,
-.messageRow:focus-visible .open {
-  opacity: 1;
+.switchError {
+  color: var(--terracotta, #b4533b);
+  font-size: var(--text-label, 13px);
 }
 
 @media (max-width: 640px) {
   .messageRow {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .open {
-    display: none;
+  .rowSetting {
+    padding-top: 0;
   }
-}
 
-@media (hover: none) {
-  .open {
-    opacity: 1;
+  .brandSetting {
+    margin-left: 0;
+    width: 100%;
   }
 }

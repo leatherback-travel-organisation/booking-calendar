@@ -50,3 +50,31 @@ export async function getGuestFacingTypes(): Promise<Array<{ key: string; name: 
     order by position`;
   return rows.map((row) => ({ key: String(row.key), name: String(row.name) }));
 }
+
+export type BrandCallType = { key: string; name: string };
+
+/**
+ * Each brand's own guest-facing call types, in menu order, keyed by brand
+ * key. Per brand rather than distinct-across-brands because the set differs:
+ * the online brands retired RHIME and Lead-Up (051), and the US brands call
+ * the enquiry a "Trip Inquiry".
+ */
+export async function getGuestFacingTypesByBrand(brands: Brand[]): Promise<Map<string, BrandCallType[]>> {
+  const sql = getSql();
+  const rows = await sql`
+    select brand_id, key, name
+    from booking.event_type
+    where guest_facing and active
+    order by position, key`;
+  const keyById = new Map(brands.map((brand) => [brand.id, brand.key]));
+  const byBrand = new Map<string, BrandCallType[]>();
+  for (const row of rows) {
+    const brandKey = keyById.get(String(row.brand_id));
+    if (!brandKey) continue;
+    const list = byBrand.get(brandKey) ?? [];
+    list.push({ key: String(row.key), name: String(row.name) });
+    byBrand.set(brandKey, list);
+  }
+  return byBrand;
+}
+

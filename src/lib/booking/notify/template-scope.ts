@@ -280,6 +280,8 @@ export type BrandMomentCell = {
   tailored: boolean;
   /** Extra per-call-type versions this brand carries for the message. */
   typeVariants: number;
+  /** The call types that have their own version of this message here. */
+  typeKeys: string[];
   lastEdited: { by: string | null; at: string } | null;
 };
 
@@ -313,6 +315,7 @@ export function summarizeBrand(
       source,
       tailored: own !== null || typed.length > 0,
       typeVariants: typed.length,
+      typeKeys: typed.map((row) => row.eventTypeKey ?? "").filter(Boolean),
       lastEdited: effective ? { by: effective.updatedBy, at: effective.updatedAt } : null,
     };
   });

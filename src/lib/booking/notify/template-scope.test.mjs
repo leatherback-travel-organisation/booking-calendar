@@ -229,6 +229,7 @@ test("per-call-type versions are counted and still read as tailored", () => {
   ];
   const confirmation = summarizeBrand(CAREX, rows).moments[0];
   assert.equal(confirmation.typeVariants, 2);
+  assert.deepEqual(confirmation.typeKeys, ["chat", "feedback"]);
   assert.equal(confirmation.tailored, true);
 });
 
