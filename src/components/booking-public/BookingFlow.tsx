@@ -684,7 +684,16 @@ export function BookingFlow({
   // The type chooser shows durations per option; whenever it is NOT on
   // screen (fixed-type link, embed, single type, or a chosen type) the call
   // duration is stated at the top instead so the guest always sees it.
-  const typeChooserVisible = !typeParam && !embed && ctx.eventTypes.length > 1 && !selected;
+  //
+  // A brand that names its own default has already decided what its links
+  // mean, so the guest goes straight to the times rather than being asked to
+  // pick a kind of call first (Nicola, 14 Sep).
+  const typeChooserVisible =
+    !typeParam &&
+    !ctx.brand.defaultEventTypeKey &&
+    !embed &&
+    ctx.eventTypes.length > 1 &&
+    !selected;
 
   const backupsLoading = backupsKey !== null && backupsResult?.key !== backupsKey;
   const backupsFailed = backupsKey !== null && backupsResult?.key === backupsKey && backupsResult.failed;
