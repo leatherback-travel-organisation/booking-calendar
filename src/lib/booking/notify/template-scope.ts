@@ -35,11 +35,11 @@ export const MOMENT_META: Record<Moment, { label: string; description: string }>
   },
   reschedule: {
     label: "Reschedule confirmation",
-    description: "Confirms the new time. The guest's calendar entry updates itself.",
+    description: "Confirms the new time and moves the call on both the guest's and the BM's calendars.",
   },
   cancellation: {
     label: "Cancellation notice",
-    description: "Confirms the cancellation and removes the event from the guest's calendar.",
+    description: "Confirms the cancellation and removes the call from both the guest's and the BM's calendars.",
   },
 };
 
