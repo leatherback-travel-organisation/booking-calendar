@@ -1,6 +1,22 @@
 .journey {
   display: grid;
-  gap: var(--density-4, 20px);
+  gap: 22px;
+}
+
+/* One section per pod; its brands' cards stack tightly beneath. */
+.pod {
+  display: grid;
+  gap: 10px;
+}
+
+.podTitle {
+  margin: 0 0 2px;
+  font-family: var(--font-display);
+  font-size: var(--text-label, 12px);
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--pine);
 }
 
 .intro {
@@ -18,7 +34,7 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-panel, 12px);
   background: var(--card);
-  padding: var(--density-3, 16px) var(--density-3, 16px) var(--density-2, 8px);
+  padding: 10px 14px 4px;
 }
 
 .brandHead {
@@ -26,9 +42,9 @@
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
-  padding: 0 6px 12px;
+  padding: 0 4px 8px;
   border-bottom: 1px solid var(--line);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .brandDot {
@@ -42,7 +58,7 @@
 .brandTitle {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 500;
   letter-spacing: -0.01em;
   color: var(--ink);
@@ -68,14 +84,14 @@
   display: grid;
 }
 
-/* Name, a one-line explanation and the call-type pills on the left; on a
-   reminder row, that reminder's switch on the right. */
+/* One compact row: name + explanation in a fixed column, the call-type
+   pills beside it, and on a reminder row that reminder's switch at the end. */
 .messageRow {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
-  gap: 16px;
-  padding: 14px 10px;
+  grid-template-columns: minmax(200px, 280px) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 8px 8px;
 }
 
 .rows li + li {
@@ -91,9 +107,13 @@
 
 .messageText {
   display: grid;
-  gap: 4px;
+  gap: 1px;
   min-width: 0;
   justify-items: start;
+}
+
+.pillsCol {
+  min-width: 0;
 }
 
 .messageName {
@@ -112,8 +132,8 @@
 
 .messageDescription {
   color: var(--ink-soft);
-  font-size: var(--text-ui, 14px);
-  line-height: 1.4;
+  font-size: var(--text-label, 13px);
+  line-height: 1.35;
 }
 
 .messageEdited {
@@ -127,8 +147,7 @@
 .pills {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 6px;
+  gap: 5px;
 }
 
 .pill {
@@ -136,7 +155,7 @@
   align-items: center;
   font-size: var(--text-label, 13px);
   line-height: 1;
-  padding: 6px 11px;
+  padding: 5px 10px;
   border-radius: 999px;
   border: 1px solid var(--line);
   color: var(--ink-soft);
@@ -160,7 +179,15 @@
 }
 
 .rowSetting {
-  padding-top: 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+.rowSettingLabel {
+  color: var(--ink-soft);
+  font-size: var(--text-ui, 14px);
 }
 
 /* The switch: a track with a knob, plus On/Off in words beside it so the
@@ -228,13 +255,11 @@
   font-size: var(--text-label, 13px);
 }
 
-@media (max-width: 640px) {
+@media (max-width: 760px) {
   .messageRow {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .rowSetting {
-    padding-top: 0;
+    gap: 8px;
+    align-items: start;
   }
 
   .brandSetting {

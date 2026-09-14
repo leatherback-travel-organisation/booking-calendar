@@ -5,7 +5,7 @@ import { requireBookingAccess } from "@/lib/booking/access";
 import { getStaffByEmail } from "@/lib/booking/availability/service";
 import { databaseConfigured } from "@/lib/booking/db";
 import { summarizeBrand } from "@/lib/booking/notify/template-scope.ts";
-import { getBrands } from "@/lib/booking/reference/queries";
+import { getBrands, getPods } from "@/lib/booking/reference/queries";
 import { getActiveTemplateRows, getGuestFacingTypesByBrand } from "./template-data";
 import shellStyles from "@/components/booking/booking-shell.module.css";
 
@@ -28,28 +28,47 @@ export default async function BookingCommunicationsPage() {
 
   const brands = await getBrands();
   const activeBrands = brands.filter((brand) => brand.active);
-  const [rows, typesByBrand, staffSelf] = await Promise.all([
+  const [rows, typesByBrand, staffSelf, pods] = await Promise.all([
     getActiveTemplateRows(brands),
     getGuestFacingTypesByBrand(brands),
     getStaffByEmail(identity.email),
+    getPods(),
   ]);
   // Grouped by brand (Nicola, 15 Sep): one section per brand, its messages
   // inside in the order a guest receives them, each message's call types as
   // pills, and the brand's reminder switches on the reminder rows.
-  const groups = activeBrands.map((brand) => ({
+  const groupFor = (brand: (typeof activeBrands)[number]) => ({
     summary: summarizeBrand({ key: brand.key, name: brand.name }, rows),
     colorPrimary: brand.colorPrimary,
     callTypes: typesByBrand.get(brand.key) ?? [],
     reminder24hEnabled: brand.reminder24hEnabled,
     reminder1hEnabled: brand.reminder1hEnabled,
     smsRemindersEnabled: brand.smsRemindersEnabled,
-  }));
+  });
+  // Grouped by pod (Nicola, 15 Sep), a brand under the first pod that has
+  // it; brands outside every pod come last under their own heading.
+  const placed = new Set<string>();
+  const podSections = pods
+    .map((pod) => {
+      const members = activeBrands.filter((brand) => pod.brandIds.includes(brand.id) && !placed.has(brand.id));
+      members.forEach((brand) => placed.add(brand.id));
+      return { key: pod.key, name: pod.name, groups: members.map(groupFor) };
+    })
+    .filter((section) => section.groups.length > 0);
+  const unplaced = activeBrands.filter((brand) => !placed.has(brand.id));
+  if (unplaced.length > 0) {
+    podSections.push({
+      key: "other",
+      name: podSections.length > 0 ? "Other brands" : "All brands",
+      groups: unplaced.map(groupFor),
+    });
+  }
   // Switches: Pod Leads and Senior Booking Managers; everyone else reads.
   const canEditComms = canManage || Boolean(staffSelf?.isSenior);
 
   return (
     <BookingShell active="communications" canManage={canManage}>
-      <CommunicationsList groups={groups} canEdit={canEditComms} />
+      <CommunicationsList pods={podSections} canEdit={canEditComms} />
     </BookingShell>
   );
 }
