@@ -7,6 +7,8 @@ export type PublicBrand = {
   /** "US" brands collect SMS consent on the details step. */
   market: string;
   privacyPolicyUrl: string | null;
+  /** What a link with no ?type= opens; the online brands use "chat". */
+  defaultEventTypeKey: string | null;
   logoUrl: string | null;
   colorPrimary: string | null;
   colorAccent: string | null;

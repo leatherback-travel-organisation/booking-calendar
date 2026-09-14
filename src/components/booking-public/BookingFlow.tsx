@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usesAmericanEnglish } from "@/lib/booking/english";
 import styles from "./bp.module.css";
 import { COVER_GAP_DAYS, backupPlacement, coverSlotsFor, findCoverGap } from "./cover";
+import { defaultEventTypeKey } from "./default-type";
 import { BrandFrame } from "./BrandFrame";
 import { ConfirmForm, type BookMeta, type BookedResult } from "./ConfirmForm";
 import { SlotPicker } from "./SlotPicker";
@@ -53,12 +54,6 @@ type ActiveStaff = {
 // never need a synchronous setState.
 type AvailResult = { key: string; data: AvailabilityPayload | null; failed: boolean };
 type BackupsResult = { key: string; list: BackupEntry[]; failed: boolean };
-
-function defaultEventTypeKey(eventTypes: PublicEventType[], typeParam: string | null): string | null {
-  if (typeParam && eventTypes.some((t) => t.key === typeParam)) return typeParam;
-  if (eventTypes.some((t) => t.key === "enquiry")) return "enquiry";
-  return eventTypes[0]?.key ?? null;
-}
 
 function sortDepartures(departures: PublicDeparture[]): PublicDeparture[] {
   return [...departures].sort((a, b) => {
@@ -143,7 +138,7 @@ export function BookingFlow({
         primary,
         poolLabel: payload.kind === "pool" ? payload.poolLabel : null,
       });
-      setEventTypeKey(defaultEventTypeKey(payload.eventTypes, typeParam));
+      setEventTypeKey(defaultEventTypeKey(payload.eventTypes, typeParam, payload.brand.defaultEventTypeKey));
       setDepartureId(departures[0]?.airtableId ?? null);
       // A trip swap can move between primary and pool — always replace the
       // active BM rather than only setting it when a primary exists.
@@ -464,7 +459,9 @@ export function BookingFlow({
         primary: null,
         poolLabel: resolution.poolLabel,
       });
-      setEventTypeKey(defaultEventTypeKey(resolution.eventTypes, typeParam));
+      setEventTypeKey(
+        defaultEventTypeKey(resolution.eventTypes, typeParam, resolution.brand.defaultEventTypeKey),
+      );
       setActive(null);
       setNotice(null);
     } finally {
