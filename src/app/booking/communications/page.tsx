@@ -6,6 +6,7 @@ import { getStaffByEmail } from "@/lib/booking/availability/service";
 import { databaseConfigured } from "@/lib/booking/db";
 import { summarizeBrand } from "@/lib/booking/notify/template-scope.ts";
 import { getBrands, getPods } from "@/lib/booking/reference/queries";
+import { requiresSmsConsent } from "@/lib/booking/sms-consent";
 import { getActiveTemplateRows, getGuestFacingTypesByBrand } from "./template-data";
 import shellStyles from "@/components/booking/booking-shell.module.css";
 
@@ -41,6 +42,7 @@ export default async function BookingCommunicationsPage() {
     summary: summarizeBrand({ key: brand.key, name: brand.name }, rows),
     colorPrimary: brand.colorPrimary,
     callTypes: typesByBrand.get(brand.key) ?? [],
+    smsNeedsConsent: requiresSmsConsent(brand.market),
     reminder24hEnabled: brand.reminder24hEnabled,
     reminder1hEnabled: brand.reminder1hEnabled,
     smsReminder24hEnabled: brand.smsReminder24hEnabled,

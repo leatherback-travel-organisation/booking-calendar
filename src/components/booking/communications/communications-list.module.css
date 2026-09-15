@@ -69,14 +69,34 @@
   margin-left: auto;
   display: grid;
   grid-template-columns: repeat(2, var(--switch-col, 84px));
-  gap: 12px;
+  gap: 2px 12px;
+  align-self: end;
+}
+
+/* Spans both columns: the switches below are the reminder switches. */
+.channelGroup {
+  grid-column: 1 / -1;
+  color: var(--ink);
+  font-size: var(--text-label, 12px);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .channelHead {
+  display: grid;
   color: var(--ink-soft);
   font-size: var(--text-label, 12px);
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* US-market brands: texts reach only guests who opted in. */
+.channelNote {
+  font-size: 11px;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .rows {
@@ -216,6 +236,10 @@
   color: var(--ink);
   font-size: var(--text-label, 13px);
   line-height: 1.4;
+}
+
+.confirmLead {
+  font-weight: 500;
 }
 
 .confirmActions {

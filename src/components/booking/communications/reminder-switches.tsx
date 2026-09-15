@@ -5,9 +5,13 @@
 // email"). Pod Leads and Senior Booking Managers flip them; everyone else
 // sees the state and a note on who to ask.
 //
-// Turning on the second channel while the first is already on asks first:
-// the guest would get the same reminder twice, once by each route, and
-// Nicola would rather that be a deliberate choice than an accident.
+// Two things ask before the switch moves. Turning on the second channel
+// while the first is already on: the guest would get the same reminder
+// twice, once by each route. Turning on SMS for a US-market brand: those
+// brands may only text guests who ticked the consent box when they booked
+// (Nicola, 15 Sep — texting anyone else would be illegal), so the switch
+// reaches consenting guests only, and the Pod Lead should know that before
+// they rely on it.
 //
 // The setting lives on the brand, not the BM: a guest is dealing with a
 // brand, and one BM covering three brands must not be able to silence one.
@@ -26,6 +30,8 @@ type ReminderSwitchesProps = {
   label: string;
   emailEnabled: boolean;
   smsEnabled: boolean;
+  /** US-market brand: SMS reaches only guests who opted in. */
+  smsNeedsConsent: boolean;
   canEdit: boolean;
 };
 
@@ -36,6 +42,7 @@ export function ReminderSwitches({
   label,
   emailEnabled,
   smsEnabled,
+  smsNeedsConsent,
   canEdit,
 }: ReminderSwitchesProps) {
   const [on, setOn] = useState<Record<Channel, boolean>>({ email: emailEnabled, sms: smsEnabled });
@@ -61,7 +68,9 @@ export function ReminderSwitches({
     if (!canEdit || pending) return;
     const next = !on[channel];
     const other: Channel = channel === "email" ? "sms" : "email";
-    if (next && on[other]) {
+    const bothWays = next && on[other];
+    const consentCheck = next && channel === "sms" && smsNeedsConsent;
+    if (bothWays || consentCheck) {
       setConfirming(channel);
       return;
     }
@@ -91,15 +100,25 @@ export function ReminderSwitches({
         </span>
       ))}
       {confirming && (
-        <div className={styles.confirm} role="alertdialog" aria-label="Send this reminder both ways?">
-          <p className={styles.confirmText}>
-            The {label} is already going out by {channelName(confirming === "email" ? "sms" : "email")}.
-            Turning on {channelName(confirming)} as well means every {brandName} guest gets this reminder
-            twice, once each way. That can feel like noise.
-          </p>
+        <div className={styles.confirm} role="alertdialog" aria-label="Before this switch moves">
+          {confirming === "sms" && smsNeedsConsent && (
+            <p className={styles.confirmText}>
+              <span className={styles.confirmLead}>{brandName} sells into the US.</span> Texts may only go to guests who ticked the SMS
+              consent box when they booked; texting anyone else is illegal. This switch reaches those
+              guests only.
+              {!on.email && ` With the email reminder off, guests who didn't opt in get no ${label} at all.`}
+            </p>
+          )}
+          {on[confirming === "email" ? "sms" : "email"] && (
+            <p className={styles.confirmText}>
+              The {label} is already going out by {channelName(confirming === "email" ? "sms" : "email")}.
+              Turning on {channelName(confirming)} as well means guests get this reminder twice, once each
+              way. That can feel like noise.
+            </p>
+          )}
           <span className={styles.confirmActions}>
             <button type="button" className={styles.confirmYes} onClick={() => apply(confirming, true)}>
-              Send both ways
+              {confirming === "sms" && smsNeedsConsent ? "Turn on for opted-in guests" : "Send both ways"}
             </button>
             <button type="button" className={styles.confirmNo} onClick={() => setConfirming(null)}>
               Leave it

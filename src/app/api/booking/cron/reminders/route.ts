@@ -65,10 +65,11 @@ async function resetClaim(kind: ReminderKind, bookingId: string): Promise<void> 
   }
 }
 
-async function sendReminders(kind: ReminderKind): Promise<{ sent: number; failed: number }> {
+async function sendReminders(kind: ReminderKind): Promise<{ sent: number; failed: number; skipped: number }> {
   const claimed = await claimDue(kind);
   let sent = 0;
   let failed = 0;
+  let skipped = 0;
   const secret = manageTokenSecret();
   for (const row of claimed) {
     const bookingId = String(row.id);
@@ -105,7 +106,17 @@ async function sendReminders(kind: ReminderKind): Promise<{ sent: number; failed
       // first is the one whose failure resets the claim for a retry; a
       // failure on the second channel alerts but never resets, or the first
       // would re-send every five minutes.
-      const channels = reminderChannels(brand, kind.moment, ctx.guestPhone);
+      const channels = reminderChannels(brand, kind.moment, {
+        phone: ctx.guestPhone,
+        smsOptIn: ctx.smsOptIn ?? false,
+      });
+      if (!channels.email && !channels.sms) {
+        // Nothing may go to this guest — a US guest who never opted in to
+        // texts, on a reminder that is SMS-only. The claim stands so it is
+        // not retried every five minutes; the booking simply has no reminder.
+        skipped += 1;
+        continue;
+      }
       if (channels.email) {
         const result = await sendBookingEmail(kind.moment, ctx);
         if (!result.ok) throw new Error(result.error);
@@ -132,7 +143,7 @@ async function sendReminders(kind: ReminderKind): Promise<{ sent: number; failed
       );
     }
   }
-  return { sent, failed };
+  return { sent, failed, skipped };
 }
 
 export async function GET(request: Request) {

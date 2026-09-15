@@ -26,6 +26,8 @@ export type BrandGroup = {
   summary: BrandSummary;
   colorPrimary: string | null;
   callTypes: BrandCallType[];
+  /** US-market brand: texts go only to guests who ticked the consent box. */
+  smsNeedsConsent: boolean;
   reminder24hEnabled: boolean;
   reminder1hEnabled: boolean;
   smsReminder24hEnabled: boolean;
@@ -100,8 +102,12 @@ function BrandCard({
         <h3 className={styles.brandTitle}>{summary.brandName}</h3>
         {/* Column headings for the switches on the reminder rows. */}
         <span className={styles.channelHeads} aria-hidden="true">
+          <span className={styles.channelGroup}>Reminders sent by</span>
           <span className={styles.channelHead}>Email</span>
-          <span className={styles.channelHead}>SMS</span>
+          <span className={styles.channelHead}>
+            SMS
+            {flags.smsNeedsConsent && <span className={styles.channelNote}>opt-in only</span>}
+          </span>
         </span>
       </div>
       <ul className={styles.rows}>
@@ -180,6 +186,7 @@ function BrandCard({
                     label={meta.label}
                     emailEnabled={reminder.email}
                     smsEnabled={reminder.sms}
+                    smsNeedsConsent={flags.smsNeedsConsent}
                     canEdit={canEdit}
                   />
                 </div>
