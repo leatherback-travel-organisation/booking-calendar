@@ -677,14 +677,39 @@ export function BookingFlow({
               <span className={styles.phoneNote}>
                 Calls from {ctx.brand.name} come from this number. Unsaved numbers often get flagged as spam.
               </span>
+              {/* On a phone the card opens straight into add-contact. On a
+                  computer it would only download, and the call comes to the
+                  phone anyway — so show a code for the phone to scan, with
+                  the download as the fallback. Which one shows is decided by
+                  CSS (pointer/hover), so there is no user-agent guessing. */}
               <a
-                className={styles.saveContactBtn}
+                className={`${styles.saveContactBtn} ${styles.onPhone}`}
                 href={`/api/booking/public/contact-card?brand=${encodeURIComponent(ctx.brand.key)}`}
                 target="_blank"
                 rel="noreferrer"
               >
                 Save {ctx.brand.name} to my contacts
               </a>
+              <div className={`${styles.scanRow} ${styles.onComputer}`}>
+                <img
+                  className={styles.scanCode}
+                  src={`/api/booking/public/contact-card-qr?brand=${encodeURIComponent(ctx.brand.key)}`}
+                  alt={`QR code that saves ${ctx.brand.name} to your phone's contacts`}
+                  width={132}
+                  height={132}
+                />
+                <span className={styles.scanText}>
+                  <span className={styles.scanLead}>Scan with your phone to save {ctx.brand.name} to your contacts.</span>
+                  <a
+                    className={styles.meetLink}
+                    href={`/api/booking/public/contact-card?brand=${encodeURIComponent(ctx.brand.key)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Or download the contact card
+                  </a>
+                </span>
+              </div>
             </div>
           )}
         </section>

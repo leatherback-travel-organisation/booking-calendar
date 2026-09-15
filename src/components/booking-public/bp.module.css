@@ -341,6 +341,53 @@
   filter: brightness(1.12);
 }
 
+/* Phone vs computer, by input rather than user agent: a coarse pointer with
+   no hover is a phone or tablet; anything else gets the code to scan. */
+.onPhone {
+  display: none;
+}
+
+.onComputer {
+  display: flex;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .onPhone {
+    display: inline-flex;
+  }
+
+  .onComputer {
+    display: none;
+  }
+}
+
+.scanRow {
+  align-items: center;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.scanCode {
+  width: 132px;
+  height: 132px;
+  flex: none;
+  border: 1px solid var(--bp-line);
+  border-radius: 10px;
+  background: #fff;
+  padding: 6px;
+}
+
+.scanText {
+  display: grid;
+  gap: 6px;
+  font-size: 15px;
+  color: var(--bp-ink);
+}
+
+.scanLead {
+  font-weight: 500;
+}
+
 /* ---- Links & buttons ---- */
 
 .linkBtn {
