@@ -336,6 +336,21 @@ export function BookingFlow({
     if (selected === null) releaseHold();
   }, [selected, releaseHold]);
 
+  // Every step starts at the top (Nicola, 15 Sep). Inside the website
+  // embed and the pop-out overlay the panel scrolls within its own frame, so
+  // a guest who picked a time near the bottom of a week saw the details form
+  // open mid-scroll with the header cut off. The frame's own window is what
+  // scrolls in every case, so this covers the inline embed, the overlay and
+  // the standalone page alike.
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0 });
+    // In an inline embed sized to its content the frame itself never
+    // scrolls, so the host page must bring the frame's top into view.
+    if (embed && window.parent !== window) {
+      window.parent.postMessage({ type: "leatherback-booking-step" }, "*");
+    }
+  }, [selected, callMedium, booked, embed]);
+
   // Leaving the page: pagehide is the reliable one (mobile Safari never
   // guarantees beforeunload), and a tab hidden on mobile is often never
   // coming back, so that counts as leaving too.

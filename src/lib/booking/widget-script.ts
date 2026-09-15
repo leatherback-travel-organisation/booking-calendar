@@ -10,7 +10,12 @@
 // - Never console.error/warn — a broken widget must be invisible, not loud.
 // - No cookies, no localStorage, no PII on the host page.
 
-export const WIDGET_SOURCE = `(function () {
+// The source as written, with its indentation and comments — what a reader
+// works from. What is served is SOURCE with leading whitespace and
+// comment-only lines stripped (below): safe because the widget carries no
+// multi-line strings, and it keeps the served script inside its budget
+// without losing the explanations.
+const SOURCE = `(function () {
   'use strict';
   var debugged = false;
   function debug(msg) {
@@ -46,6 +51,21 @@ export const WIDGET_SOURCE = `(function () {
     var brandKey = script.getAttribute('data-brand') || '';
     var tripAttr = script.getAttribute('data-trip') || '';
     var typeAttr = script.getAttribute('data-type') || '';
+
+    // Inline embeds (contact/book pages): size the frame to its content so
+    // nothing scrolls inside it, and bring its top into view on each step.
+    window.addEventListener('message', function (e) {
+      if (e.origin !== origin || !e.data) return;
+      var fr = document.querySelectorAll('iframe');
+      for (var i = 0; i < fr.length; i++) {
+        if (fr[i].contentWindow !== e.source) continue;
+        if (e.data.type === 'leatherback-booking-height') fr[i].style.height = e.data.height + 'px';
+        if (e.data.type === 'leatherback-booking-step') {
+          var top = fr[i].getBoundingClientRect().top + window.pageYOffset - 96;
+          window.scrollTo({ top: top < 0 ? 0 : top, behavior: 'smooth' });
+        }
+      }
+    });
 
     // 2. Trips dock (+ phone bar); home floats; other pages: nothing.
     var segs = window.location.pathname.split('/').filter(function (p) { return p.length > 0; });
@@ -360,3 +380,8 @@ export const WIDGET_SOURCE = `(function () {
   }
 })();
 `;
+
+export const WIDGET_SOURCE = SOURCE.split("\n")
+  .map((line) => line.replace(/^\s+/, ""))
+  .filter((line) => !line.startsWith("//"))
+  .join("\n");

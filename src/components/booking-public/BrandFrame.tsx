@@ -4,7 +4,7 @@
 // --bp-primary / --bp-accent custom properties inline from the brand colours
 // with the support phone in the footer (the header is the logo alone).
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import styles from "./bp.module.css";
 import { DEFAULT_ACCENT, DEFAULT_PRIMARY } from "./types";
@@ -32,6 +32,27 @@ export function BrandFrame({
     return () => document.documentElement.classList.remove("bp-embed");
   }, [embed]);
 
+  // Inline embeds: tell the host page how tall the panel is, so the widget
+  // script there sizes the frame to fit and nothing scrolls inside it
+  // (Nicola, 15 Sep: no scrolling on the desktop scheduling embed). The
+  // height is the only thing sent, and it is not secret, so any host may
+  // receive it. The overlay's own frame ignores it.
+  const rootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!embed || !root || window.parent === window || typeof ResizeObserver === "undefined") return;
+    // The frame's own box, not the document: in an iframe the document is
+    // never shorter than the viewport, so it cannot report a smaller panel.
+    const post = () => {
+      const height = Math.ceil(root.getBoundingClientRect().bottom + window.scrollY);
+      window.parent.postMessage({ type: "leatherback-booking-height", height }, "*");
+    };
+    const observer = new ResizeObserver(post);
+    observer.observe(root);
+    post();
+    return () => observer.disconnect();
+  }, [embed]);
+
   const style = {
     "--bp-primary": brand?.colorPrimary ?? DEFAULT_PRIMARY,
     "--bp-accent": brand?.colorAccent ?? DEFAULT_ACCENT,
@@ -40,7 +61,7 @@ export function BrandFrame({
   const phone = brand?.phone ?? null;
 
   return (
-    <div className={embed ? `${styles.frame} ${styles.frameEmbed}` : styles.frame} style={style}>
+    <div ref={rootRef} className={embed ? `${styles.frame} ${styles.frameEmbed}` : styles.frame} style={style}>
       <div className={styles.inner}>
         {!embed && brand && (
           <header className={styles.header}>

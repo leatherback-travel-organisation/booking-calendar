@@ -41,3 +41,12 @@ test("scopes the UI: trip pages dock (+ phone bar), home floats, other pages get
 test("is syntactically valid JavaScript", () => {
   assert.doesNotThrow(() => new Function(WIDGET_SOURCE));
 });
+
+test("sizes inline embeds to their content and scrolls to them on each step", () => {
+  assert.ok(WIDGET_SOURCE.includes("leatherback-booking-height"));
+  assert.ok(WIDGET_SOURCE.includes("leatherback-booking-step"));
+  // Registered BEFORE the page gate: contact and book pages are neither
+  // home nor trip pages, and those are exactly where the inline embeds live.
+  assert.ok(WIDGET_SOURCE.indexOf("leatherback-booking-height") < WIDGET_SOURCE.indexOf("if (!isTrip && !isHome) return;"));
+});
+
