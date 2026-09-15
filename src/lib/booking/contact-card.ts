@@ -12,7 +12,8 @@ export type ContactCardInput = {
   /** In the order to show them; the first is the main number. */
   phones: Array<{ label: string; number: string }>;
   website: string | null;
-  photoUrl: string | null;
+  /** Embedded so every phone shows it; a URL photo is fetched by almost none. */
+  photo: { contentType: string; base64: string } | null;
   note: string | null;
 };
 
@@ -50,7 +51,10 @@ export function buildContactCard(input: ContactCardInput): string {
   }
   if (input.email?.trim()) lines.push(`EMAIL;TYPE=INTERNET,WORK:${escapeVCardText(input.email.trim())}`);
   if (input.website?.trim()) lines.push(`URL:${escapeVCardText(input.website.trim())}`);
-  if (input.photoUrl?.trim()) lines.push(`PHOTO;VALUE=URI:${input.photoUrl.trim()}`);
+  if (input.photo?.base64) {
+    const type = /jpe?g/i.test(input.photo.contentType) ? "JPEG" : /gif/i.test(input.photo.contentType) ? "GIF" : "PNG";
+    lines.push(`PHOTO;ENCODING=b;TYPE=${type}:${input.photo.base64}`);
+  }
   if (input.note?.trim()) lines.push(`NOTE:${escapeVCardText(input.note.trim())}`);
   lines.push("END:VCARD");
   return lines.map(fold).join("\r\n") + "\r\n";

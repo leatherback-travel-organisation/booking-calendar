@@ -46,12 +46,36 @@ export async function GET(request: Request): Promise<Response> {
   const emailDomain = email.split("@")[1]?.toLowerCase() ?? "";
   const host = hosts.find((h) => h.toLowerCase() === emailDomain) ?? hosts[0] ?? null;
 
+  // The brand's square avatar (Brands base "Avatar", blob-hosted), embedded:
+  // it becomes the contact photo, and so the sender avatar in the guest's
+  // mail app. Phones do not fetch a photo by URL from a vCard, so a link
+  // would show nothing. Skipped when missing or unreasonably large.
+  let photo: { contentType: string; base64: string } | null = null;
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  if (token) {
+    const rows = await sql`select payload from booking.reference_cache where key = ${"brand-avatar:" + brand.id}`;
+    const payload = (rows[0]?.payload ?? null) as { blobUrl?: string; contentType?: string } | null;
+    if (payload?.blobUrl) {
+      try {
+        const blob = await fetch(payload.blobUrl, { headers: { Authorization: `Bearer ${token}` } });
+        if (blob.ok) {
+          const bytes = Buffer.from(await blob.arrayBuffer());
+          if (bytes.byteLength <= 400_000) {
+            photo = { contentType: payload.contentType ?? "image/png", base64: bytes.toString("base64") };
+          }
+        }
+      } catch {
+        photo = null;
+      }
+    }
+  }
+
   const card = buildContactCard({
     name: brand.name,
     email,
     phones,
     website: host ? `https://${host}` : null,
-    photoUrl: brand.logoUrl,
+    photo,
     note: `Your ${brand.name} Booking Manager calls from this number.`,
   });
 

@@ -12,7 +12,7 @@ test("a brand card carries name, numbers, email, website and note", () => {
       { label: "au", number: "+61 482 099 562" },
     ],
     website: "https://harrietadventures.com",
-    photoUrl: null,
+    photo: { contentType: "image/png", base64: "iVBORw0KGgo=" },
     note: "Your Booking Manager calls from this number.",
   });
   const lines = card.split("\r\n");
@@ -25,6 +25,7 @@ test("a brand card carries name, numbers, email, website and note", () => {
   assert.ok(lines.includes("EMAIL;TYPE=INTERNET,WORK:bookings@harrietadventures.com"));
   assert.ok(lines.includes("URL:https://harrietadventures.com"));
   assert.ok(lines.includes("NOTE:Your Booking Manager calls from this number."));
+  assert.ok(lines.includes("PHOTO;ENCODING=b;TYPE=PNG:iVBORw0KGgo="));
   assert.equal(lines.at(-2), "END:VCARD");
   assert.equal(lines.at(-1), "");
 });
@@ -38,7 +39,7 @@ test("text values are escaped and blank fields are left out", () => {
 });
 
 test("long lines fold at 75 octets with a leading space", () => {
-  const card = buildContactCard({ name: "X", email: null, phones: [], website: null, photoUrl: null, note: "y".repeat(120) });
+  const card = buildContactCard({ name: "X", email: null, phones: [], website: null, photo: null, note: "y".repeat(120) });
   const noteStart = card.indexOf("NOTE:");
   const chunk = card.slice(noteStart).split("\r\n");
   assert.ok(chunk[0].length <= 75);
@@ -49,3 +50,13 @@ test("file name is the brand name with a .vcf extension", () => {
   assert.equal(contactCardFileName("Carex Garden Tours"), "Carex Garden Tours.vcf");
   assert.equal(contactCardFileName("***"), "contact.vcf");
 });
+
+test("a JPEG avatar is typed as JPEG and folded like any long line", () => {
+  const card = buildContactCard({ name: "X", email: null, phones: [], website: null, photo: { contentType: "image/jpeg", base64: "A".repeat(200) }, note: null });
+  const start = card.indexOf("PHOTO;ENCODING=b;TYPE=JPEG:");
+  assert.ok(start > 0);
+  const lines = card.slice(start).split("\r\n");
+  assert.ok(lines[0].length <= 75);
+  assert.ok(lines[1].startsWith(" "));
+});
+
