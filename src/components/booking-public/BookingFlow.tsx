@@ -662,10 +662,29 @@ export function BookingFlow({
               </a>
             </p>
           )}
+          {/* Save-our-number (Nicola, 15 Sep): a guest who has the brand in
+              their contacts does not take the BM's call for spam. The card
+              opens the phone's add-contact screen with name, email and
+              numbers filled in. */}
           {phone && (
             <div className={styles.phoneBox}>
-              <span>Prefer to talk sooner? Call {ctx.brand.name} any time:</span>
-              <a className={styles.phoneBig} href={`tel:${phone.replace(/\s/g, "")}`}>{phone}</a>
+              <span className={styles.phoneLead}>
+                Save our number so you know it&rsquo;s us when {active.firstName} calls
+              </span>
+              <a className={styles.phoneBig} href={`tel:${phone.replace(/\s/g, "")}`}>
+                {phone}
+              </a>
+              <span className={styles.phoneNote}>
+                Calls from {ctx.brand.name} come from this number. Unsaved numbers often get flagged as spam.
+              </span>
+              <a
+                className={styles.saveContactBtn}
+                href={`/api/booking/public/contact-card?brand=${encodeURIComponent(ctx.brand.key)}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Save {ctx.brand.name} to my contacts
+              </a>
             </div>
           )}
         </section>
