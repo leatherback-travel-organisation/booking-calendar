@@ -17,12 +17,14 @@ export const QUIET_WEEK_DAYS = 7;
 
 const DAY_MS = 86_400_000;
 
-/** Where the backup's times belong. Nothing from the primary for a week or
- *  more puts them up with the times; anything sooner leaves them at the
- *  bottom, so the primary keeps the call whenever they can take it. */
-export function backupPlacement(primaryFirstMs: number | null, nowMs: number): "with-times" | "bottom" {
-  if (primaryFirstMs === null) return "with-times";
-  return primaryFirstMs - nowMs >= QUIET_WEEK_DAYS * DAY_MS ? "with-times" : "bottom";
+/** Where the backup's times belong: always first (Nicola, 15 Sep). The 8 Sep
+ *  rule put them at the bottom whenever the primary had something within a
+ *  week, so a guest scrolled past a full week of the primary's times before
+ *  seeing the sooner option; now the backup leads and "Or wait for <name>:"
+ *  introduces the primary's times beneath. Kept as a function so the render
+ *  site reads the same and the rule can change again in one place. */
+export function backupPlacement(_primaryFirstMs: number | null, _nowMs: number): "with-times" | "bottom" {
+  return "with-times";
 }
 
 /**

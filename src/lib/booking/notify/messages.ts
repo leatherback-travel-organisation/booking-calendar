@@ -13,7 +13,7 @@ import { maySendSms, requiresSmsConsent } from "../sms-consent";
 import { bookUrl } from "../book-url";
 import { guestEventTypeName, type Brand, type EventType, type Staff } from "../model";
 import { icsCancel, icsRequest } from "./ics.ts";
-import { escapeHtml, htmlToText, renderBrandEmail, renderTemplate } from "./render.ts";
+import { escapeHtml, htmlToText, renderBrandEmail, renderSaveNumberCard, renderTemplate } from "./render.ts";
 import type { VariableName } from "./variables.ts";
 import { getNotifier, type OutboundMessage, type SendResult } from "./notifier";
 
@@ -264,8 +264,24 @@ export async function sendBookingEmail(moment: Moment, ctx: BookingEmailContext)
   // guest copy reads American even if a template still carries a British
   // spelling, and no guest's own name or address is ever rewritten.
   const american = usesAmericanEnglish(ctx.brand.key);
-  const bodyHtml = renderTemplate(american ? toAmericanEnglish(template.bodyHtml) : template.bodyHtml, values);
+  const templateHtml = renderTemplate(american ? toAmericanEnglish(template.bodyHtml) : template.bodyHtml, values);
   const subject = renderTemplate(american ? toAmericanEnglish(template.subject) : template.subject, values);
+  // Every brand's confirmation ends with "save our number" (Nicola, 15 Sep):
+  // the guest is likely reading this email when the BM's call comes, and a
+  // saved number is not mistaken for spam. Appended here, after the
+  // template, so it holds for every brand and cannot be edited away.
+  const savePhone = ctx.brand.phoneDefault ?? ctx.brand.phoneAu;
+  const bodyHtml =
+    moment === "confirmation" && savePhone
+      ? templateHtml +
+        renderSaveNumberCard({
+          brandName: ctx.brand.name,
+          bmFirstName: ctx.staff.firstName,
+          phone: savePhone,
+          contactCardUrl: `${appUrl()}/api/booking/public/contact-card?brand=${encodeURIComponent(ctx.brand.key)}`,
+          colorPrimary: ctx.brand.colorPrimary,
+        })
+      : templateHtml;
   const html = renderBrandEmail(
     {
       brandName: ctx.brand.name,

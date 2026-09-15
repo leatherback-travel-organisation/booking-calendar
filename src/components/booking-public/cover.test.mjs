@@ -57,16 +57,14 @@ test("a hole that opens beyond the next week is left alone", () => {
   assert.ok(findCoverGap(slotsOnDays(1, 2, 3, 30), NOW));
 });
 
-test("the backup goes with the times when the primary is quiet for a week or more", () => {
+test("the backup always leads, whatever the primary has open (Nicola, 15 Sep)", () => {
   assert.equal(backupPlacement(NOW + 7 * DAY, NOW), "with-times");
   assert.equal(backupPlacement(NOW + 13 * DAY, NOW), "with-times");
   assert.equal(backupPlacement(null, NOW), "with-times", "no times at all is the loudest case");
+  assert.equal(backupPlacement(NOW + 1 * DAY, NOW), "with-times");
+  assert.equal(backupPlacement(NOW + 6.9 * DAY, NOW), "with-times");
 });
 
-test("the backup waits at the bottom while the primary can still take the call", () => {
-  assert.equal(backupPlacement(NOW + 1 * DAY, NOW), "bottom");
-  assert.equal(backupPlacement(NOW + 6.9 * DAY, NOW), "bottom");
-});
 
 test("the backup's offered times fall inside the primary's gap", () => {
   const entry = { nextSlots: slotsOnDays(2, 4, 6) };

@@ -104,6 +104,37 @@ export function renderBrandEmail(shell: BrandShellInput, bodyHtml: string): stri
 </html>`;
 }
 
+export type SaveNumberCardInput = {
+  brandName: string;
+  /** The Booking Manager who will call: "Janie". */
+  bmFirstName: string;
+  phone: string;
+  /** Absolute URL of the brand's vCard (/api/booking/public/contact-card). */
+  contactCardUrl: string;
+  colorPrimary: string | null;
+};
+
+/**
+ * The "save our number" block appended to every brand's confirmation email
+ * (Nicola, 15 Sep): the number the BM calls from, shown large, and a button
+ * that opens the phone's add-contact screen with the brand's details filled
+ * in. Sits after the template body so no Pod Lead can edit it away, and the
+ * email is where a guest is likely to be when the call comes. Inline styles
+ * only — email clients honour nothing else.
+ */
+export function renderSaveNumberCard(input: SaveNumberCardInput): string {
+  const accent = input.colorPrimary ?? "#1f3d33";
+  const tel = `tel:${input.phone.replace(/[^\d+]/g, "")}`;
+  return (
+    `<div style="margin:28px 0 0;padding:20px;border:1px solid #e3e5df;border-radius:10px;background:#faf9f6;">` +
+    `<p style="margin:0 0 6px;font-size:16px;font-weight:600;">Save our number so you know when ${escapeHtml(input.bmFirstName)} is calling</p>` +
+    `<p style="margin:0 0 6px;font-size:24px;font-weight:600;"><a href="${escapeHtml(tel)}" style="color:${accent};text-decoration:none;">${escapeHtml(input.phone)}</a></p>` +
+    `<p style="margin:0 0 14px;font-size:14px;color:#6b7266;">Calls from ${escapeHtml(input.brandName)} come from this number. Unsaved numbers often get flagged as spam.</p>` +
+    `<a href="${escapeHtml(input.contactCardUrl)}" style="display:inline-block;padding:12px 20px;border-radius:10px;background:${accent};color:#ffffff;font-weight:600;text-decoration:none;">Save ${escapeHtml(input.brandName)} to my contacts</a>` +
+    `</div>`
+  );
+}
+
 /** Plain-text alternative derived from the rendered HTML body. */
 export function htmlToText(html: string): string {
   return html

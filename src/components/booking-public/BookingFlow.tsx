@@ -669,7 +669,7 @@ export function BookingFlow({
           {phone && (
             <div className={styles.phoneBox}>
               <span className={styles.phoneLead}>
-                Save our number so you know it&rsquo;s us when {active.firstName} calls
+                Save our number so you know when {active.firstName} is calling
               </span>
               <a className={styles.phoneBig} href={`tel:${phone.replace(/\s/g, "")}`}>
                 {phone}

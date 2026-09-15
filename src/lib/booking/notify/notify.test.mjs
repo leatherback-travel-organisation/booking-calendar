@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { escapeIcsText, foldIcsLine, icsCancel, icsRequest } from "./ics.ts";
-import { extractVariables, htmlToText, renderBrandEmail, renderTemplate, UnknownVariableError, validateTemplate } from "./render.ts";
+import { extractVariables, htmlToText, renderBrandEmail, renderSaveNumberCard, renderTemplate, UnknownVariableError, validateTemplate } from "./render.ts";
 import { allVariableNames, isKnownVariable, sampleValues } from "./variables.ts";
 import { hashToken, issueToken, tokenMatches } from "../tokens.ts";
 
@@ -122,3 +122,35 @@ test("plain-text alternative strips markup sensibly", () => {
     "Hi Susan\n- One\n- Two & three",
   );
 });
+
+test("the save-our-number card names the BM, shows the number and links the contact card", () => {
+  const html = renderSaveNumberCard({
+    brandName: "Harriet Adventures",
+    bmFirstName: "Janie",
+    phone: "+1 971 258 0516",
+    contactCardUrl: "https://cove.leatherbacktravel.com/api/booking/public/contact-card?brand=harriet",
+    colorPrimary: "#e0594f",
+  });
+  assert.ok(html.includes("Save our number so you know when Janie is calling"));
+  assert.ok(html.includes('href="tel:+19712580516"'));
+  assert.ok(html.includes("+1 971 258 0516"));
+  assert.ok(html.includes('href="https://cove.leatherbacktravel.com/api/booking/public/contact-card?brand=harriet"'));
+  assert.ok(html.includes("Save Harriet Adventures to my contacts"));
+  assert.ok(html.includes("#e0594f"));
+  const text = htmlToText(html);
+  assert.ok(text.includes("Save our number so you know when Janie is calling"));
+  assert.ok(text.includes("+1 971 258 0516"));
+});
+
+test("the card escapes what it prints", () => {
+  const html = renderSaveNumberCard({
+    brandName: "A & B <Tours>",
+    bmFirstName: "Jax",
+    phone: "+1 971 300 4756",
+    contactCardUrl: "https://x/y?brand=a&b",
+    colorPrimary: null,
+  });
+  assert.ok(html.includes("A &amp; B &lt;Tours&gt;"));
+  assert.ok(html.includes("brand=a&amp;b"));
+});
+
