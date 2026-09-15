@@ -64,6 +64,7 @@ export function mapBrand(row: Record<string, unknown>): Brand {
     fromEmail: String(row.from_email),
     fromName: String(row.from_name),
     replyTo: (row.reply_to as string | null) ?? null,
+    contactEmail: (row.contact_email as string | null) ?? null,
     privacyPolicyUrl: (row.privacy_policy_url as string | null) ?? null,
     defaultEventTypeKey: (row.default_event_type_key as string | null) ?? null,
     // Default true so an un-migrated database behaves like the schema default.

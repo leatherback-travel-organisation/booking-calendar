@@ -36,13 +36,19 @@ export async function GET(request: Request): Promise<Response> {
     phones.push({ label: phones.length === 0 ? "main" : label, number: digits });
   }
 
+  // The public inbox the brand publishes, never the app's sending address.
+  const email = brand.contactEmail ?? brand.replyTo ?? brand.fromEmail;
+  // The website: the domain the contact address lives on when the brand
+  // has more than one (Magnificent still answers on magnificentrail.com.au),
+  // else the shortest host.
   const sql = getSql();
-  const hosts = await sql`select host from booking.brand_domain where brand_id = ${brand.id} order by length(host), host limit 1`;
-  const host = hosts.length ? String(hosts[0].host) : null;
+  const hosts = (await sql`select host from booking.brand_domain where brand_id = ${brand.id} order by length(host), host`).map((row) => String(row.host));
+  const emailDomain = email.split("@")[1]?.toLowerCase() ?? "";
+  const host = hosts.find((h) => h.toLowerCase() === emailDomain) ?? hosts[0] ?? null;
 
   const card = buildContactCard({
     name: brand.name,
-    email: brand.replyTo ?? brand.fromEmail,
+    email,
     phones,
     website: host ? `https://${host}` : null,
     photoUrl: brand.logoUrl,

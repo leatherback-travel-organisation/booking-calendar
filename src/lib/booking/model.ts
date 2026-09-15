@@ -18,6 +18,8 @@ export type Brand = {
   fromEmail: string;
   fromName: string;
   replyTo: string | null;
+  /** The public inbox the brand publishes (contact@…), for the contact card. */
+  contactEmail: string | null;
   /** Named in the SMS consent disclosure for US-market brands. */
   privacyPolicyUrl: string | null;
   /** Event type a link with no ?type= lands on. Null = prefer "enquiry".
