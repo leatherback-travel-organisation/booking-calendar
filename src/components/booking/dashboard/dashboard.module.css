@@ -1,0 +1,381 @@
+.dashboard {
+  display: grid;
+  gap: var(--density-4, 18px);
+}
+
+/* Brand/pod filter chips. Plain links: the active filter lives in the URL. */
+.filterBar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filterRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.filterChip {
+  --tag: var(--pine);
+  border: 1px solid color-mix(in srgb, var(--tag) 45%, transparent);
+  border-radius: 999px;
+  padding: 3px 12px;
+  font-size: var(--text-small, 13px);
+  color: color-mix(in srgb, var(--tag) 80%, var(--ink));
+  text-decoration: none;
+  background: transparent;
+}
+
+.filterChip:hover {
+  background: color-mix(in srgb, var(--tag) 10%, transparent);
+}
+
+.filterChip[data-active] {
+  background: color-mix(in srgb, var(--tag) 14%, transparent);
+  border-color: var(--tag);
+  font-weight: 500;
+}
+
+
+.alertBanner {
+  border: 1px solid var(--terracotta);
+  border-left: 4px solid var(--terracotta);
+  border-radius: var(--radius-panel, 10px);
+  background: rgba(189, 97, 71, 0.09);
+  padding: var(--density-3, 14px) var(--density-4, 18px);
+  display: grid;
+  gap: 8px;
+}
+
+.alertHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--density-2, 10px);
+}
+
+.alertHead strong {
+  color: var(--terracotta);
+  font-size: var(--text-body, 15px);
+  font-weight: 500;
+}
+
+.alertList {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--ink);
+  font-size: var(--text-small, 13px);
+  display: grid;
+  gap: 3px;
+}
+
+.alertLink {
+  color: var(--pine);
+  font-size: var(--text-small, 13px);
+  font-weight: 500;
+  text-decoration: none;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control, 7px);
+  padding: 5px 10px;
+  background: var(--paper);
+  white-space: nowrap;
+}
+
+.alertLink:hover {
+  background: var(--paper-deep);
+}
+
+.warningBanner {
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--brass);
+  border-radius: var(--radius-panel, 10px);
+  background: var(--card);
+  padding: var(--density-3, 14px) var(--density-4, 18px);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--density-2, 10px);
+  color: var(--ink);
+  font-size: var(--text-small, 13px);
+}
+
+.actionsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--density-2, 10px);
+}
+
+.primaryAction {
+  border: 1px solid var(--pine);
+  border-radius: var(--radius-control, 7px);
+  background: var(--pine);
+  color: #fdfbf5;
+  font-size: var(--text-small, 13px);
+  font-weight: 500;
+  text-decoration: none;
+  padding: 8px 14px;
+}
+
+.primaryAction:hover {
+  background: var(--pine-bright, #1f5b4e);
+}
+
+/* Used as both a link and a button (Copy scheduling link). */
+.secondaryAction {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control, 7px);
+  background: var(--paper);
+  color: var(--pine);
+  font-size: var(--text-small, 13px);
+  font-weight: 500;
+  font-family: inherit;
+  text-decoration: none;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+.secondaryAction:hover {
+  background: var(--paper-deep);
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--density-4, 18px);
+  align-items: start;
+}
+
+.panel {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel, 10px);
+  background: var(--card);
+  padding: var(--density-3, 14px) var(--density-4, 18px);
+  display: grid;
+  gap: var(--density-2, 10px);
+}
+
+.panelTitle {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-ui, 14px);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.emptyNote {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-small, 13px);
+}
+
+.dayGroup {
+  display: grid;
+  gap: 4px;
+}
+
+.dayHeading {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-label, 12px);
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.bmLinkList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bmLink {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: var(--text-small, 13px);
+  font-weight: 500;
+  text-decoration: none;
+  padding: 4px 12px 4px 5px;
+}
+
+.bmLink:hover {
+  background: var(--paper-deep);
+  color: var(--pine);
+}
+
+.bmLinkAvatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  object-fit: cover;
+}
+
+span.bmLinkAvatar[data-fallback] {
+  display: grid;
+  place-items: center;
+  background: var(--paper-deep);
+  color: var(--ink-soft);
+  font-size: var(--text-label, 12px);
+}
+
+.bookingList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+
+.bookingRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.bookingRow:last-child {
+  border-bottom: 0;
+}
+
+.bookingTime {
+  color: var(--ink);
+  font-size: var(--text-small, 13px);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.bookingGuest {
+  color: var(--ink);
+  font-size: var(--text-ui, 14px);
+  font-weight: 500;
+}
+
+.bookingMeta {
+  color: var(--ink-soft);
+  font-size: var(--text-small, 13px);
+}
+
+.brandChip {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper-deep);
+  color: var(--ink-soft);
+  font-size: var(--text-label, 12px);
+  padding: 1px 9px;
+  white-space: nowrap;
+}
+
+.routedBadge {
+  display: inline-flex;
+  border: 1px solid rgba(180, 135, 66, 0.5);
+  border-radius: 999px;
+  background: rgba(180, 135, 66, 0.14);
+  color: var(--brass);
+  font-size: var(--text-label, 12px);
+  font-weight: 500;
+  padding: 1px 9px;
+  white-space: nowrap;
+}
+
+.recentList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+
+.recentRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.recentRow:last-child {
+  border-bottom: 0;
+}
+
+.recentMain {
+  /* Fills the row so guest and detail sit flush left by the avatar; the
+     timestamp keeps the right edge. */
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.recentSide {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.sourceChip {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper-deep);
+  color: var(--ink-soft);
+  font-size: var(--text-label, 12px);
+  padding: 1px 9px;
+}
+
+.sourceChip[data-source="trip"],
+.sourceChip[data-source="contact"],
+.sourceChip[data-source="portal"] {
+  border-color: rgba(20, 62, 53, 0.35);
+  background: rgba(20, 62, 53, 0.1);
+  color: var(--pine);
+}
+
+.recentWhen {
+  color: var(--ink-soft);
+  font-size: var(--text-label, 12px);
+}
+
+/* BM avatar leading a booking row. */
+.rowAvatar {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  object-fit: cover;
+  background: var(--paper-deep);
+}
+
+.rowAvatar[data-fallback] {
+  display: grid;
+  place-items: center;
+  color: var(--ink-soft);
+  font-size: var(--text-label, 12px);
+  font-weight: 500;
+}
+
+/* Booker note on internally booked calls — context for the BM taking it. */
+.bookingNote {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-label, 12px);
+  font-style: italic;
+}

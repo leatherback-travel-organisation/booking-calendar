@@ -1,0 +1,102 @@
+# Guest Portal → Calltime: "Book a call with your BM"
+
+For the guest-portal team. Every booking shown in the portal can offer a
+one-click "book a call" with the Booking Manager who coordinates that trip.
+Calltime does all the routing — the portal only needs the booking's Airtable
+**trip record id** (the `Trips` link on the guest's Bookings row).
+
+## The one-liner
+
+Link (or redirect) the guest to:
+
+```
+https://cove.leatherbacktravel.com/book?tripRecord=<recXXXXXXXXXX>&source=portal
+```
+
+- `tripRecord` — the Airtable record id of the trip the guest booked.
+  Calltime resolves it to that exact departure's Trip Coordinator, brands
+  the page, and shows their live availability.
+- `source=portal` — records the booking with `source_kind = 'portal'`
+  (visible on the Calltime dashboard as "self-booked · portal").
+- `type` — optional. Omitted, the portal default applies: the **Quick
+  Chat, a 15-minute 1:1** (`chat`). Pass `feedback` for past trips; other
+  keys (`lead-up`, `enquiry`, `rhime`) exist but the portal never names
+  them.
+- Add `&embed=1` to render the compact widget variant inside an iframe.
+
+If the trip record can't be resolved (cancelled trip, missing coordinator),
+the page degrades to a picker — never an error page — and the miss shows up
+on Calltime's coverage map.
+
+## Optional: a richer button (call-card API)
+
+To render "Book a call with Claire" with the BM's photo and brand colour
+before the guest clicks, call:
+
+```
+GET https://cove.leatherbacktravel.com/api/booking/public/call-card?tripRecord=<recXXX>[&type=feedback]
+```
+
+CORS is open (`*`), no auth, read-only, and it returns only what the public
+/book page already shows guests:
+
+```json
+{
+  "found": true,
+  "kind": "primary",
+  "bookUrl": "https://cove.leatherbacktravel.com/book?tripRecord=recX&source=portal",
+  "trip":  { "title": "Sri Lanka", "startDate": "2026-08-22" },
+  "brand": { "key": "patch", "name": "Patch Adventures", "logoUrl": null, "colorPrimary": "#ad5046" },
+  "bm":    { "firstName": "Mandy", "photoUrl": "…", "bio": "…" },
+  "poolLabel": null,
+  "callType": { "key": "chat", "name": "Quick Chat", "durationMin": 15 }
+}
+```
+
+- `kind: "pool"` means no single coordinator is reachable — `bm` is null and
+  `poolLabel` gives the honest wording ("the Patch Adventures team").
+- `found: false` means the record didn't resolve; hide the button.
+
+Suggested markup: `Book a chat with {bm.firstName ?? poolLabel}` on a button
+tinted `brand.colorPrimary`, linking to `bookUrl`.
+
+### Placement + copy (decided 20 Aug)
+
+The card lives on **each booking's detail page** (the per-trip page with
+Details / My Travel Guide tabs) — a full-width card between the "Next
+action" banner and the Trip Notes / Itinerary / Pre-Trip Video quick cards:
+
+> [photo]  YOUR BOOKING MANAGER
+>          Mandy · Patch Adventures
+>          Questions about this trip? Book a chat with Mandy.
+>                                                  [ Book a chat ]
+
+That line is the exact copy (Nicola, 20 Aug):
+"Questions about this trip? Book a chat with {bm.firstName}."
+
+One `call-card` fetch per booking page, keyed by that booking's `Trips`
+record id.
+
+**Copy rule (Nicola, 20 Aug): never name call types in the portal.** No
+type names, no durations — just "book a chat". Under the hood the default
+books the 15-minute Quick Chat; pass `type=feedback` for past trips
+("How was your trip? {bm.firstName} would love to hear" / "Share your
+thoughts"). Ignore the API's `callType` field when rendering.
+
+## What Calltime does with portal bookings
+
+- Books against the BM's real Google Calendar (conflict-safe), emails the
+  guest a branded confirmation with reschedule/cancel links, reminders at
+  24h and 1h (SMS too where the brand has it enabled and a phone was left).
+- Marks the booking clearly as portal-sourced for the BM: the calendar
+  event title ends "(portal)", the Help Scout conversation is tagged
+  `portal` with a "⭑ Booked through the guest portal" banner, and the
+  dashboard shows "self-booked · portal".
+- Opens a Help Scout conversation in the brand mailbox assigned to the BM,
+  including the guest-crossover flag (other active CRM leads the guest holds,
+  with each owning BM notified).
+- The exact departure is preserved (`airtableTripRecordId`), so "this same
+  trip" crossover detection works.
+
+Questions → Nicola / the booking-calendar repo (`docs/05-booking-app.md`
+covers the wider architecture).

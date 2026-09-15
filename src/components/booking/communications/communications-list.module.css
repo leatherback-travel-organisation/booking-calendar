@@ -1,0 +1,344 @@
+.journey {
+  display: grid;
+  gap: 22px;
+}
+
+/* One section per pod; its brands' cards stack tightly beneath. */
+.pod {
+  display: grid;
+  gap: 10px;
+}
+
+.podTitle {
+  margin: 0 0 2px;
+  font-family: var(--font-display);
+  font-size: var(--text-label, 12px);
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--pine);
+}
+
+.intro {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-body, 15px);
+  max-width: 64ch;
+}
+
+/* One card per brand. The brand colour is a dot beside the name and the
+   tint on its own-version pills, not a band: seven of these in a column
+   must stay calm. */
+.brandGroup {
+  --tag: var(--ink-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel, 12px);
+  background: var(--card);
+  padding: 10px 14px 4px;
+}
+
+.brandHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 0 4px 8px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 2px;
+}
+
+.brandDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--tag);
+  flex: none;
+}
+
+.brandTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+/* Column headings over the reminder switches, matching the switch cells. */
+.channelHeads {
+  margin-left: auto;
+  display: grid;
+  grid-template-columns: repeat(2, var(--switch-col, 84px));
+  gap: 2px 12px;
+  align-self: end;
+}
+
+/* Spans both columns: the switches below are the reminder switches. */
+.channelGroup {
+  grid-column: 1 / -1;
+  color: var(--ink);
+  font-size: var(--text-label, 12px);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.channelHead {
+  display: grid;
+  color: var(--ink-soft);
+  font-size: var(--text-label, 12px);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* US-market brands: texts reach only guests who opted in. */
+.channelNote {
+  font-size: 11px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+}
+
+/* One compact row: name + explanation in a fixed column, the call-type
+   pills beside it, and on a reminder row that reminder's switch at the end. */
+.messageRow {
+  display: grid;
+  grid-template-columns: minmax(200px, 280px) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 8px 8px;
+}
+
+.rows li + li {
+  border-top: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+}
+
+/* A reminder that is switched off reads as dormant, not deleted. */
+.messageRow[data-off] .messageName,
+.messageRow[data-off] .messageDescription,
+.messageRow[data-off] .pills {
+  opacity: 0.55;
+}
+
+.messageText {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  justify-items: start;
+}
+
+.pillsCol {
+  min-width: 0;
+}
+
+.messageName {
+  color: var(--ink);
+  font-size: var(--text-body, 15px);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.messageName:hover,
+.messageName:focus-visible {
+  color: var(--pine);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.messageDescription {
+  color: var(--ink-soft);
+  font-size: var(--text-label, 13px);
+  line-height: 1.35;
+}
+
+.messageEdited {
+  color: var(--ink-soft);
+  font-size: var(--text-label, 13px);
+}
+
+/* One pill per call type. Tinted in the brand colour when this call type
+   has its own version of the message; outlined when it still uses the
+   shared wording. Both open the editor for that version. */
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--text-label, 13px);
+  line-height: 1;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  background: var(--card);
+  text-decoration: none;
+  transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
+}
+
+.pill[data-own] {
+  border-color: color-mix(in srgb, var(--tag) 45%, transparent);
+  background: color-mix(in srgb, var(--tag) 10%, var(--card));
+  color: color-mix(in srgb, var(--tag) 70%, var(--ink));
+}
+
+.pill:hover,
+.pill:focus-visible {
+  border-color: var(--tag);
+  background: color-mix(in srgb, var(--tag) 16%, var(--card));
+  color: var(--ink);
+  outline: none;
+}
+
+/* Two switch cells, one per channel, the same width as the headings. */
+.rowSetting {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, var(--switch-col, 84px));
+  gap: 12px;
+  align-items: center;
+}
+
+.switchCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* The "both ways?" question, under the switches. */
+.confirm {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 3;
+  width: 320px;
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  box-shadow: 0 10px 30px rgba(10, 54, 46, 0.14);
+  border: 1px solid color-mix(in srgb, var(--terracotta, #b4533b) 45%, transparent);
+  border-radius: var(--radius-control, 8px);
+  background: color-mix(in srgb, var(--terracotta, #b4533b) 6%, var(--card));
+}
+
+.confirmText {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-label, 13px);
+  line-height: 1.4;
+}
+
+.confirmLead {
+  font-weight: 500;
+}
+
+.confirmActions {
+  display: flex;
+  gap: 8px;
+}
+
+.confirmYes,
+.confirmNo {
+  font-size: var(--text-label, 13px);
+  padding: 5px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.confirmYes {
+  border: 1px solid var(--terracotta, #b4533b);
+  background: var(--terracotta, #b4533b);
+  color: #fff;
+}
+
+.confirmNo {
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+}
+
+.switchError {
+  grid-column: 1 / -1;
+}
+
+/* The switch: a track with a knob, plus On/Off in words beside it so the
+   state never depends on colour alone. */
+.switch {
+  position: relative;
+  width: 40px;
+  height: 24px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--paper-deep);
+  padding: 0;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.switch[data-on] {
+  background: var(--pine);
+  border-color: var(--pine);
+}
+
+.switch:disabled {
+  cursor: default;
+}
+
+.switch:focus-visible {
+  outline: 2px solid var(--pine-bright);
+  outline-offset: 2px;
+}
+
+.switchKnob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--card);
+  box-shadow: 0 1px 2px rgba(10, 54, 46, 0.25);
+  transition: transform 140ms ease;
+}
+
+.switch[data-on] .switchKnob {
+  transform: translateX(16px);
+}
+
+.switchState {
+  color: var(--ink-soft);
+  font-size: var(--text-ui, 14px);
+  min-width: 2.2em;
+}
+
+.switch[data-on] + .switchState {
+  color: var(--ink);
+}
+
+.switchError {
+  color: var(--terracotta, #b4533b);
+  font-size: var(--text-label, 13px);
+}
+
+@media (max-width: 760px) {
+  .messageRow {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    align-items: start;
+  }
+
+  .channelHeads {
+    display: none;
+  }
+}

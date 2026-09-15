@@ -16,7 +16,16 @@ const project = {
 const rootDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const vercelDirectory = resolve(rootDirectory, ".vercel");
 const linkPath = resolve(vercelDirectory, "project.json");
-const canonicalRepository = "leatherback-travel-organisation/cove-superpanel";
+// Production must exactly match a branch pushed to an org-hosted GitHub
+// repository. cove-superpanel is home; booking-calendar is the accepted
+// alternate for the Calltime launch (same shared history — the machine's
+// GitHub account has write there while cove-superpanel access is pending;
+// Nicola, 20 Aug 2026). Select the remote with DEPLOY_SOURCE_REMOTE.
+const canonicalRepositories = [
+  "leatherback-travel-organisation/cove-superpanel",
+  "leatherback-travel-organisation/booking-calendar",
+];
+const sourceRemote = process.env.DEPLOY_SOURCE_REMOTE || "origin";
 
 function git(args) {
   return execFileSync("git", args, {
@@ -36,22 +45,27 @@ function ensurePublishedGitState() {
     throw new Error("Production deployment requires a named Git branch.");
   }
 
-  const remoteUrl = git(["remote", "get-url", "origin"]);
-  if (!remoteUrl.includes(canonicalRepository)) {
-    throw new Error(`Production deployment requires the canonical ${canonicalRepository} GitHub remote.`);
+  const remoteUrl = git(["remote", "get-url", sourceRemote]);
+  const canonicalRepository = canonicalRepositories.find((repository) => remoteUrl.includes(repository));
+  if (!canonicalRepository) {
+    throw new Error(
+      `Production deployment requires a canonical GitHub remote (${canonicalRepositories.join(" or ")}).`,
+    );
   }
 
   const head = git(["rev-parse", "HEAD"]);
   let remoteHead;
 
   try {
-    remoteHead = git(["ls-remote", "--exit-code", "origin", `refs/heads/${branch}`]).split(/\s+/)[0];
+    remoteHead = git(["ls-remote", "--exit-code", sourceRemote, `refs/heads/${branch}`]).split(/\s+/)[0];
   } catch {
     throw new Error(`Push branch ${branch} to the canonical GitHub repository before deploying production.`);
   }
 
   if (remoteHead !== head) {
-    throw new Error(`Production deployment requires local ${branch} to exactly match origin/${branch}. Commit and push first.`);
+    throw new Error(
+      `Production deployment requires local ${branch} to exactly match ${sourceRemote}/${branch}. Commit and push first.`,
+    );
   }
 
   console.log(`GitHub source confirmed: ${canonicalRepository}@${head.slice(0, 12)}`);

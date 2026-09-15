@@ -1,0 +1,181 @@
+.page {
+  min-height: 100vh;
+  background: #f5f4f0;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  color: #22271f;
+  padding: 32px 16px 64px;
+}
+
+.card {
+  max-width: 520px;
+  margin: 0 auto;
+  background: #ffffff;
+  border-radius: 12px;
+  border-top: 4px solid var(--bp-primary, #1f3d33);
+  box-shadow: 0 2px 12px rgba(20, 24, 18, 0.08);
+  padding: 28px 24px;
+}
+
+.brandRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.brandLogo {
+  max-height: 44px;
+  max-width: 180px;
+}
+
+.brandName {
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--bp-primary, #1f3d33);
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 500;
+  margin: 0 0 6px;
+}
+
+.meta {
+  color: #5b6156;
+  font-size: 15px;
+  margin: 0 0 4px;
+}
+
+.seats {
+  display: inline-block;
+  margin: 10px 0 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #eef0e9;
+  color: #3c4438;
+  font-size: 14px;
+}
+
+.hostRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.hostPhoto {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.form {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.label {
+  font-size: 14px;
+  color: #3c4438;
+  display: grid;
+  gap: 4px;
+}
+
+.input {
+  font: inherit;
+  font-size: 16px;
+  padding: 10px 12px;
+  border: 1px solid #d5d8cf;
+  border-radius: 8px;
+  background: #fff;
+  color: #22271f;
+}
+
+.input:focus {
+  outline: 2px solid var(--bp-primary, #1f3d33);
+  outline-offset: 1px;
+}
+
+.button {
+  font: inherit;
+  font-size: 16px;
+  font-weight: 500;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--bp-primary, #1f3d33);
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.button:hover {
+  filter: brightness(1.1);
+}
+
+.slotList {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.slotButton {
+  font: inherit;
+  font-size: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--bp-primary, #1f3d33);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--bp-primary, #1f3d33);
+  cursor: pointer;
+  text-align: left;
+}
+
+.slotButton:hover {
+  background: var(--bp-primary, #1f3d33);
+  color: #fff;
+}
+
+.slotChosen {
+  background: var(--bp-primary, #1f3d33);
+  color: #fff;
+}
+
+.error {
+  background: #fbeeea;
+  border: 1px solid #e3b8ab;
+  color: #7c2d12;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 15px;
+  margin-bottom: 12px;
+}
+
+.footer {
+  max-width: 520px;
+  margin: 16px auto 0;
+  text-align: center;
+  color: #5b6156;
+  font-size: 14px;
+}
+
+.footer a {
+  color: var(--bp-primary, #1f3d33);
+}
+
+.moreLink {
+  display: inline-block;
+  margin-top: 14px;
+  color: var(--bp-primary, #1f3d33);
+  font-size: 15px;
+}
+
+.honeypot {
+  position: absolute;
+  left: -9999px;
+  top: -9999px;
+  height: 1px;
+  width: 1px;
+  overflow: hidden;
+}

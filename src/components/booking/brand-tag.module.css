@@ -1,0 +1,12 @@
+.tag {
+  --tag: var(--ink-soft);
+  display: inline-flex;
+  border: 1px solid color-mix(in srgb, var(--tag) 40%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tag) 11%, var(--card));
+  color: color-mix(in srgb, var(--tag) 72%, var(--ink));
+  font-size: var(--text-label, 12px);
+  font-weight: 500;
+  padding: 1px 9px;
+  white-space: nowrap;
+}

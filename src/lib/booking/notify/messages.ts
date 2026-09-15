@@ -1,0 +1,342 @@
+// Template resolution and message composition. Resolution: most specific
+// wins — (brand, event type) > (brand, all types) > global default. The
+// seeded defaults below guarantee every moment always resolves to something
+// sane even before anyone edits a template.
+
+import "server-only";
+
+import { DateTime } from "luxon";
+import { appUrl } from "../app-url";
+import { getSql } from "../db";
+import { toAmericanEnglish, usesAmericanEnglish } from "../english";
+import { maySendSms, requiresSmsConsent } from "../sms-consent";
+import { bookUrl } from "../book-url";
+import { guestEventTypeName, type Brand, type EventType, type Staff } from "../model";
+import { icsCancel, icsRequest } from "./ics.ts";
+import { escapeHtml, htmlToText, renderBrandEmail, renderSaveNumberCard, renderTemplate } from "./render.ts";
+import type { VariableName } from "./variables.ts";
+import { getNotifier, type OutboundMessage, type SendResult } from "./notifier";
+
+export type Moment = "confirmation" | "reminder_24h" | "reminder_1h" | "cancellation" | "reschedule";
+
+// Default copy follows the Leatherback Writing & Communication Guide
+// ("Special Feeling"): conversational, contractions, greet → hug → clear
+// answer → warm sign-off, one emoji at most, no travel clichés.
+export const DEFAULT_TEMPLATES: Record<Moment, { subject: string; bodyHtml: string }> = {
+  confirmation: {
+    subject: "You're booked, {{guest.first_name}}! {{booking.meeting_date}} at {{booking.meeting_time}} with {{host.first_name}}",
+    bodyHtml:
+      "<p>Hi {{guest.first_name}},</p>" +
+      "<p>Lovely news, your call with {{host.first_name}} is locked in! 🎉</p>" +
+      "<p><strong>{{booking.meeting_date}}</strong> at <strong>{{booking.meeting_time}}</strong> ({{booking.timezone}}). We've set aside {{booking.duration}} just for you.</p>" +
+      "<p>{{booking.join_details}}</p>" +
+      "<p>Life happens. If that time stops working you can <a href=\"{{booking.reschedule_link}}\">reschedule</a> or <a href=\"{{booking.cancel_link}}\">cancel</a> whenever you need, no fuss.</p>" +
+      "<p>We can't wait to hear what you're dreaming up.</p>" +
+      "<p>Talk soon,<br/>{{host.first_name}} at {{brand.name}}</p>",
+  },
+  reminder_24h: {
+    subject: "Tomorrow's the day, your call with {{host.first_name}} at {{booking.meeting_time}}",
+    bodyHtml:
+      "<p>Hi {{guest.first_name}},</p>" +
+      "<p>Just a friendly nudge: you're chatting with {{host.first_name}} tomorrow, {{booking.meeting_date}}, at <strong>{{booking.meeting_time}}</strong> ({{booking.timezone}}).</p>" +
+      "<p>{{booking.join_details}}</p>" +
+      "<p>Day looking different than planned? <a href=\"{{booking.reschedule_link}}\">Reschedule here</a>. Takes seconds.</p>" +
+      "<p>See you tomorrow!<br/>{{host.first_name}} at {{brand.name}}</p>",
+  },
+  reminder_1h: {
+    subject: "Nearly time! Your call with {{host.first_name}} starts at {{booking.meeting_time}}",
+    bodyHtml:
+      "<p>Hi {{guest.first_name}},</p>" +
+      "<p>Nearly time! You and {{host.first_name}} are talking at <strong>{{booking.meeting_time}}</strong> ({{booking.timezone}}), about an hour from now.</p>" +
+      "<p>Pop the kettle on. {{booking.join_details}}</p>" +
+      "<p>See you very soon! ☕</p>",
+  },
+  cancellation: {
+    subject: "Your call on {{booking.meeting_date}} has been cancelled",
+    bodyHtml:
+      "<p>Hi {{guest.first_name}},</p>" +
+      "<p>Your call with {{host.first_name}} on {{booking.meeting_date}} at {{booking.meeting_time}} ({{booking.timezone}}) is cancelled. All taken care of, nothing more for you to do.</p>" +
+      "<p>If you'd still love a chat, <a href=\"{{booking.book_link}}\">book a new time</a> whenever suits you.</p>" +
+      "<p>Hope we get to talk soon,<br/>The {{brand.name}} team</p>",
+  },
+  reschedule: {
+    subject: "All sorted. New time locked in: {{booking.meeting_date}} at {{booking.meeting_time}}",
+    bodyHtml:
+      "<p>Hi {{guest.first_name}},</p>" +
+      "<p>All sorted, your call with {{host.first_name}} has moved to <strong>{{booking.meeting_date}}</strong> at <strong>{{booking.meeting_time}}</strong> ({{booking.timezone}}).</p>" +
+      "<p>{{booking.join_details}}</p>" +
+      "<p>Need to juggle it again? <a href=\"{{booking.reschedule_link}}\">Reschedule</a> · <a href=\"{{booking.cancel_link}}\">Cancel</a>, whatever works for you.</p>" +
+      "<p>See you then!<br/>{{host.first_name}} at {{brand.name}}</p>",
+  },
+};
+
+export async function resolveTemplate(
+  moment: Moment,
+  brandId: string,
+  eventTypeKey: string,
+): Promise<{ subject: string; bodyHtml: string; source: "brand-type" | "brand" | "default" }> {
+  const sql = getSql();
+  const rows = await sql`
+    select subject, body_html, brand_id, event_type_key
+    from booking.message_template
+    where moment = ${moment} and active
+      and (brand_id = ${brandId} or brand_id is null)
+      and (event_type_key = ${eventTypeKey} or event_type_key is null)
+    order by (brand_id is not null) desc, (event_type_key is not null) desc
+    limit 1`;
+  if (rows.length > 0) {
+    const row = rows[0];
+    return {
+      subject: String(row.subject),
+      bodyHtml: String(row.body_html),
+      source: row.brand_id ? (row.event_type_key ? "brand-type" : "brand") : "default",
+    };
+  }
+  return { ...DEFAULT_TEMPLATES[moment], source: "default" };
+}
+
+export type BookingEmailContext = {
+  bookingId: string;
+  guestName: string;
+  guestEmail: string;
+  guestTimezone: string | null;
+  startIso: string;
+  endIso: string;
+  durationMin: number;
+  meetUrl: string | null;
+  /** How the guest asked to take the call; defaults to video. */
+  callMedium?: "video" | "phone";
+  guestPhone?: string | null;
+  /** US brands: whether this guest ticked the SMS consent box. */
+  smsOptIn?: boolean;
+  manageUrlRaw: string;
+  brand: Brand;
+  staff: Staff;
+  eventType: EventType;
+  tripName?: string | null;
+  tripUrl?: string | null;
+  icalSequence?: number;
+};
+
+/**
+ * One line that fits the call however the guest chose to take it: the video
+ * join link, or an honest "we'll ring you" for phone calls. HTML-safe: every
+ * dynamic piece is escaped before assembly.
+ */
+function buildJoinDetails(ctx: BookingEmailContext): string {
+  if ((ctx.callMedium ?? "video") === "phone") {
+    const phone = ctx.guestPhone?.trim();
+    return phone
+      ? `${escapeHtml(ctx.staff.firstName)} will call you on <strong>${escapeHtml(phone)}</strong>. Keep your phone nearby.`
+      : `${escapeHtml(ctx.staff.firstName)} will call you. Keep your phone nearby.`;
+  }
+  if (ctx.meetUrl) {
+    const url = escapeHtml(ctx.meetUrl);
+    return `When it's time, join here: <a href="${url}">${url}</a>`;
+  }
+  return "Your video link is on its way. It'll be in your reminder emails too.";
+}
+
+export function buildVariableValues(ctx: BookingEmailContext): Partial<Record<VariableName, string>> {
+  // Guests always see their own timezone; the abbreviation is displayed next
+  // to the time so a VPN/travel mismatch is visible at a glance (§6.1).
+  const zone = ctx.guestTimezone ?? ctx.brand.schedulingTimezone;
+  const start = DateTime.fromISO(ctx.startIso).setZone(zone);
+  const guestFirst = ctx.guestName.trim().split(/\s+/)[0] ?? ctx.guestName;
+  return {
+    "guest.first_name": guestFirst,
+    "guest.full_name": ctx.guestName,
+    "guest.email": ctx.guestEmail,
+    "booking.meeting_date": start.toFormat("cccc d LLLL yyyy"),
+    "booking.meeting_time": start.toFormat("h:mma").toLowerCase(),
+    "booking.timezone": start.toFormat("ZZZZ"),
+    "booking.duration": `${ctx.durationMin} minutes`,
+    "booking.meet_link": ctx.meetUrl ?? "(video link to follow)",
+    "booking.join_details": buildJoinDetails(ctx),
+    "booking.reschedule_link": ctx.manageUrlRaw,
+    "booking.cancel_link": `${ctx.manageUrlRaw}#cancel`,
+    "booking.book_link": bookUrl(appUrl(), {
+      staffSlug: ctx.staff.slug,
+      brandKey: ctx.brand.key,
+      eventTypeKey: ctx.eventType.key,
+    }),
+    "host.first_name": ctx.staff.firstName,
+    "host.full_name": ctx.staff.fullName,
+    // The brand's monitored inbox, NOT the BM's own address — guests must
+    // never be handed an email nobody reads.
+    "host.email": ctx.brand.replyTo ?? ctx.brand.fromEmail,
+    "host.photo": ctx.staff.photoUrl ?? "",
+    "host.bio": ctx.staff.bio ?? "",
+    "brand.name": ctx.brand.name,
+    "brand.logo": ctx.brand.logoUrl ?? "",
+    "brand.phone": ctx.brand.phoneDefault ?? ctx.brand.phoneAu ?? "",
+    "trip.name": ctx.tripName ?? "",
+    "trip.url": ctx.tripUrl ?? "",
+    "trip.departure_date": "",
+  };
+}
+
+/**
+ * Short plain-text SMS for the reminder moments. Sent only when the brand
+ * has SMS reminders switched on AND the booking carries a guest phone.
+ * Stub-first like email: the rendered text is recorded in audit_log as
+ * sms_rendered_not_sent until an SMS provider is wired up.
+ */
+export async function sendBookingSms(moment: Moment, ctx: BookingEmailContext): Promise<SendResult> {
+  const phone = ctx.guestPhone?.trim();
+  if (!phone) return { ok: false, error: "no guest phone on the booking" };
+  // US brands text only the guests who asked to be texted. Collecting consent
+  // and then messaging regardless would be worse than never asking.
+  if (!maySendSms({ market: ctx.brand.market, smsOptIn: ctx.smsOptIn ?? false })) {
+    return { ok: false, error: "guest did not opt in to SMS" };
+  }
+
+  const values = buildVariableValues(ctx);
+  const joinLine =
+    (ctx.callMedium ?? "video") === "phone"
+      ? `${ctx.staff.firstName} will call you. Keep your phone nearby.`
+      : ctx.meetUrl
+        ? `Join: ${ctx.meetUrl}`
+        : "";
+  const when =
+    moment === "reminder_24h"
+      ? `tomorrow at ${values["booking.meeting_time"]}`
+      : `at ${values["booking.meeting_time"]}, about an hour away`;
+  const text = [
+    `${ctx.brand.name}: Hi ${values["guest.first_name"]}, your call with ${ctx.staff.firstName} is ${when} (${values["booking.timezone"]}).`,
+    joinLine,
+    `Reschedule: ${ctx.manageUrlRaw}`,
+    // Required on the US programmes, and harmless on the others.
+    requiresSmsConsent(ctx.brand.market) ? "Reply STOP to opt out." : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const sql = getSql();
+  const id = `sms-noop-${Date.now().toString(36)}`;
+  await sql`
+    insert into booking.audit_log (actor, action, subject, detail)
+    values ('system', 'sms_rendered_not_sent', ${phone}, ${JSON.stringify({
+      id,
+      text,
+      moment,
+      brandKey: ctx.brand.key,
+      bookingId: ctx.bookingId,
+    })}::jsonb)`;
+  return { ok: true, id };
+}
+
+
+/**
+ * The BM's crib sheet for a state-changing email (confirmation, reschedule,
+ * cancellation): only what they need to make the call, reach the guest and
+ * log the CRM — none of the guest-facing warmth. Attached as an internal
+ * note above the guest email in Help Scout.
+ */
+function bmCribSheet(moment: Moment, ctx: BookingEmailContext): string | null {
+  if (moment !== "confirmation" && moment !== "reschedule" && moment !== "cancellation") return null;
+  const start = DateTime.fromISO(ctx.startIso, { zone: ctx.brand.schedulingTimezone });
+  const headline =
+    moment === "cancellation"
+      ? "CANCELLED"
+      : `${guestEventTypeName(ctx.eventType.key, ctx.eventType.name)}${moment === "reschedule" ? " (rescheduled)" : ""}`;
+  const lines = [
+    `<p><strong>${headline}: ${start.toFormat("cccc d LLLL yyyy, h:mma").toLowerCase()} ${start.toFormat("ZZZZ")} · ${ctx.durationMin} min</strong></p>`,
+    "<ul>",
+    `<li>Guest: ${escapeHtml(ctx.guestName)} · ${escapeHtml(ctx.guestEmail)}${ctx.guestPhone ? ` · ${escapeHtml(ctx.guestPhone)}` : ""}</li>`,
+    // Which destination the call is about — present when the booking came
+    // from a trip page or the portal; a bare BM link has no trip context.
+    ctx.tripName
+      ? `<li>Trip: ${escapeHtml(ctx.tripName)}${ctx.tripUrl ? ` · <a href="${escapeHtml(ctx.tripUrl)}">trip page</a>` : ""}</li>`
+      : null,
+    ctx.callMedium === "phone"
+      ? `<li>Phone call: you ring the guest${ctx.guestPhone ? ` on ${escapeHtml(ctx.guestPhone)}` : " (no number on file!)"}</li>`
+      : `<li>Video call: ${ctx.meetUrl ? escapeHtml(ctx.meetUrl) : "Meet link on the calendar event"}</li>`,
+    "</ul>",
+  ];
+  return lines.filter(Boolean).join("");
+}
+
+export async function sendBookingEmail(moment: Moment, ctx: BookingEmailContext): Promise<SendResult> {
+  const template = await resolveTemplate(moment, ctx.brand.id, ctx.eventType.key);
+  const values = buildVariableValues(ctx);
+  // Applied to the TEMPLATE, before variables are substituted: a US brand's
+  // guest copy reads American even if a template still carries a British
+  // spelling, and no guest's own name or address is ever rewritten.
+  const american = usesAmericanEnglish(ctx.brand.key);
+  const templateHtml = renderTemplate(american ? toAmericanEnglish(template.bodyHtml) : template.bodyHtml, values);
+  const subject = renderTemplate(american ? toAmericanEnglish(template.subject) : template.subject, values);
+  // Every brand's confirmation ends with "save our number" (Nicola, 15 Sep):
+  // the guest is likely reading this email when the BM's call comes, and a
+  // saved number is not mistaken for spam. Appended here, after the
+  // template, so it holds for every brand and cannot be edited away.
+  const savePhone = ctx.brand.phoneDefault ?? ctx.brand.phoneAu;
+  const bodyHtml =
+    moment === "confirmation" && savePhone
+      ? templateHtml +
+        renderSaveNumberCard({
+          brandName: ctx.brand.name,
+          bmFirstName: ctx.staff.firstName,
+          phone: savePhone,
+          contactCardUrl: `${appUrl()}/api/booking/public/contact-card?brand=${encodeURIComponent(ctx.brand.key)}`,
+          colorPrimary: ctx.brand.colorPrimary,
+        })
+      : templateHtml;
+  const html = renderBrandEmail(
+    {
+      brandName: ctx.brand.name,
+      // Blob-backed logos are stored as a path; email clients need it absolute.
+      logoUrl: ctx.brand.logoUrl?.startsWith("/") ? `${appUrl()}${ctx.brand.logoUrl}` : ctx.brand.logoUrl,
+      colorPrimary: ctx.brand.colorPrimary,
+      colorAccent: ctx.brand.colorAccent,
+      supportPhone: ctx.brand.phoneDefault ?? ctx.brand.phoneAu,
+      fromName: ctx.brand.fromName,
+    },
+    bodyHtml,
+  );
+
+  const icsEvent = {
+    uid: `booking-${ctx.bookingId}@cove.leatherbacktravel.com`,
+    sequence: ctx.icalSequence ?? 0,
+    startIso: ctx.startIso,
+    endIso: ctx.endIso,
+    summary: `${guestEventTypeName(ctx.eventType.key, ctx.eventType.name)} — ${ctx.brand.name}`,
+    description: `Your call with ${ctx.staff.firstName} from ${ctx.brand.name}.${ctx.meetUrl ? ` Join: ${ctx.meetUrl}` : ""}`,
+    // Organizer is the BRAND mailbox, never the BM: BM inboxes are
+    // unmonitored, and calendar apps offer "email organizer" to the guest.
+    organizerName: ctx.brand.fromName,
+    organizerEmail: ctx.brand.replyTo ?? ctx.brand.fromEmail,
+    attendeeName: ctx.guestName,
+    attendeeEmail: ctx.guestEmail,
+    url: ctx.meetUrl ?? undefined,
+  };
+  const wantsIcs = moment === "confirmation" || moment === "reschedule" || moment === "cancellation";
+  const message: OutboundMessage = {
+    to: ctx.guestEmail,
+    toName: ctx.guestName,
+    fromEmail: ctx.brand.fromEmail,
+    fromName: ctx.brand.fromName,
+    replyTo: ctx.brand.replyTo,
+    subject,
+    html,
+    text: htmlToText(bodyHtml),
+    ...(wantsIcs
+      ? {
+          ics: {
+            filename: "invite.ics",
+            content: moment === "cancellation" ? icsCancel(icsEvent) : icsRequest(icsEvent),
+            method: moment === "cancellation" ? ("CANCEL" as const) : ("REQUEST" as const),
+          },
+        }
+      : {}),
+    internalNote: bmCribSheet(moment, ctx),
+    meta: {
+      moment,
+      brandKey: ctx.brand.key,
+      bookingId: ctx.bookingId,
+      helpscoutMailboxId: ctx.brand.helpscoutMailboxId,
+      helpscoutUserId: ctx.staff.helpscoutUserId,
+    },
+  };
+  return getNotifier().send(message);
+}

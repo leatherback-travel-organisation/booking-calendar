@@ -1,0 +1,31 @@
+.wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.button {
+  font: inherit;
+  font-size: var(--text-small, 13px);
+  font-weight: 500;
+  color: #ffffff;
+  background: var(--pine, #1f3d33);
+  border: 0;
+  border-radius: var(--radius-control, 6px);
+  padding: 5px 14px;
+  cursor: pointer;
+}
+
+.button:hover {
+  background: var(--pine-bright, #2c5647);
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.note {
+  font-size: var(--text-small, 13px);
+  color: var(--ink-soft);
+}

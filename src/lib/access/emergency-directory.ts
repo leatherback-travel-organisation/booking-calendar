@@ -9,6 +9,7 @@ export type EmergencyApplicationLink = {
  * imports: it must remain renderable when Cove, Clerk, or Postgres is down.
  */
 export const emergencyApplicationDirectory = [
+  { slug: "booking", name: "CallTime", url: "https://cove.leatherbacktravel.com/booking" },
   { slug: "app-builder", name: "App Builder", url: "https://cove.leatherbacktravel.com/app-builder" },
   { slug: "recruitment", name: "Recruitment", url: "https://cove.leatherbacktravel.com/recruitment" },
   { slug: "superpanel", name: "SuperPanel", url: "https://cove.leatherbacktravel.com/systems" },
@@ -29,6 +30,7 @@ export const emergencyApplicationDirectory = [
     url: "https://docs.google.com/spreadsheets/d/1KuxRxUy5MlUNof1dC7oGuHRomsb5wDqBJC3fFPTeXN0/edit?gid=0#gid=0",
   },
   { slug: "money", name: "Your Money", url: "https://cove.leatherbacktravel.com/money" },
+  { slug: "garden", name: "The Garden", url: "https://cove.leatherbacktravel.com/garden" },
   {
     slug: "injuries",
     name: "Injury Reporting",

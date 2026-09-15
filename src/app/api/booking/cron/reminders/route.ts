@@ -1,0 +1,181 @@
+// Reminder cron (*/5). Claim-then-send: the UPDATE...RETURNING is the lock.
+// Claiming BEFORE sending means a crash mid-send costs at most one duplicate;
+// claiming after would retry a crashed send every five minutes forever —
+// duplicates annoy, loops are an incident. A failed send resets its flag so
+// the next run retries. Also sweeps expired slot holds.
+//
+// Whether a reminder sends at all is the BRAND's setting (booking.brand), not
+// the BM's — the guest is dealing with a brand. Pod Leads and Senior BMs own
+// it in Guest Communications.
+
+import { timingSafeEqual } from "node:crypto";
+import { NextResponse } from "next/server";
+import { getSql } from "@/lib/booking/db";
+import { sendBookingAlert } from "@/lib/booking/alerts";
+import { getBrandById, getEventTypeById, getStaffById } from "@/lib/booking/availability/service";
+import { sendBookingEmail, sendBookingSms, type BookingEmailContext } from "@/lib/booking/notify/messages";
+import { derivedManageToken, manageTokenSecret } from "@/lib/booking/tokens";
+import { appUrl } from "@/lib/booking/public-api";
+import { reminderChannels, type ReminderMoment } from "@/lib/booking/notify/reminder-channels";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const maxDuration = 300;
+
+function cronAuthorized(request: Request): boolean {
+  const secret = process.env.CRON_SECRET?.trim();
+  if (!secret) return false;
+  const supplied = Buffer.from(request.headers.get("authorization") ?? "");
+  const expected = Buffer.from(`Bearer ${secret}`);
+  return supplied.length === expected.length && timingSafeEqual(supplied, expected);
+}
+
+type ReminderKind = { moment: ReminderMoment; column: "reminder_24h_sent_at" | "reminder_1h_sent_at" };
+
+async function claimDue(kind: ReminderKind): Promise<Array<Record<string, unknown>>> {
+  const sql = getSql();
+  if (kind.column === "reminder_24h_sent_at") {
+    return sql`
+      update booking.booking
+         set reminder_24h_sent_at = now()
+       where status = 'confirmed'
+         and reminder_24h_sent_at is null
+         and starts_at between now() + interval '23 hours' and now() + interval '25 hours'
+         and exists (select 1 from booking.brand b where b.id = booking.booking.brand_id
+                       and (b.reminder_24h_enabled or b.sms_reminder_24h_enabled))
+      returning *`;
+  }
+  return sql`
+    update booking.booking
+       set reminder_1h_sent_at = now()
+     where status = 'confirmed'
+       and reminder_1h_sent_at is null
+       and starts_at between now() + interval '30 minutes' and now() + interval '75 minutes'
+       and exists (select 1 from booking.brand b where b.id = booking.booking.brand_id
+                     and (b.reminder_1h_enabled or b.sms_reminder_1h_enabled))
+    returning *`;
+}
+
+async function resetClaim(kind: ReminderKind, bookingId: string): Promise<void> {
+  const sql = getSql();
+  if (kind.column === "reminder_24h_sent_at") {
+    await sql`update booking.booking set reminder_24h_sent_at = null where id = ${bookingId}`;
+  } else {
+    await sql`update booking.booking set reminder_1h_sent_at = null where id = ${bookingId}`;
+  }
+}
+
+async function sendReminders(kind: ReminderKind): Promise<{ sent: number; failed: number; skipped: number }> {
+  const claimed = await claimDue(kind);
+  let sent = 0;
+  let failed = 0;
+  let skipped = 0;
+  const secret = manageTokenSecret();
+  for (const row of claimed) {
+    const bookingId = String(row.id);
+    try {
+      const [staff, brand, eventType] = await Promise.all([
+        getStaffById(String(row.staff_id)),
+        getBrandById(String(row.brand_id)),
+        getEventTypeById(String(row.event_type_id)),
+      ]);
+      if (!staff || !brand || !eventType) throw new Error("booking context missing");
+      const manageUrlRaw = secret
+        ? `${appUrl()}/manage/${derivedManageToken(bookingId, secret)}`
+        : `${appUrl()}/book`;
+      const ctx: BookingEmailContext = {
+        bookingId,
+        guestName: String(row.guest_name),
+        guestEmail: String(row.guest_email),
+        guestTimezone: (row.guest_timezone as string | null) ?? null,
+        startIso: new Date(row.starts_at as string).toISOString(),
+        endIso: new Date(row.ends_at as string).toISOString(),
+        durationMin: eventType.durationMin,
+        meetUrl: (row.meet_url as string | null) ?? null,
+        callMedium: row.call_medium === "phone" ? "phone" : "video",
+        guestPhone: (row.guest_phone as string | null) ?? null,
+        smsOptIn: Boolean(row.sms_opt_in),
+        manageUrlRaw,
+        brand,
+        staff,
+        eventType,
+        icalSequence: Number(row.ical_sequence ?? 0),
+      };
+      // Each reminder has its own email switch and its own SMS switch
+      // (Nicola, 15 Sep); either sends on its own. Whichever channel goes
+      // first is the one whose failure resets the claim for a retry; a
+      // failure on the second channel alerts but never resets, or the first
+      // would re-send every five minutes.
+      const channels = reminderChannels(brand, kind.moment, {
+        phone: ctx.guestPhone,
+        smsOptIn: ctx.smsOptIn ?? false,
+      });
+      if (!channels.email && !channels.sms) {
+        // Nothing may go to this guest — a US guest who never opted in to
+        // texts, on a reminder that is SMS-only. The claim stands so it is
+        // not retried every five minutes; the booking simply has no reminder.
+        skipped += 1;
+        continue;
+      }
+      if (channels.email) {
+        const result = await sendBookingEmail(kind.moment, ctx);
+        if (!result.ok) throw new Error(result.error);
+      }
+      if (channels.sms) {
+        try {
+          const sms = await sendBookingSms(kind.moment, ctx);
+          if (!sms.ok) throw new Error(sms.error);
+        } catch (smsError) {
+          if (!channels.email) throw smsError;
+          await sendBookingAlert(
+            `sms-reminder-failed:${bookingId}:${kind.moment}`,
+            `SMS reminder ${kind.moment} for booking ${bookingId} failed (email was sent): ${smsError instanceof Error ? smsError.message : "unknown"}`,
+          );
+        }
+      }
+      sent += 1;
+    } catch (error) {
+      failed += 1;
+      await resetClaim(kind, bookingId);
+      await sendBookingAlert(
+        `reminder-failed:${bookingId}:${kind.moment}`,
+        `Reminder ${kind.moment} for booking ${bookingId} failed and will retry: ${error instanceof Error ? error.message : "unknown"}`,
+      );
+    }
+  }
+  return { sent, failed, skipped };
+}
+
+export async function GET(request: Request) {
+  if (!cronAuthorized(request)) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  const sql = getSql();
+
+  const [reminder24h, reminder1h] = [
+    await sendReminders({ moment: "reminder_24h", column: "reminder_24h_sent_at" }),
+    await sendReminders({ moment: "reminder_1h", column: "reminder_1h_sent_at" }),
+  ];
+
+  const swept = await sql`delete from booking.slot_hold where expires_at <= now() returning id`;
+
+  // Rate-limit rows are keyed by caller IP and were never cleaned up, so every
+  // guest who so much as loaded a booking page left an address behind for
+  // good. Once a window has long passed the row counts for nothing — an
+  // abandoned request should leave nothing behind (Nicola, 8 Sep).
+  const sweptRateLimits = await sql`
+    delete from booking.rate_limit where window_start < now() - interval '24 hours' returning key`;
+
+  // Heartbeat for the Integrations page ("cron last ran at…").
+  await sql`
+    insert into booking.reference_cache (key, payload, fetched_at)
+    values ('cron:reminders-heartbeat', ${JSON.stringify({ reminder24h, reminder1h })}::jsonb, now())
+    on conflict (key) do update set payload = excluded.payload, fetched_at = excluded.fetched_at`;
+
+  return NextResponse.json({
+    reminder24h,
+    reminder1h,
+    holdsSwept: swept.length,
+    rateLimitRowsSwept: sweptRateLimits.length,
+  });
+}

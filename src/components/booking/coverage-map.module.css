@@ -1,0 +1,210 @@
+.coverage {
+  display: grid;
+  gap: var(--density-4, 18px);
+}
+
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--density-3, 14px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel, 10px);
+  background: var(--card);
+  padding: var(--density-3, 14px) var(--density-4, 18px);
+}
+
+.summaryCounts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--density-3, 14px);
+}
+
+.summaryCount {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink);
+  font-size: var(--text-ui, 14px);
+  font-weight: 500;
+}
+
+.summaryCount i,
+.groupTitle i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ink-soft);
+}
+
+.summaryCount[data-severity="error"] i,
+.groupTitle[data-severity="error"] i {
+  background: var(--terracotta);
+}
+
+.summaryCount[data-severity="warning"] i,
+.groupTitle[data-severity="warning"] i {
+  background: var(--brass);
+}
+
+.summaryMeta {
+  color: var(--ink-soft);
+  font-size: var(--text-small, 13px);
+}
+
+.syncButton {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control, 7px);
+  background: var(--pine);
+  color: #fdfbf5;
+  font-size: var(--text-small, 13px);
+  font-weight: 500;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+.syncButton:hover {
+  background: var(--pine-bright, #1f5b4e);
+}
+
+.empty {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel, 10px);
+  background: var(--card);
+  padding: 40px;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  text-align: center;
+}
+
+.empty strong {
+  color: var(--pine);
+  font-size: var(--text-lead, 17px);
+  font-weight: 500;
+}
+
+.empty span {
+  color: var(--ink-soft);
+  font-size: var(--text-body, 15px);
+}
+
+.group {
+  display: grid;
+  gap: var(--density-2, 10px);
+}
+
+.groupTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-ui, 14px);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.issueList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel, 10px);
+  background: var(--card);
+  overflow: hidden;
+}
+
+.issue {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--density-3, 14px);
+  padding: var(--density-3, 14px) var(--density-4, 18px);
+  border-bottom: 1px solid var(--line);
+}
+
+.issue:last-child {
+  border-bottom: 0;
+}
+
+.issueBody {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.issueMessage {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-body, 15px);
+  line-height: 1.45;
+}
+
+.issueMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper-deep);
+  color: var(--ink-soft);
+  font-size: var(--text-label, 12px);
+  padding: 2px 9px;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.times {
+  color: var(--ink-soft);
+  font-size: var(--text-label, 12px);
+}
+
+.issueLink {
+  flex: 0 0 auto;
+  color: var(--pine);
+  font-size: var(--text-small, 13px);
+  font-weight: 500;
+  text-decoration: none;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control, 7px);
+  padding: 5px 10px;
+  background: var(--paper);
+  white-space: nowrap;
+}
+
+.issueLink:hover {
+  background: var(--paper-deep);
+  color: var(--pine);
+}
+
+.explainer {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel, 10px);
+  background: var(--paper-deep);
+  padding: var(--density-3, 14px) var(--density-4, 18px);
+}
+
+.explainer h2 {
+  margin: 0 0 4px;
+  color: var(--ink);
+  font-size: var(--text-ui, 14px);
+  font-weight: 500;
+}
+
+.explainer p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-small, 13px);
+  line-height: 1.5;
+  max-width: 62ch;
+}

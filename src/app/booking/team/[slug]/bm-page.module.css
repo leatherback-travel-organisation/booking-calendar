@@ -1,0 +1,56 @@
+.page {
+  display: grid;
+  gap: var(--density-3, 14px);
+  justify-items: start;
+}
+
+.page > * {
+  width: 100%;
+}
+
+.page > a {
+  width: auto;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.photo,
+.photoFallback {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  object-fit: cover;
+}
+
+.photoFallback {
+  display: grid;
+  place-items: center;
+  background: var(--paper-deep);
+  color: var(--ink-soft);
+  font-size: var(--text-body, 15px);
+  font-weight: 500;
+}
+
+.name {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-title, 19px);
+  font-weight: 500;
+}
+
+.youTag {
+  color: var(--ink-soft);
+  font-weight: 400;
+  font-size: var(--text-body, 15px);
+}
+
+.meta {
+  margin: 2px 0 0;
+  color: var(--ink-soft);
+  font-size: var(--text-small, 13px);
+}
