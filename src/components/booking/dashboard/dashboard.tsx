@@ -7,10 +7,13 @@ import { BrandTag } from "../brand-tag";
 import { CopySchedulingLinkButton } from "./copy-scheduling-link";
 import { formatRelative } from "./relative";
 import { CallButton } from "./call-button";
+import { MoveBooking, type MoveTarget } from "./move-booking";
 import styles from "./dashboard.module.css";
 
 export type DashboardBooking = {
   id: string;
+  /** The BM taking the call, so a move never offers them to themselves. */
+  staffId: string;
   timeLabel: string;
   guestName: string;
   bmFirstName: string;
@@ -78,7 +81,19 @@ function BmAvatar({ name, photoUrl }: { name: string; photoUrl: string | null })
   );
 }
 
-export function BookingList({ bookings, emptyLabel }: { bookings: DashboardBooking[]; emptyLabel: string }) {
+/** Who the viewer may move calls to: everyone for a Pod Lead, themselves for
+ *  the floating BM, nobody for the rest (Nicola, 17 Sep). */
+export type MoveOptions = { mode: "lead" | "floating"; targets: MoveTarget[] } | null;
+
+export function BookingList({
+  bookings,
+  emptyLabel,
+  move = null,
+}: {
+  bookings: DashboardBooking[];
+  emptyLabel: string;
+  move?: MoveOptions;
+}) {
   if (bookings.length === 0) {
     return <p className={styles.emptyNote}>{emptyLabel}</p>;
   }
@@ -100,6 +115,13 @@ export function BookingList({ bookings, emptyLabel }: { bookings: DashboardBooki
             </span>
           ) : null}
           {booking.canCall ? <CallButton bookingId={booking.id} /> : null}
+          {move ? (
+            <MoveBooking
+              bookingId={booking.id}
+              mode={move.mode}
+              targets={move.targets.filter((target) => target.id !== booking.staffId)}
+            />
+          ) : null}
           {booking.internalNotes ? <p className={styles.bookingNote}>{booking.internalNotes}</p> : null}
         </li>
       ))}
@@ -127,6 +149,8 @@ type DashboardProps = {
   schedulingLinks: { brandLabel: string | null; url: string }[];
   /** Brand/pod scoping; chips are plain links so the filter lives in the URL. */
   filters?: DashboardFilters;
+  /** Moving calls between BMs; null hides the control. */
+  move?: MoveOptions;
 };
 
 function FilterBar({ filters }: { filters: DashboardFilters }) {
@@ -182,7 +206,7 @@ function groupByPod(members: SchedulingPageLink[]): Array<[string, SchedulingPag
   );
 }
 
-export function Dashboard({ issues, days, recent, schedulingPages, schedulingLinks, filters }: DashboardProps) {
+export function Dashboard({ issues, days, recent, schedulingPages, schedulingLinks, filters, move = null }: DashboardProps) {
   const errors = issues.filter((issue) => issue.severity === "error");
   const warnings = issues.filter((issue) => issue.severity !== "error");
 
@@ -241,6 +265,7 @@ export function Dashboard({ issues, days, recent, schedulingPages, schedulingLin
               <BookingList
                 bookings={day.bookings}
                 emptyLabel={day.label === "Today" ? "No confirmed calls today." : "No confirmed calls."}
+                move={move}
               />
             </div>
           ))}

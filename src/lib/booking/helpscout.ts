@@ -217,3 +217,22 @@ export async function sendCustomerEmail(input: HelpscoutEmailInput): Promise<str
   }
   return response.headers.get("Resource-ID") ?? response.headers.get("Location")?.split("/").pop() ?? null;
 }
+
+/**
+ * Hand a conversation to another Help Scout user (a call moved to a
+ * different BM). Best-effort: a failure is reported by the caller, never
+ * fatal to the move itself.
+ */
+export async function assignConversation(conversationId: string, userId: string | null): Promise<void> {
+  if (!helpscoutConfigured() || !userId) return;
+  const token = await helpscoutToken();
+  const response = await fetch(`https://api.helpscout.net/v2/conversations/${conversationId}`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ op: "replace", path: "/assignTo", value: Number(userId) }),
+  });
+  if (!response.ok && response.status !== 204) {
+    throw new Error(`Help Scout assign failed (${response.status})`);
+  }
+}
+

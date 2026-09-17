@@ -8,7 +8,8 @@ import { aircallConfigured, aircallPing } from "@/lib/booking/aircall";
 import { databaseConfigured, getSql } from "@/lib/booking/db";
 import { calendarConfigured } from "@/lib/booking/google/auth";
 import { helpscoutConfigured } from "@/lib/booking/helpscout";
-import { runSyncNow, testAllCalendars } from "./actions";
+import { runSyncNow, saveCalltimeCalendarAction, testAllCalendars } from "./actions";
+import { getCalltimeCalendar } from "@/lib/booking/calltime-calendar";
 import shellStyles from "@/components/booking/booking-shell.module.css";
 import styles from "@/components/booking/integrations/integrations.module.css";
 
@@ -142,6 +143,13 @@ export default async function BookingIntegrationsPage() {
   const slackOn = Boolean(process.env.BOOKING_SLACK_WEBHOOK_URL);
   const turnstileOn = Boolean(process.env.TURNSTILE_SECRET_KEY);
   const botTrips = await honeypotTripCount(7);
+  const sharedCal = await getCalltimeCalendar();
+  const sharedTone = !sharedCal ? "amber" : sharedCal.lastError ? "red" : "green";
+  const sharedStatus = !sharedCal
+    ? "Not set up — each call still goes on its BM's own calendar. Create a shared calendar called CallTime Cal, share it with the team as \"Make changes to events\", and paste its ID below."
+    : sharedCal.lastError
+      ? `Set, but the last check failed: ${sharedCal.lastError}`
+      : `Live — new calls go on \"${sharedCal.name ?? sharedCal.calendarId}\" with the BM as a guest, acting as ${sharedCal.actorEmail}.`;
   const helpscoutOn = helpscoutConfigured();
 
   return (
@@ -165,6 +173,37 @@ export default async function BookingIntegrationsPage() {
               <form action={testAllCalendars}>
                 <button type="submit" className={styles.actionButton}>
                   Test all calendars
+                </button>
+              </form>
+            ) : null}
+          </li>
+          <li className={styles.row}>
+            <div className={styles.rowMain}>
+              <i className={styles.dot} data-tone={sharedTone} />
+              <span className={styles.name}>CallTime Cal</span>
+              <span className={styles.status} data-tone={sharedTone === "red" ? "red" : undefined}>
+                {sharedStatus}
+              </span>
+            </div>
+            {canManage ? (
+              <form action={saveCalltimeCalendarAction} className={styles.settingForm}>
+                <input
+                  className={styles.settingInput}
+                  name="calendarId"
+                  placeholder="Calendar ID (…@group.calendar.google.com)"
+                  defaultValue={sharedCal?.calendarId ?? ""}
+                  aria-label="CallTime Cal calendar ID"
+                />
+                <input
+                  className={styles.settingInput}
+                  name="actorEmail"
+                  type="email"
+                  placeholder="Account the app acts as (the calendar's owner)"
+                  defaultValue={sharedCal?.actorEmail ?? ""}
+                  aria-label="Account the app acts as"
+                />
+                <button type="submit" className={styles.actionButton}>
+                  {sharedCal ? "Check and save" : "Save"}
                 </button>
               </form>
             ) : null}

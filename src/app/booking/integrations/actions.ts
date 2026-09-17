@@ -6,7 +6,8 @@ import { revalidatePath } from "next/cache";
 import { requireBookingAccess } from "@/lib/booking/access";
 import { getSql } from "@/lib/booking/db";
 import { calendarConfigured } from "@/lib/booking/google/auth";
-import { checkCalendarAccess } from "@/lib/booking/google/calendar";
+import { checkCalendarAccess, probeCalendar } from "@/lib/booking/google/calendar";
+import { getCalltimeCalendar, saveCalltimeCalendar } from "@/lib/booking/calltime-calendar";
 import { runReferenceSync } from "@/lib/booking/reference/sync";
 
 /**
@@ -53,3 +54,41 @@ export async function runSyncNow(): Promise<void> {
   revalidatePath("/booking/routing");
   revalidatePath("/booking/team");
 }
+
+/**
+ * Point CallTime at the shared calendar (Nicola, 17 Sep). The calendar is
+ * created and shared in Google Calendar by a person; here we store its id
+ * and the account the app acts as, after checking that account can write
+ * to it. Pod Lead only.
+ */
+export async function saveCalltimeCalendarAction(formData: FormData): Promise<void> {
+  const access = await requireBookingAccess("booking.manage");
+  const calendarId = String(formData.get("calendarId") ?? "").trim();
+  const actorEmail = String(formData.get("actorEmail") ?? "").trim().toLowerCase();
+  const sql = getSql();
+  if (!calendarId || !actorEmail) {
+    await saveCalltimeCalendar(null);
+    await sql`
+      insert into booking.audit_log (actor, action, subject, detail)
+      values (${access.identity.email}, 'calltime_calendar_cleared', 'calltime:calendar', '{}'::jsonb)`;
+    revalidatePath("/booking/integrations");
+    return;
+  }
+  const probe = calendarConfigured()
+    ? await probeCalendar(actorEmail, calendarId)
+    : { ok: false, error: "Google Calendar is not connected in this environment." };
+  const previous = await getCalltimeCalendar();
+  await saveCalltimeCalendar({
+    calendarId,
+    actorEmail,
+    name: probe.ok ? (probe.name ?? previous?.name ?? null) : (previous?.name ?? null),
+    checkedAt: new Date().toISOString(),
+    lastError: probe.ok ? null : (probe.error ?? "unknown error"),
+  });
+  await sql`
+    insert into booking.audit_log (actor, action, subject, detail)
+    values (${access.identity.email}, 'calltime_calendar_set', 'calltime:calendar',
+            ${JSON.stringify({ calendarId, actorEmail, ok: probe.ok, name: probe.name ?? null, error: probe.error ?? null })}::jsonb)`;
+  revalidatePath("/booking/integrations");
+}
+

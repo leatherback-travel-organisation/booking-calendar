@@ -15,6 +15,7 @@ import { databaseConfigured, getSql } from "@/lib/booking/db";
 import { appUrl as publicAppUrl } from "@/lib/booking/app-url";
 import { bookUrl } from "@/lib/booking/book-url";
 import { podForStaff, getBrands, getOpenCoverageIssues, getPods, getStaffWithBrands } from "@/lib/booking/reference/queries";
+import { isFloatingBm } from "@/lib/booking/calltime-calendar-rules.ts";
 import shellStyles from "@/components/booking/booking-shell.module.css";
 
 export const dynamic = "force-dynamic";
@@ -38,6 +39,7 @@ function mapWeekBooking(
   return {
     booking: {
       id: String(row.id),
+      staffId: String(row.staff_id),
       timeLabel: dt.toFormat("h:mm a"),
       guestName: String(row.guest_name),
       bmFirstName: String(row.first_name),
@@ -60,7 +62,7 @@ async function loadWeekByDay(
 ): Promise<DayGroup[]> {
   const sql = getSql();
   const rows = await sql`
-    select b.id, b.starts_at, b.guest_name, b.guest_phone, b.routed_via,
+    select b.id, b.staff_id, b.starts_at, b.guest_name, b.guest_phone, b.routed_via,
            s.first_name, s.photo_url, s.timezone_override, s.email as staff_email,
            et.name as event_type_name,
            br.name as brand_name, br.color_primary as brand_color, br.scheduling_timezone
@@ -187,6 +189,20 @@ export default async function BookingDashboardPage({
       }))
     : [];
 
+  // Moving calls (Nicola, 17 Sep): Pod Leads to any active BM with a working
+  // calendar; the floating BM (active, no brand) onto themselves; others not
+  // at all. The full roster, not the filtered one — cover crosses brands.
+  const selfAny = staff.find((member) => member.active && member.email.toLowerCase() === selfEmail) ?? null;
+  const moveTargets = staff
+    .filter((member) => member.active && member.calendarOk)
+    .sort((a, b) => a.fullName.localeCompare(b.fullName))
+    .map((member) => ({ id: member.id, firstName: member.firstName, fullName: member.fullName }));
+  const move = canManage
+    ? { mode: "lead" as const, targets: moveTargets }
+    : selfAny && isFloatingBm(selfAny) && selfAny.calendarOk
+      ? { mode: "floating" as const, targets: [{ id: selfAny.id, firstName: selfAny.firstName, fullName: selfAny.fullName }] }
+      : null;
+
   return (
     <BookingShell active="dashboard" canManage={canManage}>
       <Dashboard
@@ -195,6 +211,7 @@ export default async function BookingDashboardPage({
         recent={recent}
         schedulingPages={schedulingPages}
         schedulingLinks={schedulingLinks}
+        move={move}
         filters={{
           brands: brands
             .filter((brand) => brand.active)

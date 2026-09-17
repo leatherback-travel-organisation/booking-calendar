@@ -9,13 +9,14 @@ import { getSql } from "./db";
 import { sendBookingAlert } from "./alerts";
 import { calendarConfigured } from "./google/auth";
 import { deleteEvent, freeBusy, insertEvent, patchEvent } from "./google/calendar";
+import { getCalltimeCalendar } from "./calltime-calendar";
 import { guestEventTypeName, type Brand, type EventType, type Interval, type Staff } from "./model";
 import { computeSlots, resolveSchedulingZone } from "./availability/engine";
 import { getConfirmed, getStaffByEmail, getWorkingHours } from "./availability/service";
 import { sendBookingEmail } from "./notify/messages";
 import { escapeHtml } from "./notify/render.ts";
 import { requiresSmsConsent } from "./sms-consent";
-import { createOrThreadConversation } from "./helpscout";
+import { assignConversation, createOrThreadConversation } from "./helpscout";
 import {
   buildCrossoverPingHtml,
   buildCrossoverSectionHtml,
@@ -25,7 +26,7 @@ import {
 } from "./crossover";
 import { findActiveLeads, resolveLeadTrips } from "./leads";
 import { getBrands } from "./reference/queries";
-import { issueToken, manageTokenSecret, parseDerivedManageToken, tokenMatches } from "./tokens";
+import { derivedManageToken, issueToken, manageTokenSecret, parseDerivedManageToken, tokenMatches } from "./tokens";
 
 const HOLD_SECONDS = 120;
 
@@ -197,9 +198,16 @@ export async function createBooking(args: CreateBookingArgs): Promise<CreateBook
   let meetUrl: string | null = null;
   let googleEventId: string | null = null;
   let icalUid: string | null = null;
+  // CallTime Cal when it is set up: the event goes on the shared calendar,
+  // acting as its actor, with the BM as an accepted guest. Otherwise the
+  // legacy arrangement — the BM's own primary, acting as the BM.
+  const shared = calendarConfigured() ? await getCalltimeCalendar() : null;
   if (calendarConfigured()) {
     try {
-      const event = await insertEvent(args.staff.email, {
+      const event = await insertEvent(shared?.actorEmail ?? args.staff.email, {
+        ...(shared
+          ? { attendees: [{ email: args.staff.email, displayName: args.staff.fullName, responseStatus: "accepted" as const }] }
+          : {}),
         summary: `${guestEventTypeName(args.eventType.key, args.eventType.name)} · ${args.guestName}${(args.callMedium ?? "video") === "phone" ? " (phone)" : ""}${args.sourceKind === "portal" ? " (portal)" : ""}`,
         description: buildEventDescription(args),
         startIso,
@@ -212,7 +220,7 @@ export async function createBooking(args: CreateBookingArgs): Promise<CreateBook
         // the guest on the number they left.
         ...((args.callMedium ?? "video") === "video" ? { conferenceRequestId: bookingId } : {}),
         privateProperties: { bookingId },
-      });
+      }, shared?.calendarId ?? "primary");
       meetUrl = event.meetUrl;
       googleEventId = event.id;
       icalUid = event.iCalUID;
@@ -229,7 +237,8 @@ export async function createBooking(args: CreateBookingArgs): Promise<CreateBook
     }
     await sql`
       update booking.booking
-      set google_event_id = ${googleEventId}, google_ical_uid = ${icalUid}, meet_url = ${meetUrl}
+      set google_event_id = ${googleEventId}, google_ical_uid = ${icalUid}, meet_url = ${meetUrl},
+          google_calendar_id = ${shared?.calendarId ?? null}, google_actor_email = ${shared?.actorEmail ?? null}
       where id = ${bookingId}`;
   }
 
@@ -500,10 +509,21 @@ export type ManagedBooking = {
   callMedium: "video" | "phone";
   meetUrl: string | null;
   googleEventId: string | null;
+  /** Where the event lives and who the app acts as there; null = the BM's own primary, as the BM. */
+  googleCalendarId: string | null;
+  googleActorEmail: string | null;
   status: string;
   icalSequence: number;
   helpscoutConversationId: string | null;
 };
+
+/** The calendar and actor for a booking's event. */
+function eventHome(booking: ManagedBooking, staff: Staff): { actor: string; calendarId: string } {
+  return {
+    actor: booking.googleActorEmail ?? staff.email,
+    calendarId: booking.googleCalendarId ?? "primary",
+  };
+}
 
 /** Constant-time token check against the sha256 index lookup. Accepts both
  * the original random token (from the confirmation email) and the derived
@@ -547,10 +567,18 @@ function mapManagedBooking(row: Record<string, unknown>): ManagedBooking {
     callMedium: row.call_medium === "phone" ? "phone" : "video",
     meetUrl: (row.meet_url as string | null) ?? null,
     googleEventId: (row.google_event_id as string | null) ?? null,
+    googleCalendarId: (row.google_calendar_id as string | null) ?? null,
+    googleActorEmail: (row.google_actor_email as string | null) ?? null,
     status: String(row.status),
     icalSequence: Number(row.ical_sequence ?? 0),
     helpscoutConversationId: (row.helpscout_conversation_id as string | null) ?? null,
   };
+}
+
+export async function getBookingById(id: string): Promise<ManagedBooking | null> {
+  const sql = getSql();
+  const rows = await sql`select * from booking.booking where id = ${id}`;
+  return rows.length ? mapManagedBooking(rows[0]) : null;
 }
 
 /** A token is inert once the booking is cancelled or the call is in the past. */
@@ -581,7 +609,8 @@ export async function cancelBooking(
 
   if (booking.googleEventId && calendarConfigured()) {
     try {
-      await deleteEvent(ctx.staff.email, booking.googleEventId);
+      const home = eventHome(booking, ctx.staff);
+      await deleteEvent(home.actor, booking.googleEventId, home.calendarId);
     } catch (error) {
       await sendBookingAlert(
         `google-delete-failed:${booking.id}`,
@@ -713,11 +742,12 @@ export async function rescheduleBooking(
 
   if (booking.googleEventId && calendarConfigured()) {
     try {
-      await patchEvent(ctx.staff.email, booking.googleEventId, {
+      const home = eventHome(booking, ctx.staff);
+      await patchEvent(home.actor, booking.googleEventId, {
         startIso,
         endIso,
         timezone: resolveSchedulingZone(ctx.staff, ctx.brand),
-      });
+      }, home.calendarId);
     } catch (error) {
       await sendBookingAlert(
         `google-patch-failed:${booking.id}`,
@@ -775,3 +805,152 @@ export async function rescheduleBooking(
     values ('guest', 'booking_rescheduled', ${booking.id}, ${JSON.stringify({ from: booking.startsAt, to: startIso })}::jsonb)`;
   return { ok: true, startIso, endIso };
 }
+
+export type MoveResult =
+  | { ok: true }
+  | { ok: false; reason: "not_manageable" | "slot_taken" | "calendar_failed" | "same_bm" };
+
+/**
+ * Move a confirmed call to a different Booking Manager (Nicola, 17 Sep):
+ * unplanned leave, a colleague takes the call. Same time, same guest; the
+ * new BM becomes the guest on the CallTime Cal event (or, for a booking that
+ * predates the shared calendar, the event is re-created there), the Help
+ * Scout conversation is reassigned with a note, and the guest is told who
+ * will now be calling. Permission is the caller's job (canMoveBooking).
+ */
+export async function moveBooking(
+  booking: ManagedBooking,
+  ctx: BookingContext,
+  target: Staff,
+  movedBy: string,
+  appUrl: string,
+): Promise<MoveResult> {
+  if (target.id === ctx.staff.id) return { ok: false, reason: "same_bm" };
+  if (!bookingManageable(booking)) return { ok: false, reason: "not_manageable" };
+  const sql = getSql();
+
+  // The target must be free: their calendar, and CallTime's own bookings
+  // (the no-overlap constraint on the update is the final word on those).
+  if (calendarConfigured()) {
+    try {
+      const result = await freeBusy(target.email, [target.email], booking.startsAt, booking.endsAt);
+      const busy = result.busyByEmail.get(target.email.toLowerCase()) ?? [];
+      const clash = busy.some((interval) => interval.start < booking.endsAt && interval.end > booking.startsAt);
+      if (clash) return { ok: false, reason: "slot_taken" };
+    } catch {
+      // An unreachable calendar is not a clash; the target's calendarOk flag
+      // already gates who can be picked.
+    }
+  }
+
+  let sequence: number;
+  try {
+    const rows = await sql`
+      update booking.booking
+         set staff_id = ${target.id}, ical_sequence = ical_sequence + 1
+       where id = ${booking.id} and status = 'confirmed' and staff_id = ${ctx.staff.id}
+       returning ical_sequence`;
+    if (rows.length === 0) return { ok: false, reason: "not_manageable" };
+    sequence = Number(rows[0].ical_sequence);
+  } catch (error) {
+    if (pgCode(error) === "23P01") return { ok: false, reason: "slot_taken" };
+    throw error;
+  }
+
+  // The calendar event follows. On CallTime Cal that is one patch: swap the
+  // guest. A legacy event on the old BM's own calendar cannot move between
+  // calendars, so it is removed there and re-created on CallTime Cal (or on
+  // the new BM's primary if the shared calendar is not set up yet).
+  let meetUrl = booking.meetUrl;
+  if (booking.googleEventId && calendarConfigured()) {
+    try {
+      const shared = await getCalltimeCalendar();
+      const attendee = { email: target.email, displayName: target.fullName, responseStatus: "accepted" as const };
+      if (booking.googleCalendarId) {
+        await patchEvent(booking.googleActorEmail ?? ctx.staff.email, booking.googleEventId, { attendees: [attendee] }, booking.googleCalendarId);
+      } else {
+        await deleteEvent(ctx.staff.email, booking.googleEventId, "primary");
+        const actor = shared?.actorEmail ?? target.email;
+        const calendarId = shared?.calendarId ?? "primary";
+        const event = await insertEvent(actor, {
+          summary: `${guestEventTypeName(ctx.eventType.key, ctx.eventType.name)} · ${booking.guestName}${booking.callMedium === "phone" ? " (phone)" : ""}`,
+          description: [
+            `⭑ MOVED from ${ctx.staff.fullName} to ${target.fullName} by ${movedBy}.`,
+            `Guest: ${booking.guestName} <${booking.guestEmail}>`,
+            booking.guestPhone ? `Phone: ${booking.guestPhone}` : null,
+          ].filter(Boolean).join("\n"),
+          startIso: booking.startsAt,
+          endIso: booking.endsAt,
+          timezone: resolveSchedulingZone(target, ctx.brand),
+          ...(shared ? { attendees: [attendee] } : {}),
+          ...(booking.callMedium === "video" ? { conferenceRequestId: `${booking.id}-moved` } : {}),
+          privateProperties: { bookingId: booking.id },
+        }, calendarId);
+        meetUrl = event.meetUrl ?? meetUrl;
+        await sql`
+          update booking.booking
+             set google_event_id = ${event.id}, google_ical_uid = ${event.iCalUID}, meet_url = ${meetUrl},
+                 google_calendar_id = ${shared?.calendarId ?? null}, google_actor_email = ${shared?.actorEmail ?? null}
+           where id = ${booking.id}`;
+      }
+    } catch (error) {
+      await sendBookingAlert(
+        `google-move-failed:${booking.id}`,
+        `Booking ${booking.id} moved to ${target.fullName} in CallTime but the calendar could not follow: ${error instanceof Error ? error.message : "unknown"} — fix the event by hand.`,
+      );
+    }
+  }
+
+  // The guest hears who will now be calling (Nicola: yes, a short email).
+  const secret = manageTokenSecret();
+  const manageUrlRaw = secret ? `${appUrl}/manage/${derivedManageToken(booking.id, secret)}` : `${appUrl}/book`;
+  try {
+    await sendBookingEmail("handover", {
+      bookingId: booking.id,
+      guestName: booking.guestName,
+      guestEmail: booking.guestEmail,
+      guestTimezone: booking.guestTimezone,
+      startIso: booking.startsAt,
+      endIso: booking.endsAt,
+      durationMin: ctx.eventType.durationMin,
+      meetUrl,
+      callMedium: booking.callMedium,
+      guestPhone: booking.guestPhone,
+      manageUrlRaw,
+      brand: ctx.brand,
+      staff: target,
+      eventType: ctx.eventType,
+      icalSequence: sequence,
+    });
+  } catch (error) {
+    await sendBookingAlert(
+      `handover-email-failed:${booking.id}`,
+      `Change-of-BM email for booking ${booking.id} failed: ${error instanceof Error ? error.message : "unknown"}`,
+    );
+  }
+
+  // The Help Scout conversation goes to the new BM, with a note both can see.
+  try {
+    if (booking.helpscoutConversationId) {
+      await assignConversation(booking.helpscoutConversationId, target.helpscoutUserId);
+      await createOrThreadConversation({
+        mailboxId: ctx.brand.helpscoutMailboxId ?? "",
+        assignToUserId: target.helpscoutUserId,
+        guestName: booking.guestName,
+        guestEmail: booking.guestEmail,
+        subject: "",
+        bodyHtml: `<p>This call moved from ${escapeHtml(ctx.staff.fullName)} to ${escapeHtml(target.fullName)} (by ${escapeHtml(movedBy)}). The calendar event has followed and the guest has been emailed.</p>`,
+        existingConversationId: booking.helpscoutConversationId,
+      });
+    }
+  } catch {
+    // Best-effort; the move itself already stands.
+  }
+
+  await sql`
+    insert into booking.audit_log (actor, action, subject, detail)
+    values (${movedBy}, 'booking_moved', ${booking.id},
+            ${JSON.stringify({ from: ctx.staff.id, fromName: ctx.staff.fullName, to: target.id, toName: target.fullName })}::jsonb)`;
+  return { ok: true };
+}
+

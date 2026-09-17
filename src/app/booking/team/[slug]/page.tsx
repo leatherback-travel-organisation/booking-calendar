@@ -62,6 +62,7 @@ async function loadUpcoming(
     const isToday = dt.hasSame(DateTime.now().setZone(zone), "day");
     return {
       id: String(row.id),
+      staffId,
       timeLabel: isToday ? `Today · ${dt.toFormat("h:mm a")}` : dt.toFormat("ccc d LLL · h:mm a"),
       guestName: String(row.guest_name),
       bmFirstName: String(row.first_name),

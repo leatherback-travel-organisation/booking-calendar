@@ -17,7 +17,7 @@ import { escapeHtml, htmlToText, renderBrandEmail, renderSaveNumberCard, renderT
 import type { VariableName } from "./variables.ts";
 import { getNotifier, type OutboundMessage, type SendResult } from "./notifier";
 
-export type Moment = "confirmation" | "reminder_24h" | "reminder_1h" | "cancellation" | "reschedule";
+export type Moment = "confirmation" | "reminder_24h" | "reminder_1h" | "cancellation" | "reschedule" | "handover";
 
 // Default copy follows the Leatherback Writing & Communication Guide
 // ("Special Feeling"): conversational, contractions, greet → hug → clear
@@ -67,6 +67,18 @@ export const DEFAULT_TEMPLATES: Record<Moment, { subject: string; bodyHtml: stri
       "<p>{{booking.join_details}}</p>" +
       "<p>Need to juggle it again? <a href=\"{{booking.reschedule_link}}\">Reschedule</a> · <a href=\"{{booking.cancel_link}}\">Cancel</a>, whatever works for you.</p>" +
       "<p>See you then!<br/>{{host.first_name}} at {{brand.name}}</p>",
+  },
+  // A change of Booking Manager (Nicola, 17 Sep): unplanned leave means a
+  // colleague takes the call. Same time, same plan; the guest just hears
+  // who is ringing. Rendered with the NEW BM as {{host.*}}.
+  handover: {
+    subject: "A small change: {{host.first_name}} will be calling you on {{booking.meeting_date}}",
+    bodyHtml:
+      "<p>Hi {{guest.first_name}},</p>" +
+      "<p>A small change on our side: <strong>{{host.first_name}}</strong> from {{brand.name}} will be the one calling you on <strong>{{booking.meeting_date}}</strong> at <strong>{{booking.meeting_time}}</strong> ({{booking.timezone}}). Same time, same plan, nothing for you to do.</p>" +
+      "<p>{{booking.join_details}}</p>" +
+      "<p>If that time no longer suits, you can <a href=\"{{booking.reschedule_link}}\">reschedule</a> or <a href=\"{{booking.cancel_link}}\">cancel</a> whenever you like.</p>" +
+      "<p>Talk soon,<br/>{{host.first_name}} at {{brand.name}}</p>",
   },
 };
 
@@ -310,7 +322,8 @@ export async function sendBookingEmail(moment: Moment, ctx: BookingEmailContext)
     attendeeEmail: ctx.guestEmail,
     url: ctx.meetUrl ?? undefined,
   };
-  const wantsIcs = moment === "confirmation" || moment === "reschedule" || moment === "cancellation";
+  const wantsIcs =
+    moment === "confirmation" || moment === "reschedule" || moment === "cancellation" || moment === "handover";
   const message: OutboundMessage = {
     to: ctx.guestEmail,
     toName: ctx.guestName,

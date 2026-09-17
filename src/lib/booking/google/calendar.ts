@@ -118,7 +118,7 @@ export type CalendarEventInput = {
   startIso: string;
   endIso: string;
   timezone: string;
-  attendees?: Array<{ email: string; displayName?: string }>;
+  attendees?: Array<{ email: string; displayName?: string; responseStatus?: "accepted" | "needsAction" }>;
   /** Set to create a Meet link; use the booking id so retries are idempotent. */
   conferenceRequestId?: string;
   privateProperties?: Record<string, string>;
@@ -162,49 +162,88 @@ function parseEvent(body: Record<string, unknown>): CalendarEvent {
   };
 }
 
-/** Guests get the branded email + .ics, never Google's invite. */
-export async function insertEvent(bmEmail: string, input: CalendarEventInput): Promise<CalendarEvent> {
+/**
+ * Guests get the branded email + .ics, never Google's invite. `actorEmail`
+ * is who the app acts as; `calendarId` is where the event goes — the BM's
+ * own primary (legacy) or the shared CallTime Cal, with the BM as an
+ * accepted attendee so it still marks them busy.
+ */
+export async function insertEvent(
+  actorEmail: string,
+  input: CalendarEventInput,
+  calendarId = "primary",
+): Promise<CalendarEvent> {
   const response = await calendarFetch(
-    bmEmail,
-    "/calendars/primary/events?conferenceDataVersion=1&sendUpdates=none",
+    actorEmail,
+    `/calendars/${encodeURIComponent(calendarId)}/events?conferenceDataVersion=1&sendUpdates=none`,
     { method: "POST", body: JSON.stringify(eventBody(input)) },
   );
   if (!response.ok) {
-    throw await asCalendarError("events.insert", bmEmail, response);
+    throw await asCalendarError("events.insert", actorEmail, response);
   }
   return parseEvent((await response.json()) as Record<string, unknown>);
 }
 
 export async function patchEvent(
-  bmEmail: string,
+  actorEmail: string,
   eventId: string,
-  patch: Partial<Pick<CalendarEventInput, "startIso" | "endIso" | "timezone" | "summary" | "description">>,
+  patch: Partial<Pick<CalendarEventInput, "startIso" | "endIso" | "timezone" | "summary" | "description" | "attendees">>,
+  calendarId = "primary",
 ): Promise<CalendarEvent> {
   const body: Record<string, unknown> = {};
   if (patch.summary) body.summary = patch.summary;
   if (patch.description) body.description = patch.description;
   if (patch.startIso) body.start = { dateTime: patch.startIso, timeZone: patch.timezone };
   if (patch.endIso) body.end = { dateTime: patch.endIso, timeZone: patch.timezone };
+  if (patch.attendees) body.attendees = patch.attendees;
   const response = await calendarFetch(
-    bmEmail,
-    `/calendars/primary/events/${encodeURIComponent(eventId)}?conferenceDataVersion=1&sendUpdates=none`,
+    actorEmail,
+    `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}?conferenceDataVersion=1&sendUpdates=none`,
     { method: "PATCH", body: JSON.stringify(body) },
   );
   if (!response.ok) {
-    throw await asCalendarError("events.patch", bmEmail, response);
+    throw await asCalendarError("events.patch", actorEmail, response);
   }
   return parseEvent((await response.json()) as Record<string, unknown>);
 }
 
-export async function deleteEvent(bmEmail: string, eventId: string): Promise<void> {
+export async function deleteEvent(actorEmail: string, eventId: string, calendarId = "primary"): Promise<void> {
   const response = await calendarFetch(
-    bmEmail,
-    `/calendars/primary/events/${encodeURIComponent(eventId)}?sendUpdates=none`,
+    actorEmail,
+    `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}?sendUpdates=none`,
     { method: "DELETE" },
   );
   // 404/410 mean it is already gone — that is the state we wanted.
   if (!response.ok && response.status !== 404 && response.status !== 410) {
-    throw await asCalendarError("events.delete", bmEmail, response);
+    throw await asCalendarError("events.delete", actorEmail, response);
+  }
+}
+
+/** Can `actorEmail` see and write to this calendar? For the CallTime Cal setup check. */
+export async function probeCalendar(
+  actorEmail: string,
+  calendarId: string,
+): Promise<{ ok: boolean; name?: string; role?: string; error?: string }> {
+  try {
+    const response = await calendarFetch(
+      actorEmail,
+      `/users/me/calendarList/${encodeURIComponent(calendarId)}`,
+      { method: "GET" },
+    );
+    if (!response.ok) {
+      return { ok: false, error: `Google answered ${response.status}: ${(await response.text()).slice(0, 200)}` };
+    }
+    const body = (await response.json()) as { summary?: string; accessRole?: string };
+    const role = body.accessRole ?? "";
+    const writable = role === "owner" || role === "writer";
+    return {
+      ok: writable,
+      name: body.summary,
+      role,
+      error: writable ? undefined : `${actorEmail} can only "${role}" this calendar; it needs "Make changes to events".`,
+    };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "unknown error" };
   }
 }
 

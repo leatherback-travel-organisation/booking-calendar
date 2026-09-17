@@ -182,9 +182,9 @@ test("a brand's messages come back in the order a guest receives them", () => {
   const summary = summarizeBrand(CAREX, []);
   assert.deepEqual(
     summary.moments.map((m) => m.moment),
-    ["confirmation", "reminder_24h", "reminder_1h", "reschedule", "cancellation"],
+    ["confirmation", "reminder_24h", "reminder_1h", "reschedule", "handover", "cancellation"],
   );
-  assert.equal(MOMENTS_IN_JOURNEY_ORDER.length, 5);
+  assert.equal(MOMENTS_IN_JOURNEY_ORDER.length, 6);
 });
 
 test("a brand with nothing of its own inherits, and says so", () => {

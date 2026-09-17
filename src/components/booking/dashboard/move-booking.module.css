@@ -1,0 +1,46 @@
+.wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.select {
+  font: inherit;
+  font-size: var(--text-small, 13px);
+  color: var(--ink);
+  background: var(--card, #fff);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control, 6px);
+  padding: 4px 8px;
+}
+
+.button {
+  font: inherit;
+  font-size: var(--text-small, 13px);
+  font-weight: 500;
+  color: var(--pine, #1f3d33);
+  background: transparent;
+  border: 1px solid var(--pine, #1f3d33);
+  border-radius: var(--radius-control, 6px);
+  padding: 4px 12px;
+  cursor: pointer;
+}
+
+.button:hover {
+  background: color-mix(in srgb, var(--pine, #1f3d33) 8%, transparent);
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.note {
+  font-size: var(--text-small, 13px);
+  color: var(--terracotta, #b4533b);
+}
+
+.note[data-ok] {
+  color: var(--pine, #1f3d33);
+}

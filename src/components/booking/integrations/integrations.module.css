@@ -182,3 +182,25 @@
   font-size: var(--text-label, 12px);
   white-space: nowrap;
 }
+
+/* CallTime Cal setup: two fields and a button, on the row's own line. */
+.settingForm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.settingInput {
+  font: inherit;
+  font-size: var(--text-small, 13px);
+  color: var(--ink);
+  background: var(--card, #fff);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control, 7px);
+  padding: 6px 10px;
+  min-width: 260px;
+  flex: 1 1 260px;
+}
+
