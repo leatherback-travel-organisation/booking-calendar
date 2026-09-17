@@ -8,8 +8,9 @@ import { aircallConfigured, aircallPing } from "@/lib/booking/aircall";
 import { databaseConfigured, getSql } from "@/lib/booking/db";
 import { calendarConfigured } from "@/lib/booking/google/auth";
 import { helpscoutConfigured } from "@/lib/booking/helpscout";
-import { runSyncNow, saveCalltimeCalendarAction, testAllCalendars } from "./actions";
+import { backfillCalltimeCalendarAction, runSyncNow, saveCalltimeCalendarAction, testAllCalendars } from "./actions";
 import { getCalltimeCalendar } from "@/lib/booking/calltime-calendar";
+import { countLegacyUpcoming, getLastBackfill } from "@/lib/booking/calltime-backfill";
 import shellStyles from "@/components/booking/booking-shell.module.css";
 import styles from "@/components/booking/integrations/integrations.module.css";
 
@@ -144,6 +145,7 @@ export default async function BookingIntegrationsPage() {
   const turnstileOn = Boolean(process.env.TURNSTILE_SECRET_KEY);
   const botTrips = await honeypotTripCount(7);
   const sharedCal = await getCalltimeCalendar();
+  const [legacyUpcoming, lastBackfill] = await Promise.all([countLegacyUpcoming(), getLastBackfill()]);
   const sharedTone = !sharedCal ? "amber" : sharedCal.lastError ? "red" : "green";
   const sharedStatus = !sharedCal
     ? "Not set up — each call still goes on its BM's own calendar. Create a shared calendar called CallTime Cal, share it with the team as \"Make changes to events\", and paste its ID below."
@@ -206,6 +208,25 @@ export default async function BookingIntegrationsPage() {
                   {sharedCal ? "Check and save" : "Save"}
                 </button>
               </form>
+            ) : null}
+            {sharedCal && !sharedCal.lastError ? (
+              <div className={styles.settingForm}>
+                <span className={styles.status}>
+                  {legacyUpcoming === 0
+                    ? "Every upcoming call is on CallTime Cal."
+                    : `${legacyUpcoming} upcoming ${legacyUpcoming === 1 ? "call is" : "calls are"} still on a BM's own calendar.`}
+                  {lastBackfill
+                    ? ` Last brought across ${formatRelative(lastBackfill.ranAt)}: ${lastBackfill.moved} moved${lastBackfill.failed.length ? `, ${lastBackfill.failed.length} failed (${lastBackfill.failed.map((f) => `${f.guest} with ${f.bm}: ${f.error}`).join("; ")})` : ""}.`
+                    : ""}
+                </span>
+                {canManage && legacyUpcoming > 0 ? (
+                  <form action={backfillCalltimeCalendarAction}>
+                    <button type="submit" className={styles.actionButton}>
+                      Bring them onto CallTime Cal
+                    </button>
+                  </form>
+                ) : null}
+              </div>
             ) : null}
           </li>
           <li className={styles.row}>

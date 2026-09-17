@@ -8,6 +8,7 @@ import { getSql } from "@/lib/booking/db";
 import { calendarConfigured } from "@/lib/booking/google/auth";
 import { checkCalendarAccess, probeCalendar } from "@/lib/booking/google/calendar";
 import { getCalltimeCalendar, saveCalltimeCalendar } from "@/lib/booking/calltime-calendar";
+import { backfillSharedCalendar } from "@/lib/booking/calltime-backfill";
 import { runReferenceSync } from "@/lib/booking/reference/sync";
 
 /**
@@ -90,5 +91,13 @@ export async function saveCalltimeCalendarAction(formData: FormData): Promise<vo
     values (${access.identity.email}, 'calltime_calendar_set', 'calltime:calendar',
             ${JSON.stringify({ calendarId, actorEmail, ok: probe.ok, name: probe.name ?? null, error: probe.error ?? null })}::jsonb)`;
   revalidatePath("/booking/integrations");
+}
+
+/** Move every upcoming call still on a BM's own calendar onto CallTime Cal. Pod Lead only. */
+export async function backfillCalltimeCalendarAction(): Promise<void> {
+  const access = await requireBookingAccess("booking.manage");
+  await backfillSharedCalendar(access.identity.email);
+  revalidatePath("/booking/integrations");
+  revalidatePath("/booking");
 }
 

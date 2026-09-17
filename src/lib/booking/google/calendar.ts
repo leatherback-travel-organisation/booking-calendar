@@ -219,6 +219,29 @@ export async function deleteEvent(actorEmail: string, eventId: string, calendarI
   }
 }
 
+/**
+ * Move an event to another calendar, keeping its id, Meet link and the
+ * .ics identity the guest already holds. Google's events.move: the actor
+ * must be able to write on both calendars — for a BM's own event that is
+ * the BM, who is a writer on CallTime Cal.
+ */
+export async function moveEvent(
+  actorEmail: string,
+  fromCalendarId: string,
+  eventId: string,
+  toCalendarId: string,
+): Promise<CalendarEvent> {
+  const response = await calendarFetch(
+    actorEmail,
+    `/calendars/${encodeURIComponent(fromCalendarId)}/events/${encodeURIComponent(eventId)}/move?destination=${encodeURIComponent(toCalendarId)}&sendUpdates=none`,
+    { method: "POST" },
+  );
+  if (!response.ok) {
+    throw await asCalendarError("events.move", actorEmail, response);
+  }
+  return parseEvent((await response.json()) as Record<string, unknown>);
+}
+
 /** Can `actorEmail` see and write to this calendar? For the CallTime Cal setup check. */
 export async function probeCalendar(
   actorEmail: string,
