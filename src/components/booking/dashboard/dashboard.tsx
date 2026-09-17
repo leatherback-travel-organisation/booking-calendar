@@ -101,26 +101,35 @@ export function BookingList({
     <ul className={styles.bookingList}>
       {bookings.map((booking) => (
         <li key={booking.id} className={styles.bookingRow}>
-          <BmAvatar name={booking.bmFirstName} photoUrl={booking.bmPhotoUrl} />
-          <span className={styles.bookingTime}>{booking.timeLabel}</span>
-          <span className={styles.bookingGuest}>{booking.guestName}</span>
-          <span className={styles.bookingMeta}>
-            {booking.bmFirstName} · {booking.eventTypeName}
-          </span>
-          <BrandTag name={booking.brandName} color={booking.brandColor} />
-          {booking.routedVia !== "primary" ? <span className={styles.routedBadge}>{booking.routedVia}</span> : null}
-          {booking.bookedBy ? (
-            <span className={styles.routedBadge} title={booking.internalNotes ? `Note: ${booking.internalNotes}` : undefined}>
-              booked by {booking.bookedBy.split("@")[0]}
+          {/* Two fixed lines on every row (Nicola, 17 Sep): who and when on
+              the first, the controls on the second — never wrapping by
+              length, so the list reads the same top to bottom. */}
+          <div className={styles.bookingHead}>
+            <BmAvatar name={booking.bmFirstName} photoUrl={booking.bmPhotoUrl} />
+            <span className={styles.bookingTime}>{booking.timeLabel}</span>
+            <span className={styles.bookingGuest}>{booking.guestName}</span>
+            <span className={styles.bookingMeta}>
+              {booking.bmFirstName} · {booking.eventTypeName}
             </span>
-          ) : null}
-          {booking.canCall ? <CallButton bookingId={booking.id} /> : null}
-          {move ? (
-            <MoveBooking
-              bookingId={booking.id}
-              mode={move.mode}
-              targets={move.targets.filter((target) => target.id !== booking.staffId)}
-            />
+            <BrandTag name={booking.brandName} color={booking.brandColor} />
+            {booking.routedVia !== "primary" ? <span className={styles.routedBadge}>{booking.routedVia}</span> : null}
+            {booking.bookedBy ? (
+              <span className={styles.routedBadge} title={booking.internalNotes ? `Note: ${booking.internalNotes}` : undefined}>
+                booked by {booking.bookedBy.split("@")[0]}
+              </span>
+            ) : null}
+          </div>
+          {booking.canCall || move ? (
+            <div className={styles.bookingActions}>
+              {booking.canCall ? <CallButton bookingId={booking.id} /> : null}
+              {move ? (
+                <MoveBooking
+                  bookingId={booking.id}
+                  mode={move.mode}
+                  targets={move.targets.filter((target) => target.id !== booking.staffId)}
+                />
+              ) : null}
+            </div>
           ) : null}
           {booking.internalNotes ? <p className={styles.bookingNote}>{booking.internalNotes}</p> : null}
         </li>

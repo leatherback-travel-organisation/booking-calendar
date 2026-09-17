@@ -237,13 +237,30 @@ span.bmLinkAvatar[data-fallback] {
   display: grid;
 }
 
+/* Two fixed lines per row: the head (who, when, brand) and the actions.
+   Nothing wraps by length, so every row reads the same. */
 .bookingRow {
+  display: grid;
+  gap: 6px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.bookingHead {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  padding: 7px 0;
-  border-bottom: 1px solid var(--line);
+  min-width: 0;
+}
+
+.bookingActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  /* Sits under the text, clear of the avatar column. */
+  padding-left: 36px;
 }
 
 .bookingRow:last-child {
@@ -373,8 +390,8 @@ span.bmLinkAvatar[data-fallback] {
 
 /* Booker note on internally booked calls — context for the BM taking it. */
 .bookingNote {
-  flex-basis: 100%;
   margin: 0;
+  padding-left: 36px;
   color: var(--ink-soft);
   font-size: var(--text-label, 12px);
   font-style: italic;
