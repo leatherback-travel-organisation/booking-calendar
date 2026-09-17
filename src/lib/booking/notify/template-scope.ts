@@ -43,7 +43,7 @@ export const MOMENT_META: Record<Moment, { label: string; description: string }>
     description: "Confirms the cancellation and removes the call from both the guest's and the BM's calendars.",
   },
   handover: {
-    label: "Change of Booking Manager",
+    label: "Change of Booking Manager (\u201cA small change\u201d)",
     description: "Sent when a call moves to a different BM, for example over unplanned leave. Same time, new name.",
   },
 };
