@@ -12,6 +12,7 @@ import { sendBookingAlert } from "./alerts";
 import { calendarConfigured } from "./google/auth";
 import { deleteEvent, insertEvent } from "./google/calendar";
 import { getCalltimeCalendar } from "./calltime-calendar";
+import { groupSessionSummary } from "./event-summary";
 import type { Brand, EventType, Staff } from "./model";
 import { resolveSchedulingZone } from "./availability/engine";
 import { sendBookingEmail } from "./notify/messages";
@@ -98,7 +99,7 @@ export async function createGroupSession(args: {
         ...(shared
           ? { attendees: [{ email: args.staff.email, displayName: args.staff.fullName, responseStatus: "accepted" as const }] }
           : {}),
-        summary: `${args.eventType.name} (group) — ${args.capacity} seats`,
+        summary: groupSessionSummary({ bmFirstName: args.staff.firstName, eventTypeName: args.eventType.name, capacity: args.capacity }),
         description: `Group session. Seat roster: ${appUrl()}/booking?session=${sessionId}`,
         startIso,
         endIso,

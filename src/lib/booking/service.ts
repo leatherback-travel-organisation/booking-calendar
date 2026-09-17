@@ -10,7 +10,8 @@ import { sendBookingAlert } from "./alerts";
 import { calendarConfigured } from "./google/auth";
 import { deleteEvent, freeBusy, insertEvent, patchEvent } from "./google/calendar";
 import { getCalltimeCalendar } from "./calltime-calendar";
-import { guestEventTypeName, type Brand, type EventType, type Interval, type Staff } from "./model";
+import { bookingEventSummary } from "./event-summary";
+import type { Brand, EventType, Interval, Staff } from "./model";
 import { computeSlots, resolveSchedulingZone } from "./availability/engine";
 import { getConfirmed, getStaffByEmail, getWorkingHours } from "./availability/service";
 import { sendBookingEmail } from "./notify/messages";
@@ -208,7 +209,14 @@ export async function createBooking(args: CreateBookingArgs): Promise<CreateBook
         ...(shared
           ? { attendees: [{ email: args.staff.email, displayName: args.staff.fullName, responseStatus: "accepted" as const }] }
           : {}),
-        summary: `${guestEventTypeName(args.eventType.key, args.eventType.name)} · ${args.guestName}${(args.callMedium ?? "video") === "phone" ? " (phone)" : ""}${args.sourceKind === "portal" ? " (portal)" : ""}`,
+        summary: bookingEventSummary({
+          bmFirstName: args.staff.firstName,
+          eventTypeKey: args.eventType.key,
+          eventTypeName: args.eventType.name,
+          guestName: args.guestName,
+          callMedium: args.callMedium ?? "video",
+          sourceKind: args.sourceKind,
+        }),
         description: buildEventDescription(args),
         startIso,
         endIso,
@@ -867,13 +875,33 @@ export async function moveBooking(
       const shared = await getCalltimeCalendar();
       const attendee = { email: target.email, displayName: target.fullName, responseStatus: "accepted" as const };
       if (booking.googleCalendarId) {
-        await patchEvent(booking.googleActorEmail ?? ctx.staff.email, booking.googleEventId, { attendees: [attendee] }, booking.googleCalendarId);
+        await patchEvent(
+          booking.googleActorEmail ?? ctx.staff.email,
+          booking.googleEventId,
+          {
+            attendees: [attendee],
+            summary: bookingEventSummary({
+              bmFirstName: target.firstName,
+              eventTypeKey: ctx.eventType.key,
+              eventTypeName: ctx.eventType.name,
+              guestName: booking.guestName,
+              callMedium: booking.callMedium,
+            }),
+          },
+          booking.googleCalendarId,
+        );
       } else {
         await deleteEvent(ctx.staff.email, booking.googleEventId, "primary");
         const actor = shared?.actorEmail ?? target.email;
         const calendarId = shared?.calendarId ?? "primary";
         const event = await insertEvent(actor, {
-          summary: `${guestEventTypeName(ctx.eventType.key, ctx.eventType.name)} · ${booking.guestName}${booking.callMedium === "phone" ? " (phone)" : ""}`,
+          summary: bookingEventSummary({
+            bmFirstName: target.firstName,
+            eventTypeKey: ctx.eventType.key,
+            eventTypeName: ctx.eventType.name,
+            guestName: booking.guestName,
+            callMedium: booking.callMedium,
+          }),
           description: [
             `⭑ MOVED from ${ctx.staff.fullName} to ${target.fullName} by ${movedBy}.`,
             `Guest: ${booking.guestName} <${booking.guestEmail}>`,

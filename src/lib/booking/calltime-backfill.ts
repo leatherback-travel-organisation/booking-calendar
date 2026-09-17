@@ -14,12 +14,15 @@ import { getSql } from "./db";
 import { calendarConfigured } from "./google/auth";
 import { moveEvent, patchEvent } from "./google/calendar";
 import { getCalltimeCalendar } from "./calltime-calendar";
+import { bookingEventSummary, groupSessionSummary } from "./event-summary";
 
 export const BACKFILL_KEY = "calltime:backfill";
 
 export type BackfillResult = {
   ranAt: string;
   moved: number;
+  /** Upcoming events on CallTime Cal whose title was brought up to date. */
+  retitled: number;
   failed: Array<{ bookingId: string; guest: string; bm: string; error: string }>;
   skipped: number;
 };
@@ -45,7 +48,7 @@ export async function getLastBackfill(): Promise<BackfillResult | null> {
 
 export async function backfillSharedCalendar(actor: string): Promise<BackfillResult> {
   const sql = getSql();
-  const result: BackfillResult = { ranAt: new Date().toISOString(), moved: 0, failed: [], skipped: 0 };
+  const result: BackfillResult = { ranAt: new Date().toISOString(), moved: 0, retitled: 0, failed: [], skipped: 0 };
   const shared = calendarConfigured() ? await getCalltimeCalendar() : null;
   if (!shared) {
     result.failed.push({ bookingId: "-", guest: "-", bm: "-", error: "CallTime Cal is not set up." });
@@ -108,6 +111,53 @@ export async function backfillSharedCalendar(actor: string): Promise<BackfillRes
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
 
+  // Titles: everything upcoming on CallTime Cal gets the current title
+  // shape (BM first name first — Nicola, 17 Sep), including events moved
+  // across earlier under the old shape. Cheap, idempotent, a few dozen at most.
+  const titled = await sql`
+    select 'booking' as kind, b.id, b.google_event_id, b.google_calendar_id, b.google_actor_email,
+           b.guest_name, b.call_medium, b.source_kind, null::int as capacity,
+           s.first_name, et.key as et_key, et.name as et_name
+    from booking.booking b
+    join booking.staff s on s.id = b.staff_id
+    join booking.event_type et on et.id = b.event_type_id
+    where b.status = 'confirmed' and b.starts_at > now()
+      and b.google_event_id is not null and b.google_calendar_id is not null
+    union all
+    select 'group' as kind, g.id, g.google_event_id, g.google_calendar_id, g.google_actor_email,
+           null, null, null, g.capacity,
+           s.first_name, et.key, et.name
+    from booking.group_session g
+    join booking.staff s on s.id = g.staff_id
+    join booking.event_type et on et.id = g.event_type_id
+    where g.status in ('open', 'full') and g.starts_at > now()
+      and g.google_event_id is not null and g.google_calendar_id is not null`;
+  for (const row of titled) {
+    const summary =
+      row.kind === "group"
+        ? groupSessionSummary({ bmFirstName: String(row.first_name), eventTypeName: String(row.et_name), capacity: Number(row.capacity) })
+        : bookingEventSummary({
+            bmFirstName: String(row.first_name),
+            eventTypeKey: String(row.et_key),
+            eventTypeName: String(row.et_name),
+            guestName: String(row.guest_name),
+            callMedium: row.call_medium === "phone" ? "phone" : "video",
+            sourceKind: (row.source_kind as string | null) ?? null,
+          });
+    try {
+      await patchEvent(String(row.google_actor_email), String(row.google_event_id), { summary }, String(row.google_calendar_id));
+      result.retitled += 1;
+    } catch (error) {
+      result.failed.push({
+        bookingId: String(row.id),
+        guest: row.kind === "group" ? "Group session" : String(row.guest_name),
+        bm: String(row.first_name),
+        error: `title: ${error instanceof Error ? error.message : "unknown error"}`,
+      });
+    }
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+
   await sql`
     insert into booking.reference_cache (key, payload, fetched_at)
     values (${BACKFILL_KEY}, ${JSON.stringify(result)}::jsonb, now())
@@ -115,6 +165,6 @@ export async function backfillSharedCalendar(actor: string): Promise<BackfillRes
   await sql`
     insert into booking.audit_log (actor, action, subject, detail)
     values (${actor}, 'calltime_calendar_backfill', 'calltime:calendar',
-            ${JSON.stringify({ moved: result.moved, failed: result.failed.length })}::jsonb)`;
+            ${JSON.stringify({ moved: result.moved, retitled: result.retitled, failed: result.failed.length })}::jsonb)`;
   return result;
 }

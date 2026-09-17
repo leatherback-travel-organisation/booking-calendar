@@ -216,13 +216,13 @@ export default async function BookingIntegrationsPage() {
                     ? "Every upcoming call and group session is on CallTime Cal."
                     : `${legacyUpcoming} upcoming ${legacyUpcoming === 1 ? "call or group session is" : "calls or group sessions are"} still on a BM's own calendar.`}
                   {lastBackfill
-                    ? ` Last brought across ${formatRelative(lastBackfill.ranAt)}: ${lastBackfill.moved} moved${lastBackfill.failed.length ? `, ${lastBackfill.failed.length} failed (${lastBackfill.failed.map((f) => `${f.guest} with ${f.bm}: ${f.error}`).join("; ")})` : ""}.`
+                    ? ` Last sync ${formatRelative(lastBackfill.ranAt)}: ${lastBackfill.moved} moved, ${lastBackfill.retitled ?? 0} titles refreshed${lastBackfill.failed.length ? `, ${lastBackfill.failed.length} failed (${lastBackfill.failed.map((f) => `${f.guest} with ${f.bm}: ${f.error}`).join("; ")})` : ""}.`
                     : ""}
                 </span>
-                {canManage && legacyUpcoming > 0 ? (
+                {canManage ? (
                   <form action={backfillCalltimeCalendarAction}>
                     <button type="submit" className={styles.actionButton}>
-                      Bring them onto CallTime Cal
+                      {legacyUpcoming > 0 ? "Bring them onto CallTime Cal" : "Refresh event titles"}
                     </button>
                   </form>
                 ) : null}
