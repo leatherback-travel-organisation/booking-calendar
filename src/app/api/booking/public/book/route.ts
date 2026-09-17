@@ -5,7 +5,7 @@
 import { z } from "zod";
 import { getBrandByKey, getEventType, getStaffBySlug } from "@/lib/booking/availability/service";
 import { createBooking } from "@/lib/booking/service";
-import { appUrl, clientIp, honeypotTripped, jsonResponse, rateLimited, supportPhone, verifyTurnstile } from "@/lib/booking/public-api";
+import { appUrl, clientIp, honeypotTripped, jsonResponse, rateLimited, recordHoneypotTrip, supportPhone, verifyTurnstile } from "@/lib/booking/public-api";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -54,7 +54,9 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   if (honeypotTripped(parsed.website)) {
-    // Silently pretend success — do not teach the bot what failed.
+    // Silently pretend success — do not teach the bot what failed — but
+    // keep the record, so a wave of bots is seen rather than guessed at.
+    await recordHoneypotTrip(request, parsed.brandKey ?? null);
     return jsonResponse({ ok: true });
   }
   const ip = clientIp(request);

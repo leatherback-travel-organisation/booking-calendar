@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { honeypotTripCount } from "@/lib/booking/public-api";
 import { BookingShell } from "@/components/booking/booking-shell";
 import { SettingsSearch } from "@/components/booking/settings-search";
 import { formatRelative, minutesSince } from "@/components/booking/dashboard/relative";
@@ -140,6 +141,7 @@ export default async function BookingIntegrationsPage() {
   const resendLive = process.env.BOOKING_NOTIFIER === "live" && Boolean(process.env.RESEND_API_KEY);
   const slackOn = Boolean(process.env.BOOKING_SLACK_WEBHOOK_URL);
   const turnstileOn = Boolean(process.env.TURNSTILE_SECRET_KEY);
+  const botTrips = await honeypotTripCount(7);
   const helpscoutOn = helpscoutConfigured();
 
   return (
@@ -249,7 +251,9 @@ export default async function BookingIntegrationsPage() {
               <i className={styles.dot} data-tone={turnstileOn ? "green" : "amber"} />
               <span className={styles.name}>Turnstile</span>
               <span className={styles.status}>
-                {turnstileOn ? "Enforced — public booking forms are bot-checked." : "Off — dev mode, no bot check on public forms."}
+                {turnstileOn
+                  ? `Enforced — public booking forms are bot-checked. Hidden-field trips in the last 7 days: ${botTrips}.`
+                  : `Off — only the hidden field and rate limits stand in the way of bots. Hidden-field trips in the last 7 days: ${botTrips}.`}
               </span>
             </div>
           </li>

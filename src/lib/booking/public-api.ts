@@ -54,6 +54,42 @@ export function honeypotTripped(value: unknown): boolean {
   return typeof value === "string" && value.trim().length > 0;
 }
 
+/**
+ * A honeypot trip used to be recorded nowhere, so nobody would know if bots
+ * had started on the form (Nicola, 17 Sep: "add some kind of captcha thing
+ * to avoid bots"). Each trip is now an audit row and, once a day per brand,
+ * an ops alert; the Integrations page counts them. The bot still gets its
+ * fake success.
+ */
+export async function recordHoneypotTrip(request: Request, brandKey: string | null): Promise<void> {
+  try {
+    const sql = getSql();
+    const country = request.headers.get("x-vercel-ip-country")?.toUpperCase() ?? null;
+    const userAgent = request.headers.get("user-agent")?.slice(0, 200) ?? null;
+    await sql`
+      insert into booking.audit_log (actor, action, subject, detail)
+      values ('bot', 'honeypot_tripped', ${brandKey ?? "unknown"},
+              ${JSON.stringify({ ip: clientIp(request), country, userAgent })}::jsonb)`;
+    const { sendBookingAlert } = await import("./alerts");
+    const day = new Date().toISOString().slice(0, 10);
+    await sendBookingAlert(
+      `honeypot:${brandKey ?? "unknown"}:${day}`,
+      `A bot tripped the booking form's hidden field for ${brandKey ?? "an unknown brand"} (${country ?? "country unknown"}). Turnstile ${process.env.TURNSTILE_SECRET_KEY ? "is on" : "is OFF — consider switching it on"}.`,
+    );
+  } catch {
+    // Never let bookkeeping about a bot break the response.
+  }
+}
+
+/** Honeypot trips in the last N days, for the Integrations page. */
+export async function honeypotTripCount(days: number): Promise<number> {
+  const sql = getSql();
+  const rows = await sql`
+    select count(*)::int as n from booking.audit_log
+    where action = 'honeypot_tripped' and created_at > now() - (${days} || ' days')::interval`;
+  return Number(rows[0]?.n ?? 0);
+}
+
 export function clientIp(request: Request): string | null {
   return (
     request.headers.get("x-real-ip") ??
