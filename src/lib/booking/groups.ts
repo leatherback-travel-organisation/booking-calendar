@@ -11,6 +11,7 @@ import { getSql } from "./db";
 import { sendBookingAlert } from "./alerts";
 import { calendarConfigured } from "./google/auth";
 import { deleteEvent, insertEvent } from "./google/calendar";
+import { getCalltimeCalendar } from "./calltime-calendar";
 import type { Brand, EventType, Staff } from "./model";
 import { resolveSchedulingZone } from "./availability/engine";
 import { sendBookingEmail } from "./notify/messages";
@@ -27,6 +28,9 @@ export type GroupSession = {
   seatsTaken: number;
   meetUrl: string | null;
   googleEventId: string | null;
+  /** Where the event lives and who the app acts as there; null = the BM's own primary, as the BM. */
+  googleCalendarId: string | null;
+  googleActorEmail: string | null;
   status: "open" | "full" | "cancelled" | "held";
 };
 
@@ -41,6 +45,8 @@ function mapSession(row: Record<string, unknown>): GroupSession {
     seatsTaken: Number(row.seats_taken),
     meetUrl: (row.meet_url as string | null) ?? null,
     googleEventId: (row.google_event_id as string | null) ?? null,
+    googleCalendarId: (row.google_calendar_id as string | null) ?? null,
+    googleActorEmail: (row.google_actor_email as string | null) ?? null,
     status: row.status as GroupSession["status"],
   };
 }
@@ -83,9 +89,15 @@ export async function createGroupSession(args: {
 
   // The single Google event blocks the BM's time so no 1:1 lands on top of
   // it (free/busy shows it as busy). Only the BM is on the event.
+  // On CallTime Cal when it is set up (Nicola, 17 Sep: group sessions live
+  // there too), with the BM as an accepted guest; else the BM's own primary.
+  const shared = calendarConfigured() ? await getCalltimeCalendar() : null;
   if (calendarConfigured()) {
     try {
-      const event = await insertEvent(args.staff.email, {
+      const event = await insertEvent(shared?.actorEmail ?? args.staff.email, {
+        ...(shared
+          ? { attendees: [{ email: args.staff.email, displayName: args.staff.fullName, responseStatus: "accepted" as const }] }
+          : {}),
         summary: `${args.eventType.name} (group) — ${args.capacity} seats`,
         description: `Group session. Seat roster: ${appUrl()}/booking?session=${sessionId}`,
         startIso,
@@ -93,10 +105,11 @@ export async function createGroupSession(args: {
         timezone: resolveSchedulingZone(args.staff, args.brand),
         conferenceRequestId: sessionId,
         privateProperties: { groupSessionId: sessionId },
-      });
+      }, shared?.calendarId ?? "primary");
       await sql`
         update booking.group_session
-        set google_event_id = ${event.id}, meet_url = ${event.meetUrl}
+        set google_event_id = ${event.id}, meet_url = ${event.meetUrl},
+            google_calendar_id = ${shared?.calendarId ?? null}, google_actor_email = ${shared?.actorEmail ?? null}
         where id = ${sessionId}`;
     } catch (error) {
       await sql`update booking.group_session set status = 'cancelled' where id = ${sessionId}`;
@@ -237,7 +250,11 @@ export async function cancelGroupSession(args: {
 
   if (args.session.googleEventId && calendarConfigured()) {
     try {
-      await deleteEvent(args.staff.email, args.session.googleEventId);
+      await deleteEvent(
+        args.session.googleActorEmail ?? args.staff.email,
+        args.session.googleEventId,
+        args.session.googleCalendarId ?? "primary",
+      );
     } catch (error) {
       await sendBookingAlert(
         `group-google-delete-failed:${args.session.id}`,

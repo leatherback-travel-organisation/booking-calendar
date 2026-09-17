@@ -24,13 +24,16 @@ export type BackfillResult = {
   skipped: number;
 };
 
-/** Upcoming confirmed bookings whose event is still on the BM's own calendar. */
+/** Upcoming calls and group sessions whose event is still on the BM's own calendar. */
 export async function countLegacyUpcoming(): Promise<number> {
   const sql = getSql();
   const rows = await sql`
-    select count(*)::int as n from booking.booking
-    where status = 'confirmed' and starts_at > now()
-      and google_event_id is not null and google_calendar_id is null`;
+    select (select count(*) from booking.booking
+             where status = 'confirmed' and starts_at > now()
+               and google_event_id is not null and google_calendar_id is null)
+         + (select count(*) from booking.group_session
+             where status in ('open', 'full') and starts_at > now()
+               and google_event_id is not null and google_calendar_id is null) as n`;
   return Number(rows[0]?.n ?? 0);
 }
 
@@ -49,16 +52,25 @@ export async function backfillSharedCalendar(actor: string): Promise<BackfillRes
     return result;
   }
 
+  // Calls first, then group sessions (Nicola, 17 Sep: those live on
+  // CallTime Cal too); the same move, a different table to record it in.
   const rows = await sql`
-    select b.id, b.google_event_id, b.guest_name, s.email as bm_email, s.full_name as bm_name
+    select 'booking' as kind, b.id, b.google_event_id, b.guest_name, s.email as bm_email, s.full_name as bm_name, b.starts_at
     from booking.booking b
     join booking.staff s on s.id = b.staff_id
     where b.status = 'confirmed' and b.starts_at > now()
       and b.google_event_id is not null and b.google_calendar_id is null
-    order by b.starts_at`;
+    union all
+    select 'group' as kind, g.id, g.google_event_id, ('Group session (' || g.capacity || ' seats)') as guest_name, s.email, s.full_name, g.starts_at
+    from booking.group_session g
+    join booking.staff s on s.id = g.staff_id
+    where g.status in ('open', 'full') and g.starts_at > now()
+      and g.google_event_id is not null and g.google_calendar_id is null
+    order by starts_at`;
 
   for (const row of rows) {
     const bookingId = String(row.id);
+    const isGroup = row.kind === "group";
     const eventId = String(row.google_event_id);
     const bmEmail = String(row.bm_email);
     const bmName = String(row.bm_name);
@@ -72,10 +84,17 @@ export async function backfillSharedCalendar(actor: string): Promise<BackfillRes
         { attendees: [{ email: bmEmail, displayName: bmName, responseStatus: "accepted" }] },
         shared.calendarId,
       );
-      await sql`
-        update booking.booking
-           set google_calendar_id = ${shared.calendarId}, google_actor_email = ${shared.actorEmail}
-         where id = ${bookingId}`;
+      if (isGroup) {
+        await sql`
+          update booking.group_session
+             set google_calendar_id = ${shared.calendarId}, google_actor_email = ${shared.actorEmail}
+           where id = ${bookingId}`;
+      } else {
+        await sql`
+          update booking.booking
+             set google_calendar_id = ${shared.calendarId}, google_actor_email = ${shared.actorEmail}
+           where id = ${bookingId}`;
+      }
       result.moved += 1;
     } catch (error) {
       result.failed.push({

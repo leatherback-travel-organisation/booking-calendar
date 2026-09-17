@@ -213,8 +213,8 @@ export default async function BookingIntegrationsPage() {
               <div className={styles.settingForm}>
                 <span className={styles.status}>
                   {legacyUpcoming === 0
-                    ? "Every upcoming call is on CallTime Cal."
-                    : `${legacyUpcoming} upcoming ${legacyUpcoming === 1 ? "call is" : "calls are"} still on a BM's own calendar.`}
+                    ? "Every upcoming call and group session is on CallTime Cal."
+                    : `${legacyUpcoming} upcoming ${legacyUpcoming === 1 ? "call or group session is" : "calls or group sessions are"} still on a BM's own calendar.`}
                   {lastBackfill
                     ? ` Last brought across ${formatRelative(lastBackfill.ranAt)}: ${lastBackfill.moved} moved${lastBackfill.failed.length ? `, ${lastBackfill.failed.length} failed (${lastBackfill.failed.map((f) => `${f.guest} with ${f.bm}: ${f.error}`).join("; ")})` : ""}.`
                     : ""}
