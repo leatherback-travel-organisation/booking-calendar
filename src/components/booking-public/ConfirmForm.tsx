@@ -18,7 +18,8 @@ import {
 } from "@/lib/booking/sms-consent";
 import { Turnstile } from "./Turnstile";
 import { formatFullDateTime, guestTimeZone } from "./format";
-import { defaultIso, dialCountries, findCountry, OTHER_ISO, toE164 } from "./dial-codes";
+import { dialCountries, findCountry, isoForGuestCountry, OTHER_ISO, toE164 } from "./dial-codes";
+import { emailProblem, nameProblem, notesProblem, phoneProblem, problemField, type ContactProblem } from "@/lib/booking/contact-quality";
 import type { BookFailure, BookSuccess, PublicSlot } from "./types";
 
 export type BookMeta = {
@@ -136,17 +137,27 @@ export function ConfirmForm({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phoneField, setPhoneField] = useState("");
-  const [phoneIso, setPhoneIso] = useState(() => {
+  const [phoneIso, setPhoneIso] = useState(() =>
     // Where the guest actually is beats what their browser is set to.
-    if (guestCountry && findCountry(guestCountry)) return guestCountry;
-    return defaultIso(typeof navigator === "undefined" ? undefined : navigator.language);
-  });
+    isoForGuestCountry(guestCountry, typeof navigator === "undefined" ? undefined : navigator.language),
+  );
   const [notes, setNotes] = useState("");
   const [smsOptIn, setSmsOptIn] = useState(false);
   const [honeypot, setHoneypot] = useState("");
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Per-field problems: shown under the field, cleared as soon as it changes.
+  type FieldKey = "name" | "email" | "phone" | "notes";
+  const [fieldProblems, setFieldProblems] = useState<Partial<Record<FieldKey, ContactProblem>>>({});
+  const setFieldProblem = (field: FieldKey, problem: ContactProblem | null) =>
+    setFieldProblems((current) => {
+      if (!problem && !current[field]) return current;
+      const next = { ...current };
+      if (problem) next[field] = problem;
+      else delete next[field];
+      return next;
+    });
 
   // Belt and braces to NO_AUTOFILL: a browser or extension that fills these
   // fields anyway does it without the guest ever touching them. Typing,
@@ -159,22 +170,53 @@ export function ConfirmForm({
     touched.current = true;
   };
   const guestInput =
-    (set: (value: string) => void) => (event: ChangeEvent<HTMLInputElement>) => {
+    (set: (value: string) => void, after?: () => void) => (event: ChangeEvent<HTMLInputElement>) => {
       if (!touched.current) {
         event.target.value = "";
         set("");
         return;
       }
       set(event.target.value);
+      after?.();
     };
 
   const smsConsentRequired = requiresSmsConsent(brand.market);
   const consentText = smsConsentText(brand.name, brand.privacyPolicyUrl);
 
+  // Same checks the server runs, so a slip is caught before the round trip.
+  // A "did you mean" is advice, not a block — the guest can keep their
+  // address; the server's mailbox check has the final say.
+  const checkEmail = () => setFieldProblem("email", email.trim() ? emailProblem(email) : null);
+  const checkPhone = () =>
+    setFieldProblem("phone", phoneField.trim() ? phoneProblem(toE164(phoneIso, phoneField.trim()), phoneIso === OTHER_ISO ? null : findCountry(phoneIso)) : null);
+  const checkName = () => setFieldProblem("name", name.trim() ? nameProblem(name) : null);
+
+  function blockingProblems(): Partial<Record<FieldKey, ContactProblem>> {
+    const found: Partial<Record<FieldKey, ContactProblem>> = {};
+    const emailIssue = emailProblem(email);
+    if (emailIssue && emailIssue.code !== "email_typo") found.email = emailIssue;
+    if (phoneField.trim()) {
+      const phoneIssue = phoneProblem(toE164(phoneIso, phoneField.trim()), phoneIso === OTHER_ISO ? null : findCountry(phoneIso));
+      if (phoneIssue) found.phone = phoneIssue;
+    }
+    const nameIssue = nameProblem(name);
+    if (nameIssue) found.name = nameIssue;
+    const notesIssue = notes.trim() ? notesProblem(notes) : null;
+    if (notesIssue) found.notes = notesIssue;
+    return found;
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (submitting) return;
     setError(null);
+    const blocking = blockingProblems();
+    if (Object.keys(blocking).length > 0) {
+      setFieldProblems((current) => ({ ...current, ...blocking }));
+      const first = (["name", "email", "phone", "notes"] as FieldKey[]).find((f) => blocking[f]);
+      if (first) document.getElementById(`bp-${first}`)?.focus();
+      return;
+    }
     setSubmitting(true);
     try {
       const body: Record<string, unknown> = {
@@ -247,6 +289,12 @@ export function ConfirmForm({
         setError("We couldn't verify your request. Please complete the check below and try again.");
         return;
       }
+      const field = response.status === 400 && failure.error ? problemField(failure.error) : null;
+      if (field && failure.message) {
+        setFieldProblem(field, { code: failure.error as ContactProblem["code"], message: failure.message });
+        document.getElementById(`bp-${field}`)?.focus();
+        return;
+      }
       setError(`Something went wrong on our side. Please try again${phone ? `, or call us on ${phone}` : ""}.`);
     } catch {
       setError(`We couldn't reach the booking service. Please check your connection and try again${phone ? `, or call us on ${phone}` : ""}.`);
@@ -273,9 +321,15 @@ export function ConfirmForm({
           {...NO_AUTOFILL}
           maxLength={200}
           value={name}
+          aria-invalid={fieldProblems.name ? true : undefined}
+          aria-describedby={fieldProblems.name ? "bp-name-problem" : undefined}
           onFocus={markTouched}
-          onChange={guestInput(setName)}
+          onBlur={checkName}
+          onChange={guestInput(setName, () => setFieldProblem("name", null))}
         />
+        {fieldProblems.name && (
+          <div id="bp-name-problem" className={styles.fieldError} role="alert">{fieldProblems.name.message}</div>
+        )}
       </div>
 
       <div className={styles.field}>
@@ -288,9 +342,33 @@ export function ConfirmForm({
           {...NO_AUTOFILL}
           maxLength={320}
           value={email}
+          aria-invalid={fieldProblems.email && fieldProblems.email.code !== "email_typo" ? true : undefined}
+          aria-describedby={fieldProblems.email ? "bp-email-problem" : undefined}
           onFocus={markTouched}
-          onChange={guestInput(setEmail)}
+          onBlur={checkEmail}
+          onChange={guestInput(setEmail, () => setFieldProblem("email", null))}
         />
+        {fieldProblems.email && (
+          <div id="bp-email-problem" className={styles.fieldError} role="alert">
+            {fieldProblems.email.code === "email_typo" && fieldProblems.email.suggestion ? (
+              <>
+                Did you mean{" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmail(fieldProblems.email?.suggestion ?? email);
+                    setFieldProblem("email", null);
+                  }}
+                >
+                  {fieldProblems.email.suggestion}
+                </button>
+                ?
+              </>
+            ) : (
+              fieldProblems.email.message
+            )}
+          </div>
+        )}
       </div>
 
       <div className={styles.field}>
@@ -306,7 +384,10 @@ export function ConfirmForm({
             className={styles.input}
             aria-label="Country code"
             value={phoneIso}
-            onChange={(e) => setPhoneIso(e.target.value)}
+            onChange={(e) => {
+              setPhoneIso(e.target.value);
+              setFieldProblem("phone", null);
+            }}
           >
             {dialCountries().map((c) => (
               <option key={c.iso} value={c.iso}>
@@ -324,10 +405,16 @@ export function ConfirmForm({
             maxLength={50}
             placeholder={phoneIso === OTHER_ISO ? "+971 50 123 4567" : findCountry(phoneIso)?.example}
             value={phoneField}
+            aria-invalid={fieldProblems.phone ? true : undefined}
+            aria-describedby={fieldProblems.phone ? "bp-phone-problem" : undefined}
             onFocus={markTouched}
-            onChange={guestInput(setPhoneField)}
+            onBlur={checkPhone}
+            onChange={guestInput(setPhoneField, () => setFieldProblem("phone", null))}
           />
         </div>
+        {fieldProblems.phone && (
+          <div id="bp-phone-problem" className={styles.fieldError} role="alert">{fieldProblems.phone.message}</div>
+        )}
       </div>
 
       <div className={styles.field}>
@@ -341,8 +428,15 @@ export function ConfirmForm({
           maxLength={2000}
           placeholder={notesPrompt(meta.eventTypeKey, meta.tripName).placeholder}
           value={notes}
-          onChange={(e) => setNotes(e.target.value)}
+          aria-invalid={fieldProblems.notes ? true : undefined}
+          onChange={(e) => {
+            setNotes(e.target.value);
+            setFieldProblem("notes", null);
+          }}
         />
+        {fieldProblems.notes && (
+          <div className={styles.fieldError} role="alert">{fieldProblems.notes.message}</div>
+        )}
       </div>
 
       {smsConsentRequired && (

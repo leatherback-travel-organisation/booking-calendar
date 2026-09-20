@@ -554,6 +554,27 @@
   font-size: 14px;
 }
 
+.fieldError {
+  color: #b3543e;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.fieldError button {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--bp-accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.input[aria-invalid="true"],
+.textarea[aria-invalid="true"] {
+  border-color: #b3543e;
+}
+
 .input,
 .textarea {
   border: 1.5px solid var(--bp-line);

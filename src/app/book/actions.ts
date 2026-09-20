@@ -14,6 +14,8 @@ export type PoolResolution = {
   brand: PublicBrand;
   poolLabel: string;
   eventTypes: PublicEventType[];
+  /** Edge country, so the phone dial code is preset the same way as on the resolve path. */
+  guestCountry: string | null;
 } | null;
 
 export async function resolveBrandPoolAction(brandKey: string): Promise<PoolResolution> {
@@ -34,6 +36,7 @@ export async function resolveBrandPoolAction(brandKey: string): Promise<PoolReso
       phone: phoneForCountry(brand, country),
     },
     poolLabel: `Book a call with the ${brand.name} team`,
+    guestCountry: country?.toUpperCase() ?? null,
     eventTypes: eventTypes.map((t) => ({
       key: t.key,
       name: guestEventTypeName(t.key, t.name),

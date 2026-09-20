@@ -458,7 +458,7 @@ export function BookingFlow({
         return;
       }
       setCtx({
-        guestCountry: (resolution as { guestCountry?: string | null }).guestCountry ?? null,
+        guestCountry: resolution.guestCountry,
         mode: "pool",
         brand: resolution.brand,
         eventTypes: resolution.eventTypes,

@@ -1,11 +1,16 @@
 // POST /api/booking/public/book — the actual booking creation.
-// Layers, in order: honeypot, Turnstile, fresh free/busy re-verification,
-// and finally the Postgres exclusion constraint as the real guarantee.
+// Layers, in order: honeypot, rate limits, contact qualification (does the
+// email domain take mail, is the phone a dialable shape), Turnstile, fresh
+// free/busy re-verification, and finally the Postgres exclusion constraint
+// as the real guarantee.
 
 import { z } from "zod";
 import { getBrandByKey, getEventType, getStaffBySlug } from "@/lib/booking/availability/service";
 import { createBooking } from "@/lib/booking/service";
 import { appUrl, clientIp, honeypotTripped, jsonResponse, rateLimited, recordHoneypotTrip, supportPhone, verifyTurnstile } from "@/lib/booking/public-api";
+import { emailDomain, emailProblem, nameProblem, notesProblem, phoneProblem, type ContactProblem } from "@/lib/booking/contact-quality";
+import { domainAcceptsMail, recordContactRejection } from "@/lib/booking/contact-quality-server";
+import { countryForE164 } from "@/components/booking-public/dial-codes";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -38,6 +43,29 @@ const BookSchema = z.object({
   website: z.string().optional(),
 });
 
+async function qualifyContact(parsed: {
+  guestName: string;
+  guestEmail: string;
+  guestPhone?: string;
+  guestNotes?: string;
+}): Promise<ContactProblem | null> {
+  const email = emailProblem(parsed.guestEmail);
+  // A near-miss domain is only a hint for the guest; the mailbox check
+  // below decides on facts (gmail.con has no mail server, gmail.com does).
+  if (email && email.code !== "email_typo") return email;
+  if (!(await domainAcceptsMail(emailDomain(parsed.guestEmail)))) {
+    return {
+      code: "email_unreachable",
+      message: `We can't find a mailbox at ${emailDomain(parsed.guestEmail)} — check the address and try again.`,
+    };
+  }
+  if (parsed.guestPhone?.trim()) {
+    const phone = phoneProblem(parsed.guestPhone.trim(), countryForE164(parsed.guestPhone.trim()));
+    if (phone) return phone;
+  }
+  return nameProblem(parsed.guestName) ?? (parsed.guestNotes ? notesProblem(parsed.guestNotes) : null);
+}
+
 export async function POST(request: Request): Promise<Response> {
   let parsed;
   try {
@@ -65,6 +93,13 @@ export async function POST(request: Request): Promise<Response> {
     (await rateLimited("book-email", parsed.guestEmail, 3, 3600))
   ) {
     return jsonResponse({ error: "rate_limited", message: "Too many requests — please try again shortly." }, { status: 429 });
+  }
+  // Qualify the details before spending a Turnstile verification on them.
+  // The same checks ran in the browser; this is the copy that counts.
+  const problem = await qualifyContact(parsed);
+  if (problem) {
+    await recordContactRejection(request, parsed.brandKey, problem, { email: parsed.guestEmail, phone: parsed.guestPhone });
+    return jsonResponse({ error: problem.code, message: problem.message }, { status: 400 });
   }
   if (!(await verifyTurnstile(parsed.turnstileToken ?? null, clientIp(request)))) {
     return jsonResponse({ error: "verification failed" }, { status: 403 });
