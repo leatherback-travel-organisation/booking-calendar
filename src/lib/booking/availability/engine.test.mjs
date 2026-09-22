@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { DateTime } from "luxon";
-import { computeSlots, mergeIntervals, rankByOpenSlots, resolveSchedulingZone, workingWeekStart } from "./engine.ts";
+import { computeSlots, mergeIntervals, openNow, rankByOpenSlots, resolveSchedulingZone, workingWeekStart } from "./engine.ts";
 
 const WEEKDAYS_9_TO_5 = [1, 2, 3, 4, 5].map((dayOfWeek) => ({ dayOfWeek, startMin: 540, endMin: 1020 }));
 
@@ -393,4 +393,45 @@ test("the cap counts days in the SCHEDULING zone, not UTC", () => {
   );
   assert.ok(!losAngeles.has("2026-08-17"), "Monday is the capped day in Los Angeles");
   assert.ok(losAngeles.has("2026-08-18"), "Tuesday stays open in Los Angeles");
+});
+
+// ---------------------------------------------------------------------------
+// "Call now": inside working hours AND free at this moment (Nicola, 22 Sep)
+// ---------------------------------------------------------------------------
+
+// Mon 17 Aug 2026, Melbourne (AEST, UTC+10). 9-5 local = 23:00-07:00 UTC.
+const MEL = { schedulingZone: "Australia/Melbourne", workingHours: WEEKDAYS_9_TO_5, busy: [] };
+
+test("openNow: inside a working block → open until the block closes", () => {
+  const r = openNow({ ...MEL, now: "2026-08-17T01:00:00Z" }); // Mon 11:00 local
+  assert.deepEqual(r, { until: "2026-08-17T07:00:00.000Z" });  // 17:00 local
+});
+
+test("openNow: before opening, after closing, and at the weekend → null", () => {
+  assert.equal(openNow({ ...MEL, now: "2026-08-16T22:30:00Z" }), null); // Mon 08:30 local
+  assert.equal(openNow({ ...MEL, now: "2026-08-17T07:00:00Z" }), null); // Mon 17:00 exactly (half-open)
+  assert.equal(openNow({ ...MEL, now: "2026-08-15T01:00:00Z" }), null); // Sat 11:00 local
+});
+
+test("openNow: a meeting right now → null; a meeting later shortens 'until'", () => {
+  const inMeeting = [{ start: "2026-08-17T00:30:00Z", end: "2026-08-17T01:30:00Z" }];
+  assert.equal(openNow({ ...MEL, now: "2026-08-17T01:00:00Z", busy: inMeeting }), null);
+  const later = [{ start: "2026-08-17T03:00:00Z", end: "2026-08-17T04:00:00Z" }];
+  assert.deepEqual(openNow({ ...MEL, now: "2026-08-17T01:00:00Z", busy: later }), { until: "2026-08-17T03:00:00.000Z" });
+  // A confirmed booking counts the same as calendar busy.
+  assert.equal(openNow({ ...MEL, now: "2026-08-17T01:00:00Z", confirmed: inMeeting }), null);
+});
+
+test("openNow: all-day leave in the calendar means not open", () => {
+  const leave = [{ start: "2026-08-16T14:00:00Z", end: "2026-08-17T14:00:00Z" }]; // Mon local, all day
+  assert.equal(openNow({ ...MEL, now: "2026-08-17T01:00:00Z", busy: leave }), null);
+});
+
+test("openNow: split shifts and DST-safe wall times", () => {
+  const split = [{ dayOfWeek: 1, startMin: 540, endMin: 720 }, { dayOfWeek: 1, startMin: 780, endMin: 1020 }];
+  assert.equal(openNow({ ...MEL, workingHours: split, now: "2026-08-17T02:15:00Z" }), null); // 12:15 lunch
+  assert.deepEqual(openNow({ ...MEL, workingHours: split, now: "2026-08-17T01:00:00Z" }), { until: "2026-08-17T02:00:00.000Z" });
+  // Los Angeles the week after the March 2026 DST change: 9-5 PDT = 16:00-00:00 UTC.
+  const la = { schedulingZone: "America/Los_Angeles", workingHours: WEEKDAYS_9_TO_5, busy: [] };
+  assert.deepEqual(openNow({ ...la, now: "2026-03-16T20:00:00Z" }), { until: "2026-03-17T00:00:00.000Z" });
 });

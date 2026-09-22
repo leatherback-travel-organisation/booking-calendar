@@ -75,6 +75,8 @@ export type AvailabilityPayload = {
   staff: { slug: string; firstName: string; photoUrl: string | null };
   schedulingZone: string;
   calendarReachable: boolean;
+  /** The BM is inside working hours and free right now, until this instant. */
+  openNow?: { until: string } | null;
   durationMin: number;
   slots: PublicSlot[];
   windowEnd: string;

@@ -299,6 +299,43 @@
   font-size: 16px;
 }
 
+.callNowBox {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  margin: 4px 0 8px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bp-accent) 10%, #fff);
+  border: 1px solid color-mix(in srgb, var(--bp-accent) 40%, var(--bp-line));
+}
+
+.callNowBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bp-primary);
+  color: #fff;
+  border-radius: 12px;
+  padding: 12px 20px;
+  font-size: 17px;
+  font-weight: 500;
+  text-decoration: none;
+  min-height: 48px;
+  white-space: nowrap;
+}
+
+.callNowBtn:hover {
+  filter: brightness(1.12);
+}
+
+.callNowNote {
+  flex: 1 1 220px;
+  font-size: 15px;
+  color: var(--bp-ink);
+}
+
 .phoneBig {
   font-size: 24px;
   font-weight: 500;

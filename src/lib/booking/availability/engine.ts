@@ -179,6 +179,58 @@ function wallTime(day: DateTime, minutesFromMidnight: number): DateTime | null {
 }
 
 /** Merge overlapping/touching intervals; used for pool availability views. */
+export type OpenNowArgs = {
+  schedulingZone: string;
+  workingHours: WorkingHours[];
+  /** Injected clock (UTC ISO). */
+  now: string;
+  /** Google free/busy for the BM — a meeting or leave right now means not open. */
+  busy: Interval[];
+  confirmed?: Interval[];
+};
+
+/**
+ * Is the BM on the phone-able side of their day RIGHT NOW? True when `now`
+ * falls inside one of today's working-hours blocks in the scheduling zone
+ * and no busy or confirmed interval covers it. Returns when that stretch
+ * ends — the block's close, or the start of the next busy interval if that
+ * comes first — so the page can say "until 4:30pm". Holds are ignored: a
+ * guest mid-checkout does not make the BM unreachable by phone. Pure.
+ */
+export function openNow(args: OpenNowArgs): { until: string } | null {
+  const zone = args.schedulingZone;
+  const now = DateTime.fromISO(args.now).setZone(zone);
+  if (!now.isValid) return null;
+  const nowMs = now.toMillis();
+
+  const taken: Instant[] = [];
+  for (const interval of [...args.busy, ...(args.confirmed ?? [])]) {
+    const instant = toInstant(interval);
+    if (instant) taken.push(instant);
+  }
+  if (taken.some((t) => nowMs >= t.startMs && nowMs < t.endMs)) return null;
+
+  const dow = now.weekday % 7;
+  const day = now.startOf("day");
+  let closeMs: number | null = null;
+  for (const row of args.workingHours) {
+    if (row.dayOfWeek !== dow) continue;
+    const open = wallTime(day, row.startMin);
+    const close = wallTime(day, row.endMin);
+    if (!open || !close) continue;
+    if (nowMs >= open.toMillis() && nowMs < close.toMillis()) {
+      closeMs = closeMs === null ? close.toMillis() : Math.max(closeMs, close.toMillis());
+    }
+  }
+  if (closeMs === null) return null;
+
+  let untilMs = closeMs;
+  for (const t of taken) {
+    if (t.startMs > nowMs && t.startMs < untilMs) untilMs = t.startMs;
+  }
+  return { until: new Date(untilMs).toISOString() };
+}
+
 export function mergeIntervals(intervals: Interval[]): Interval[] {
   const instants = intervals
     .map(toInstant)

@@ -9,7 +9,7 @@ import { calendarConfigured } from "../google/auth";
 import { freeBusy, GoogleCalendarError } from "../google/calendar";
 import { GoogleDelegationError } from "../google/auth";
 import { isSeniorTitle, type Brand, type EventType, type Interval, type Slot, type Staff, type WorkingHours } from "../model";
-import { computeSlots, rankByOpenSlots, resolveSchedulingZone } from "./engine";
+import { computeSlots, rankByOpenSlots, resolveSchedulingZone, openNow } from "./engine";
 
 const FREEBUSY_CACHE_SECONDS = 60;
 
@@ -226,6 +226,10 @@ export type StaffAvailability = {
   slots: Slot[];
   /** False when Google free/busy could not be fetched — surface loudly. */
   calendarReachable: boolean;
+  /** Set when the BM is inside working hours and free right now — the page
+   *  shows a "call now" button until then. Null when the calendar is
+   *  unreachable: we never claim someone is free without seeing it. */
+  openNow: { until: string } | null;
   windowStart: string;
   windowEnd: string;
 };
@@ -289,6 +293,11 @@ export async function availabilityForStaff(args: {
       })
     : [];
 
+  const nowOpen =
+    calendarReachable || !calendarConfigured()
+      ? openNow({ schedulingZone, workingHours, now: nowIso, busy, confirmed })
+      : null;
+
   return {
     staff,
     brand,
@@ -296,6 +305,7 @@ export async function availabilityForStaff(args: {
     schedulingZone,
     slots,
     calendarReachable: calendarConfigured() ? calendarReachable : false,
+    openNow: nowOpen,
     windowStart,
     windowEnd,
   };

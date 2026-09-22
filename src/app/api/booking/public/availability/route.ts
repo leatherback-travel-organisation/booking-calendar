@@ -32,6 +32,7 @@ export async function GET(request: Request): Promise<Response> {
     staff: { slug: staff.slug, firstName: staff.firstName, photoUrl: staff.photoUrl },
     schedulingZone: availability.schedulingZone,
     calendarReachable: availability.calendarReachable,
+    openNow: availability.openNow,
     durationMin: eventType.durationMin,
     slots: availability.slots,
     windowEnd: availability.windowEnd,

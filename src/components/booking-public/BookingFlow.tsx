@@ -13,7 +13,7 @@ import { BrandFrame } from "./BrandFrame";
 import { ConfirmForm, type BookMeta, type BookedResult } from "./ConfirmForm";
 import { SlotPicker } from "./SlotPicker";
 import { TeamList } from "./TeamList";
-import { formatDateOnly, formatDayShort, formatFullDateTime, formatSlotShort, guestTimeZone } from "./format";
+import { formatDateOnly, formatDayShort, formatFullDateTime, formatSlotShort, formatTime, guestTimeZone } from "./format";
 import { resolveBrandPoolAction } from "@/app/book/actions";
 import type {
   AvailabilityPayload,
@@ -850,6 +850,22 @@ export function BookingFlow({
           <p className={styles.pageSub}>
             {eventType.name} · {eventType.durationMin} minutes
           </p>
+        )}
+
+        {/* Call now (Nicola, 22 Sep): when the BM is inside working hours and
+            their calendar is clear at this moment, the guest can simply ring
+            rather than book. The brand line is what they dial; it is only
+            offered while someone is actually there to pick up, and it goes
+            away once a time is being confirmed. */}
+        {active && phone && availData?.openNow && !selected && (
+          <div className={styles.callNowBox}>
+            <a className={styles.callNowBtn} href={`tel:${phone.replace(/\s/g, "")}`}>
+              Call {active.firstName} now
+            </a>
+            <span className={styles.callNowNote}>
+              {active.firstName} is available on the phone until {formatTime(availData.openNow.until, tz)} — or pick a time below.
+            </span>
+          </div>
         )}
 
         {/* Trip context (trip-entry links only — never for ?bm= links) */}
