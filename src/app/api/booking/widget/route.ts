@@ -7,10 +7,11 @@
 // surfacing an error on a guest-facing trip page.
 
 import { resolveManager } from "@/lib/booking/routing";
-import { getBrandByKey } from "@/lib/booking/availability/service";
+import { getBrandByKey, getStaffBySlug, getWorkingHours } from "@/lib/booking/availability/service";
+import { openNow, resolveSchedulingZone } from "@/lib/booking/availability/engine";
 import { appUrl, supportPhone } from "@/lib/booking/public-api";
 import { getSql } from "@/lib/booking/db";
-import type { Brand } from "@/lib/booking/model";
+import type { Brand, Staff } from "@/lib/booking/model";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -71,6 +72,28 @@ function brandPayload(brand: Brand) {
   };
 }
 
+/**
+ * "Call now" on the trip-page bar (Nicola, 22 Sep): shown only during the
+ * BM's OFFICE HOURS — working hours in the scheduling zone, no calendar
+ * lookup (this payload is edge-cached 5 minutes and served on every trip
+ * page view, so it must stay cheap). The client hides the button itself
+ * once `until` passes, so the cache can only delay the button appearing,
+ * never leave it up after close.
+ */
+async function officeHoursNow(staff: Staff, brand: Brand): Promise<{ until: string } | null> {
+  try {
+    const workingHours = await getWorkingHours(staff.id);
+    return openNow({
+      schedulingZone: resolveSchedulingZone(staff, brand),
+      workingHours,
+      now: new Date().toISOString(),
+      busy: [],
+    });
+  } catch {
+    return null;
+  }
+}
+
 export async function OPTIONS(request: Request): Promise<Response> {
   const cors = await corsHeaders(request);
   return new Response(null, {
@@ -110,6 +133,7 @@ export async function GET(request: Request): Promise<Response> {
           },
           brand: brandPayload(resolved.brand),
           phone: supportPhone(resolved.brand, request),
+          callNow: await officeHoursNow(resolved.staff, resolved.brand),
         },
         cors,
       );
@@ -143,6 +167,7 @@ export async function GET(request: Request): Promise<Response> {
        where sb.brand_id = ${brand.id} and s.active and not sb.is_backup`;
     if (primaries.length === 1) {
       const solo = primaries[0];
+      const soloStaff = await getStaffBySlug(String(solo.slug));
       return payloadResponse(
         {
           kind: "primary",
@@ -154,6 +179,7 @@ export async function GET(request: Request): Promise<Response> {
           },
           brand: brandPayload(brand),
           phone: supportPhone(brand, request),
+          callNow: soloStaff ? await officeHoursNow(soloStaff, brand) : null,
           bookQuery: `bm=${encodeURIComponent(String(solo.slug))}&brand=${encodeURIComponent(brand.key)}`,
         },
         cors,

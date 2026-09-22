@@ -50,3 +50,10 @@ test("sizes inline embeds to their content and scrolls to them on each step", ()
   assert.ok(WIDGET_SOURCE.indexOf("leatherback-booking-height") < WIDGET_SOURCE.indexOf("if (!isTrip && !isHome) return;"));
 });
 
+
+test("trip-page bar offers Call now only inside office hours, and takes it down at close", () => {
+  assert.ok(WIDGET_SOURCE.includes("data.callNow"), "reads the office-hours flag from the payload");
+  assert.ok(WIDGET_SOURCE.includes("'dcall'"), "renders the call link");
+  assert.ok(/Date\.parse\(cn\.until\) - Date\.now\(\)/.test(WIDGET_SOURCE), "checks the close time client-side");
+  assert.ok(/setTimeout\(function \(\) \{ dcall\.remove\(\); \}/.test(WIDGET_SOURCE), "removes the link when hours end");
+});

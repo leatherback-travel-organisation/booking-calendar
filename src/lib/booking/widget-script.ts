@@ -165,7 +165,8 @@ const SOURCE = `(function () {
       return null;
     }
 
-    function renderDocked(title, photo, color, initial) {
+    // call = {tel, until} while the BM is inside office hours, else null.
+    function renderDocked(title, photo, color, initial, call) {
       var anchor = findDockAnchor();
       if (!anchor) return null;
       var target = anchor.el;
@@ -173,10 +174,15 @@ const SOURCE = `(function () {
       var sh = hostEl.attachShadow({ mode: 'closed' });
       var st = mk('style');
       st.textContent = [
-        '.drow{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;',
-        '-webkit-font-smoothing:antialiased;display:flex;align-items:center;gap:12px;width:100%;',
-        'margin:14px 0 0;padding:14px 0 0;border:0;border-top:1px solid rgba(0,0,0,.08);',
-        'background:transparent;cursor:pointer;text-align:left;box-sizing:border-box}',
+        '.dwrap{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;',
+        '-webkit-font-smoothing:antialiased;display:flex;align-items:center;gap:10px;',
+        'margin:14px 0 0;padding:14px 0 0;border-top:1px solid rgba(0,0,0,.08)}',
+        '.drow{font:inherit;display:flex;align-items:center;gap:12px;flex:1;min-width:0;',
+        'margin:0;padding:0;border:0;background:transparent;cursor:pointer;text-align:left}',
+        '.dcall{flex:none;display:flex;flex-direction:column;align-items:center;text-decoration:none;',
+        'background:' + color + ';color:#fff;border-radius:10px;padding:8px 14px;font-size:14px;',
+        'font-weight:600;line-height:1.25;white-space:nowrap}',
+        '.dcall small{font-size:11px;font-weight:400;opacity:.85}',
         '.dphoto{width:40px;height:40px;border-radius:50%;object-fit:cover;flex:none;background:#f3f4f6}',
         '.dinitial{width:40px;height:40px;border-radius:50%;flex:none;background:' + color + ';',
         'color:#fff;font-size:16px;font-weight:700;line-height:40px;text-align:center}',
@@ -208,7 +214,20 @@ const SOURCE = `(function () {
       chev.textContent = '›';
       row.appendChild(chev);
       row.addEventListener('click', openOverlay);
-      sh.appendChild(row);
+      var wrap = mk('div', 'dwrap');
+      wrap.appendChild(row);
+      if (call) {
+        var dcall = mk('a', 'dcall');
+        dcall.href = 'tel:' + call.tel;
+        dcall.textContent = 'Call now';
+        var untilEl = mk('small');
+        untilEl.textContent = 'until ' + call.until;
+        dcall.appendChild(untilEl);
+        wrap.appendChild(dcall);
+        // Office hours end while the page is open: take the button away.
+        setTimeout(function () { dcall.remove(); }, Math.min(call.ms, 2147483647));
+      }
+      sh.appendChild(wrap);
       if (anchor.before) {
         target.parentNode.insertBefore(hostEl, target);
       } else {
@@ -232,8 +251,21 @@ const SOURCE = `(function () {
       var phone = typeof data.phone === 'string' ? data.phone : '';
       var initial = ((isPrimary ? staff.firstName : (brand.name || '')) + 'B').charAt(0).toUpperCase();
 
+      var call = null;
+      var cn = data.callNow;
+      if (isPrimary && phone && cn && cn.until) {
+        var ms = Date.parse(cn.until) - Date.now();
+        if (ms > 0) {
+          call = {
+            tel: phone.replace(/[^0-9+]/g, ''),
+            until: new Date(cn.until).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+            ms: ms
+          };
+        }
+      }
+
       if (isTrip) {
-        try { renderDocked(title, photo, color, initial); } catch (e) { debug('dock failed'); }
+        try { renderDocked(title, photo, color, initial, call); } catch (e) { debug('dock failed'); }
       }
 
       var dismissed = false;
