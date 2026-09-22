@@ -6,7 +6,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { backupPlacement, coverSlotsFor, findCoverGap } from "./cover.ts";
+import { backupPlacement, coverSlotsFor, emptyWorkingDaysBetween, findCoverGap } from "./cover.ts";
 
 const DAY = 86_400_000;
 const NOW = Date.parse("2026-09-08T00:00:00Z");
@@ -76,4 +76,67 @@ test("with no gap, only the backup's times sooner than the primary's are offered
   const entry = { nextSlots: slotsOnDays(2, 20) };
   const sooner = coverSlotsFor(entry, NOW + 5 * DAY, null);
   assert.equal(sooner.length, 1, "a backup free later than the primary is no help");
+});
+
+// ---------------------------------------------------------------------------
+// Gaps measured in the BM's working days (22 Sep) — the Janie false alarm
+// ---------------------------------------------------------------------------
+
+// Janie: Los Angeles, Monday–Friday. Slot instants are her local 10:00.
+const LA = { schedulingZone: "America/Los_Angeles", workingDays: [1, 2, 3, 4, 5] };
+const la10 = (isoDate) => ({ start: `${isoDate}T17:00:00.000Z`, end: `${isoDate}T17:30:00.000Z` }); // 10:00 PDT
+const NOW_TUE = Date.parse("2026-09-22T03:45:00Z"); // Mon 20:45 PDT — what the live page saw
+
+test("one booked-out Friday plus the weekend is NOT leave (the 22 Sep false alarm)", () => {
+  const slots = ["2026-09-22", "2026-09-23", "2026-09-24", "2026-09-28", "2026-09-29"].map(la10); // no Fri 25
+  assert.equal(findCoverGap(slots, NOW_TUE, LA), null, "Thu → Mon is one empty working day, not an adventure");
+  assert.ok(findCoverGap(slots, NOW_TUE), "the old clock rule DID fire on this shape — the bug being fixed");
+});
+
+test("a public-holiday Monday is not leave either", () => {
+  const slots = ["2026-09-24", "2026-09-25", "2026-09-29", "2026-09-30"].map(la10); // Fri → Tue
+  assert.equal(findCoverGap(slots, NOW_TUE, LA), null);
+});
+
+test("three empty working days IS leave, weekend or not", () => {
+  // Thu open, then nothing until the following Thu: Fri, Mon, Tue, Wed empty.
+  const gap = findCoverGap(["2026-09-24", "2026-10-01"].map(la10), NOW_TUE, LA);
+  assert.ok(gap);
+  assert.equal(new Date(gap.endMs).toISOString(), "2026-10-01T17:00:00.000Z");
+  // Mon–Wed off between a Friday and a Thursday: exactly three.
+  assert.ok(findCoverGap(["2026-09-25", "2026-10-01"].map(la10), NOW_TUE, LA));
+  // Two empty working days across a weekend (Thu → Tue) stay quiet.
+  assert.equal(findCoverGap(["2026-09-24", "2026-09-29"].map(la10), NOW_TUE, LA), null);
+});
+
+test("leave already under way counts from today in working days", () => {
+  const tueMorningLa = Date.parse("2026-09-22T17:45:00Z"); // Tue 10:45 PDT
+  // Tuesday now, first opening next Monday: Wed, Thu, Fri empty → away.
+  assert.ok(findCoverGap(["2026-09-28"].map(la10), tueMorningLa, LA));
+  // Tuesday now, first opening Friday: Wed, Thu empty → just a busy week.
+  assert.equal(findCoverGap(["2026-09-25"].map(la10), tueMorningLa, LA), null);
+  // NOW_TUE is still Monday EVENING in Los Angeles: Tue, Wed, Thu empty before a Friday opening → away.
+  assert.ok(findCoverGap(["2026-09-25"].map(la10), NOW_TUE, LA));
+});
+
+test("a part-time week is measured in ITS working days", () => {
+  const monWed = { schedulingZone: "Australia/Melbourne", workingDays: [1, 2, 3] };
+  const mel10 = (isoDate) => ({ start: `${isoDate}T00:00:00.000Z`, end: `${isoDate}T00:30:00.000Z` }); // 10:00 AEST
+  // Wed open, next Mon open: Thu–Sun are not her days → no gap.
+  assert.equal(findCoverGap(["2026-09-23", "2026-09-28"].map(mel10), NOW_TUE, monWed), null);
+  // Wed open, then nothing until the Monday after next: Mon, Tue, Wed empty → gap.
+  assert.ok(findCoverGap(["2026-09-23", "2026-10-05"].map(mel10), NOW_TUE, monWed));
+});
+
+test("emptyWorkingDaysBetween counts local dates in the scheduling zone", () => {
+  // Thu 24 Sep 10:00 PDT → Mon 28 Sep 10:00 PDT: Fri only.
+  assert.equal(emptyWorkingDaysBetween(Date.parse("2026-09-24T17:00:00Z"), Date.parse("2026-09-28T17:00:00Z"), LA), 1);
+  // Same instants for a Monday-to-Thursday week: Friday is not hers, so zero.
+  assert.equal(emptyWorkingDaysBetween(Date.parse("2026-09-24T17:00:00Z"), Date.parse("2026-09-28T17:00:00Z"), { ...LA, workingDays: [1, 2, 3, 4] }), 0);
+});
+
+test("an unknown zone falls back to the clock rule rather than crashing", () => {
+  const bad = { schedulingZone: "Mars/Olympus", workingDays: [1, 2, 3, 4, 5] };
+  assert.equal(findCoverGap(slotsOnDays(1, 2, 3), NOW, bad), null);
+  assert.ok(findCoverGap(slotsOnDays(1, 14), NOW, bad));
 });

@@ -230,6 +230,9 @@ export type StaffAvailability = {
    *  shows a "call now" button until then. Null when the calendar is
    *  unreachable: we never claim someone is free without seeing it. */
   openNow: { until: string } | null;
+  /** Days of week (0 = Sunday) with working hours — the page measures
+   *  "away" in these, not in calendar days. */
+  workingDays: number[];
   windowStart: string;
   windowEnd: string;
 };
@@ -306,6 +309,7 @@ export async function availabilityForStaff(args: {
     slots,
     calendarReachable: calendarConfigured() ? calendarReachable : false,
     openNow: nowOpen,
+    workingDays: [...new Set(workingHours.map((row) => row.dayOfWeek))].sort((a, b) => a - b),
     windowStart,
     windowEnd,
   };

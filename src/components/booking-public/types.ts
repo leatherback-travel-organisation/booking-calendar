@@ -77,6 +77,8 @@ export type AvailabilityPayload = {
   calendarReachable: boolean;
   /** The BM is inside working hours and free right now, until this instant. */
   openNow?: { until: string } | null;
+  /** Days of week (0 = Sunday) the BM works; cover gaps are counted in these. */
+  workingDays?: number[];
   durationMin: number;
   slots: PublicSlot[];
   windowEnd: string;

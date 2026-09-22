@@ -231,14 +231,18 @@ export function BookingFlow({
   // Leave rarely starts today: a BM is typically free for a day or two, then
   // gone for a fortnight. So look for the GAP as well as a distant first
   // opening — otherwise tomorrow's slots hide next fortnight's hole.
-  const coverGap = findCoverGap(availData?.slots ?? [], nowMs);
+  // Counted in the BM's WORKING days (22 Sep): a booked-out Friday plus the
+  // weekend used to read as a 3.7-day "adventure" for Janie.
+  const coverGap = findCoverGap(
+    availData?.slots ?? [],
+    nowMs,
+    availData?.workingDays?.length ? { schedulingZone: availData.schedulingZone, workingDays: availData.workingDays } : null,
+  );
   const coverNeeded =
     active?.routedVia === "primary" &&
     availData !== null &&
     availData.calendarReachable &&
-    (primaryFirstMs === null ||
-      primaryFirstMs - nowMs > COVER_GAP_DAYS * 86_400_000 ||
-      coverGap !== null);
+    (primaryFirstMs === null || coverGap !== null);
 
   // 3. Team list: eagerly the whole pool UI when there is no primary, and
   //    lazily (click only) behind "Can't find a time that works?" otherwise.
@@ -409,7 +413,7 @@ export function BookingFlow({
       routedVia: "backup",
       routedReason: `Chose ${entry.staff.firstName} from cover; ${
         ctx.primary?.firstName ?? "the primary BM"
-      } had no times for ${COVER_GAP_DAYS}+ days.`,
+      } had no times for ${COVER_GAP_DAYS}+ working days.`,
     });
     setShowBackups(false);
     setNotice(null);

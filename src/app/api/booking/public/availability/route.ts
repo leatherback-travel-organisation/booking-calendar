@@ -33,6 +33,7 @@ export async function GET(request: Request): Promise<Response> {
     schedulingZone: availability.schedulingZone,
     calendarReachable: availability.calendarReachable,
     openNow: availability.openNow,
+    workingDays: availability.workingDays,
     durationMin: eventType.durationMin,
     slots: availability.slots,
     windowEnd: availability.windowEnd,
